@@ -1,0 +1,10 @@
+.venv/
+outputs/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.mp4
+*.safetensors
+*.pt
+.DS_Store

@@ -1,0 +1,79 @@
+# Smoke test / first physics probe: a red ball rolling down a slope.
+#
+# The prompt set is built as a contrast pair on a single physical variable
+# (direction of travel) with everything else held fixed. That is the shape every
+# later experiment wants: two prompts that differ in one physical property give
+# you a difference-in-activations to look at, and a behavioural readout (which
+# way the ball actually goes) to validate a steering intervention against.
+#
+# Run:
+#   .venv/bin/python scripts/run_experiment.py configs/red_ball_slope.yaml
+#   ./scripts/run_experiment.sh configs/red_ball_slope.yaml     # all GPUs
+
+name: red_ball_slope
+output_dir: outputs
+notes: >
+  Baseline generations for the rolling-ball setup. No hooks installed; this
+  establishes that the prompts produce the intended physical behaviour before
+  any interpretability work depends on them.
+
+model:
+  id: cogvideox-2b
+  dtype: auto          # -> fp16, the dtype CogVideoX-2b was trained in
+  vae_tiling: true
+  vae_slicing: true
+  # Turn these on for <40GB cards. Both are slower; neither changes the output.
+  cpu_offload: false
+  model_cpu_offload: false
+
+generation:
+  num_frames: 49       # 13 latent frames at the VAE's 4x temporal compression
+  height: 480
+  width: 720           # -> 30 x 45 patch grid, 17550 video tokens
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  fps: 8
+  negative_prompt: null
+  save_video: true
+  save_frames: false
+  save_latents: false
+
+# NOTE ON PROMPT WRITING: CogVideoX takes scene descriptions very literally.
+# Words like "plain background" or "even lighting" produce a literally flat,
+# near-constant image (measured: pixel std 1.2 vs 28.6 for a scene-rich prompt).
+# Describe a real scene with texture and light; do not describe an abstract
+# test-bench. Sanity-check new prompts with:
+#   iio.imread(video).std()   -- expect >20; <10 means the model rendered mush.
+prompts:
+  - id: ball_left_to_right
+    text: >
+      A bright red rubber ball rolls down a steep concrete slope, travelling
+      from the left edge of the frame to the right edge. Side profile view: the
+      camera is locked off at ground level, perpendicular to the ball's path,
+      and the slope runs as a diagonal line across the frame. Weathered grey
+      concrete, cracked and stained, with a few dry leaves scattered on it. Late
+      afternoon sunlight casting long shadows, sharp focus, realistic physics,
+      high quality footage.
+    tags: {object: ball, color: red, motion: rolling, direction: left_to_right,
+           surface: concrete, view: side_profile}
+
+  - id: ball_right_to_left
+    text: >
+      A bright red rubber ball rolls down a steep concrete slope, travelling
+      from the right edge of the frame to the left edge. Side profile view: the
+      camera is locked off at ground level, perpendicular to the ball's path,
+      and the slope runs as a diagonal line across the frame. Weathered grey
+      concrete, cracked and stained, with a few dry leaves scattered on it. Late
+      afternoon sunlight casting long shadows, sharp focus, realistic physics,
+      high quality footage.
+    tags: {object: ball, color: red, motion: rolling, direction: right_to_left,
+           surface: concrete, view: side_profile}
+
+seeds: [0, 1, 2]
+
+# Interpretability taps go here. Each entry names a factory
+# ("module:callable") returning fn(x, ctx) -> Tensor | None. Left empty for the
+# baseline run; see README for the contract.
+hooks: []
+
+resume: true
