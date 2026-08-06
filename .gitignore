@@ -8,3 +8,12 @@ __pycache__/
 *.safetensors
 *.pt
 .DS_Store
+
+# Generated Kubric datasets: rendered frames and masks are large (a 50-scene pilot is
+# ~540MB) and reproducible from a seed via momentum_dataset/run_batch.py. The small
+# validation artifacts are kept, since they are the evidence the set was checked.
+# (excluding pilot/* rather than pilot/ so the _validation negation can still apply --
+# git will not descend into an excluded directory to re-include anything inside it)
+momentum_dataset/pilot/*
+!momentum_dataset/pilot/_validation/
+momentum_dataset/*/scene_*/

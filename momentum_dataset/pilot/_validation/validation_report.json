@@ -1,0 +1,3643 @@
+{
+ "checks": {
+  "contact_frame": {
+   "pass": true,
+   "detail": "mean 20.047, std 0.016, range [20.033, 20.067], 50/50 within +/-1"
+  },
+  "momentum_conservation": {
+   "pass": true,
+   "detail": "relative error median 9.78e-17, max 2.31e-16 (tolerance 1e-09)"
+  },
+  "energy_never_increases": {
+   "pass": true,
+   "detail": "KE_post/KE_pre max 1.000000, min 0.1893, 0 scenes with an increase"
+  },
+  "frame0_visible_and_separate": {
+   "pass": true,
+   "detail": "all fully in frame: True; min surface gap 0.832 world units; min mask pixels 1437"
+  },
+  "restitution_realised": {
+   "pass": true,
+   "detail": "|measured - target| max 6.66e-16"
+  }
+ },
+ "summary": {
+  "num_scenes": 50,
+  "segmentation_vs_projection_px": {
+   "median": 0.7098170181343851,
+   "p95": 0.9176394334815575,
+   "max": 9.786691504929404,
+   "n_samples": 299
+  },
+  "in_frame_fraction": {
+   "A_mean": 1.0,
+   "B_mean": 0.9955102040816327,
+   "scenes_with_B_leaving": 1,
+   "scenes_with_A_leaving": 0
+  },
+  "rejections_per_scene": {
+   "mean": 0.0,
+   "max": 0
+  },
+  "ke_ratio": {
+   "min": 0.18932797641315685,
+   "median": 0.8802780332617537,
+   "max": 1.0000000000000007
+  }
+ },
+ "per_scene": [
+  {
+   "scene_id": "scene_00000",
+   "seed": 0,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 7.426219525655228e-17,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 1.0000000000000002,
+   "ke_lost": -2.7755575615628914e-17,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000002,
+   "impulse_magnitude": 0.14291288867810892,
+   "mass_ratio": 3.375000000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.8159716076401227,
+   "direction_a_rad": 5.735012432197602,
+   "impact_parameter_frac": 0.5459721981904619,
+   "frame0_surface_gap": 1.9495184011256705,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3293,
+   "frame0_seg_pixels_b": 1446,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.640137005660165,
+     "dy": -0.5431937264455939,
+     "distance": 0.8395444064880743
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.48087387621609423,
+     "dy": -0.49369843979565076,
+     "distance": 0.6891863567162014
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48295807149304437,
+     "dy": -0.4713594300969248,
+     "distance": 0.6748542147468432
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.48087387621609423,
+     "dy": -0.49369843979565076,
+     "distance": 0.6891863567162014
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4729218695849795,
+     "dy": -0.35287174656861,
+     "distance": 0.5900623392982589
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.357973167898308,
+     "dy": -0.47910114109015467,
+     "distance": 0.5980657926424471
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00001",
+   "seed": 1,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 5.1965765688810245e-17,
+   "momentum_abs_error": 2.220446049250313e-16,
+   "ke_ratio": 0.9629726892453958,
+   "ke_lost": 0.04669878886190926,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000002,
+   "impulse_magnitude": 0.5938963896763654,
+   "mass_ratio": 6.666666666666668,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.5903241534047184,
+   "direction_a_rad": 2.659838524324996,
+   "impact_parameter_frac": 0.7449323344383976,
+   "frame0_surface_gap": 1.2456062114595738,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5825,
+   "frame0_seg_pixels_b": 5773,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.31939095781439164,
+     "dy": -0.307086443163314,
+     "distance": 0.443071853662913
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.49234260514447215,
+     "dy": -0.5557430728385953,
+     "distance": 0.7424632003328716
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5076605879627323,
+     "dy": -0.44426224900365696,
+     "distance": 0.674602266865784
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.49234260514447215,
+     "dy": -0.5557430728385953,
+     "distance": 0.7424632003328716
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.713147275774844,
+     "dy": -0.49752569909978206,
+     "distance": 0.8695463519616469
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.6137112760538912,
+     "dy": -0.8379760206060496,
+     "distance": 1.038674800631288
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00002",
+   "seed": 2,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.4311776417779087e-16,
+   "momentum_abs_error": 1.3985787785349405e-17,
+   "ke_ratio": 0.18932797641315685,
+   "ke_lost": 0.028521236702168933,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000004,
+   "impulse_magnitude": 0.10048765079762788,
+   "mass_ratio": 0.15,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.7200452366845443,
+   "direction_a_rad": 4.577680797454887,
+   "impact_parameter_frac": 0.1691109660299431,
+   "frame0_surface_gap": 1.7936229458174633,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1461,
+   "frame0_seg_pixels_b": 1445,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5268343678633869,
+     "dy": -0.5280388847898507,
+     "distance": 0.7459085165166863
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.49918191188265837,
+     "dy": -0.5010954519295865,
+     "distance": 0.7073042012425366
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5008188198706307,
+     "dy": -0.49889603312226427,
+     "distance": 0.7069064593011883
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.49918191188265837,
+     "dy": -0.5010954519295865,
+     "distance": 0.7073042012425366
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.48703453975377897,
+     "dy": -0.5034120226008838,
+     "distance": 0.7004472195763847
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5377621538621611,
+     "dy": -0.42380163391192127,
+     "distance": 0.6846867597908439
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00003",
+   "seed": 3,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 2.14077091913282e-16,
+   "momentum_abs_error": 1.4304896245381992e-17,
+   "ke_ratio": 0.32039262057826756,
+   "ke_lost": 0.011179528876117398,
+   "restitution": 0.2,
+   "restitution_measured": 0.2,
+   "impulse_magnitude": 0.06291298160157117,
+   "mass_ratio": 0.15,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.49235788900817967,
+   "direction_a_rad": 2.721416827037463,
+   "impact_parameter_frac": 0.4311461683267506,
+   "frame0_surface_gap": 1.191044061692211,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1452,
+   "frame0_seg_pixels_b": 1438,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.43096580750255953,
+     "dy": -0.46943235263682936,
+     "distance": 0.637258394168709
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5178286986912894,
+     "dy": -0.5129658273193911,
+     "distance": 0.7288899101961706
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48217023693973715,
+     "dy": -0.4870320439442821,
+     "distance": 0.685338127656026
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5178286986912894,
+     "dy": -0.5129658273193911,
+     "distance": 0.7288899101961706
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5046356116354787,
+     "dy": -0.47306549432283873,
+     "distance": 0.6916994017993838
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5026847335776097,
+     "dy": -0.5066741666222185,
+     "distance": 0.7137300977920941
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00004",
+   "seed": 4,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.4137156174773416e-16,
+   "momentum_abs_error": 1.1102230246251565e-16,
+   "ke_ratio": 0.8635260635438421,
+   "ke_lost": 0.03876077612345183,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000012,
+   "impulse_magnitude": 0.19354406077078115,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7233101243977633,
+   "direction_a_rad": 2.3655349753095063,
+   "impact_parameter_frac": 0.7217110862872266,
+   "frame0_surface_gap": 1.5959182872058053,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5845,
+   "frame0_seg_pixels_b": 3248,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.27191406499946424,
+     "dy": -0.3688539061145093,
+     "distance": 0.4582471634396269
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.479879744810944,
+     "dy": -0.4891635252409685,
+     "distance": 0.6852485125164361
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4152873453099346,
+     "dy": -0.48362664446423764,
+     "distance": 0.6374623992129348
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.479879744810944,
+     "dy": -0.4891635252409685,
+     "distance": 0.6852485125164361
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5825531145409286,
+     "dy": -0.7487614880471654,
+     "distance": 0.948689568427914
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.6541243700116866,
+     "dy": -0.5589722456598736,
+     "distance": 0.8604235369056497
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00005",
+   "seed": 5,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.0780329771838954e-16,
+   "momentum_abs_error": 6.938893903907228e-18,
+   "ke_ratio": 0.26199367341486446,
+   "ke_lost": 0.011264524699003457,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000015,
+   "impulse_magnitude": 0.06384951631980988,
+   "mass_ratio": 0.125,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.4742688160717454,
+   "direction_a_rad": 2.4087777189814505,
+   "impact_parameter_frac": 0.3676258848779988,
+   "frame0_surface_gap": 1.1495309244114016,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1450,
+   "frame0_seg_pixels_b": 5779,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.48304558071981774,
+     "dy": -0.5141802846713404,
+     "distance": 0.7054887654652245
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5582436541617426,
+     "dy": -0.5723332725404475,
+     "distance": 0.7995006893484917
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5036881837445435,
+     "dy": -0.49613523591699504,
+     "distance": 0.7070020924737701
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5582436541617426,
+     "dy": -0.5723332725404475,
+     "distance": 0.7995006893484917
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5325316540752851,
+     "dy": -0.43455279606956765,
+     "distance": 0.6873325942831741
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5513578527092022,
+     "dy": -0.5921275823967846,
+     "distance": 0.8090800674711764
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00006",
+   "seed": 6,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.8180317149774313e-16,
+   "momentum_abs_error": 4.965068306494546e-16,
+   "ke_ratio": 0.9209023528973762,
+   "ke_lost": 0.09659729757608115,
+   "restitution": 0.2,
+   "restitution_measured": 0.19999999999999993,
+   "impulse_magnitude": 0.3397409476650867,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.89435024558391,
+   "direction_a_rad": 3.975724915070941,
+   "impact_parameter_frac": 0.6068915374540442,
+   "frame0_surface_gap": 2.101301465250011,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3297,
+   "frame0_seg_pixels_b": 3244,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.38662363965107716,
+     "dy": -0.6564840916819605,
+     "distance": 0.7618721686533343
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5550014496249105,
+     "dy": -0.47786820868537916,
+     "distance": 0.7323828465754268
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4449950911755991,
+     "dy": -0.5221381775254201,
+     "distance": 0.6860385613068313
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5550014496249105,
+     "dy": -0.47786820868537916,
+     "distance": 0.7323828465754268
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.695611451513912,
+     "dy": -0.38410567908488247,
+     "distance": 0.7946146639614388
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.49888445750133315,
+     "dy": -3.107565726071414,
+     "distance": 3.1473561037464686
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00007",
+   "seed": 7,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000002,
+   "impulse_magnitude": 0.6352287526948123,
+   "mass_ratio": 1.0,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.5850748282100515,
+   "direction_a_rad": 5.488698173149897,
+   "impact_parameter_frac": 0.004738774109017252,
+   "frame0_surface_gap": 1.4626797031768377,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5841,
+   "frame0_seg_pixels_b": 5780,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.6523765650674704,
+     "dy": -0.6804481284463861,
+     "distance": 0.9426583888956916
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.41759588178035756,
+     "dy": -0.40946469250786777,
+     "distance": 0.5848484033409659
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5824019894806156,
+     "dy": -0.5905363718607646,
+     "distance": 0.8294126137462912
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.41759588178035756,
+     "dy": -0.40946469250786777,
+     "distance": 0.5848484033409659
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5674380915438064,
+     "dy": -0.5685966125666653,
+     "distance": 0.803298260646171
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.28735628701474525,
+     "dy": -0.19153304504749258,
+     "distance": 0.3453383022951052
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00008",
+   "seed": 8,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.2152245748053737e-16,
+   "momentum_abs_error": 1.3877787807814457e-17,
+   "ke_ratio": 0.47005019308293544,
+   "ke_lost": 0.025462352244344625,
+   "restitution": 0.6,
+   "restitution_measured": 0.5999999999999998,
+   "impulse_magnitude": 0.16473172769331407,
+   "mass_ratio": 0.01875,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.8414534302632972,
+   "direction_a_rad": 2.4572583103082346,
+   "impact_parameter_frac": 0.39409368581051896,
+   "frame0_surface_gap": 2.0521807788666306,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1461,
+   "frame0_seg_pixels_b": 5786,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.43347795987881454,
+     "dy": -0.4533118988878755,
+     "distance": 0.6272119413515902
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5567632221048484,
+     "dy": -0.5409406377754635,
+     "distance": 0.7762744740653901
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.42150166474414164,
+     "dy": -0.493358287554031,
+     "distance": 0.6488960265561261
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5567632221048484,
+     "dy": -0.5409406377754635,
+     "distance": 0.7762744740653901
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4778996557371329,
+     "dy": -0.43019532816924766,
+     "distance": 0.6430055220076394
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5511934666216689,
+     "dy": -0.6000602858833588,
+     "distance": 0.8147923565797799
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00009",
+   "seed": 9,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999996,
+   "impulse_magnitude": 0.12974765847003147,
+   "mass_ratio": 53.33333333333334,
+   "radius_a": 0.6,
+   "radius_b": 0.3,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.7722335833216044,
+   "direction_a_rad": 5.751502923550237,
+   "impact_parameter_frac": 0.7743542842645962,
+   "frame0_surface_gap": 1.6953807658711304,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5857,
+   "frame0_seg_pixels_b": 1441,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7836122523642359,
+     "dy": -0.5930888759354502,
+     "distance": 0.9827525511611389
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.47035186736286505,
+     "dy": -0.5229208510997694,
+     "distance": 0.703332848405818
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5506147475905436,
+     "dy": -0.46436656064864223,
+     "distance": 0.7202866810602895
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.47035186736286505,
+     "dy": -0.5229208510997694,
+     "distance": 0.703332848405818
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.2810881734390023,
+     "dy": -0.3045971917994166,
+     "distance": 0.414475584925536
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4169693988919789,
+     "dy": -0.5058964627720854,
+     "distance": 0.6555873020869504
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00010",
+   "seed": 10,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 7.510369154119797e-17,
+   "momentum_abs_error": 6.938893903907228e-18,
+   "ke_ratio": 1.0000000000000004,
+   "ke_lost": -1.3877787807814457e-17,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000002,
+   "impulse_magnitude": 0.0724803395449302,
+   "mass_ratio": 1.0,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.6807620773964542,
+   "direction_a_rad": 0.8540080589393146,
+   "impact_parameter_frac": 0.620132831803018,
+   "frame0_surface_gap": 1.6042341811601575,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1452,
+   "frame0_seg_pixels_b": 1438,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5384099543947514,
+     "dy": -0.4690595649732927,
+     "distance": 0.7140743340047259
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5416775823057947,
+     "dy": -0.5354033377698215,
+     "distance": 0.7616241443571209
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4583234820628377,
+     "dy": -0.46460358062685714,
+     "distance": 0.6526230928656301
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5416775823057947,
+     "dy": -0.5354033377698215,
+     "distance": 0.7616241443571209
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4936202084354022,
+     "dy": -0.5025868485899707,
+     "distance": 0.7044532990563733
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.39449534304452527,
+     "dy": -0.5355827998434393,
+     "distance": 0.6651883275974971
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00011",
+   "seed": 11,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.716313667708124,
+   "ke_lost": 0.2739640783149532,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000004,
+   "impulse_magnitude": 1.3285710913813469,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.5165667380598552,
+   "direction_a_rad": 5.832121861426727,
+   "impact_parameter_frac": 0.06337851853877716,
+   "frame0_surface_gap": 1.2902522480443779,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5819,
+   "frame0_seg_pixels_b": 3244,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7436344113516498,
+     "dy": -0.6181452675959918,
+     "distance": 0.9670034692790067
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4493766875689289,
+     "dy": -0.53061393006044,
+     "distance": 0.6953348474689071
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5771441750029567,
+     "dy": -0.5262741475613097,
+     "distance": 0.7810632990553498
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4493766875689289,
+     "dy": -0.53061393006044,
+     "distance": 0.6953348474689071
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.47024268405715475,
+     "dy": -0.4370800718938881,
+     "distance": 0.642002469742947
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.33138675853246014,
+     "dy": -0.4907726121521705,
+     "distance": 0.592178132464646
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00012",
+   "seed": 12,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 2.3146145654552623e-16,
+   "momentum_abs_error": 1.5265566588595902e-16,
+   "ke_ratio": 0.46915591437845083,
+   "ke_lost": 0.10633638043672569,
+   "restitution": 0.2,
+   "restitution_measured": 0.1999999999999998,
+   "impulse_magnitude": 0.5488004352259607,
+   "mass_ratio": 0.15,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.6074501582681808,
+   "direction_a_rad": 1.448533373272563,
+   "impact_parameter_frac": 0.6034011684955062,
+   "frame0_surface_gap": 1.3792721311020504,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5832,
+   "frame0_seg_pixels_b": 5780,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.45216403715721754,
+     "dy": -0.21036663517861598,
+     "distance": 0.4987047600481537
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5472286770128107,
+     "dy": -0.5866036199653308,
+     "distance": 0.8022238041230274
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.45985798265610356,
+     "dy": -0.41120121657621667,
+     "distance": 0.6168920527339462
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5472286770128107,
+     "dy": -0.5866036199653308,
+     "distance": 0.8022238041230274
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.2662961734048963,
+     "dy": -0.5130340296848033,
+     "distance": 0.5780290369736785
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.581058955449862,
+     "dy": -0.6060851204557594,
+     "distance": 0.8396241319461685
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00013",
+   "seed": 13,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 5.273731099176724e-17,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 0.6664766167880006,
+   "ke_lost": 0.042543890143440496,
+   "restitution": 0.2,
+   "restitution_measured": 0.2,
+   "impulse_magnitude": 0.2632243318979261,
+   "mass_ratio": 1.0,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.48473975597328967,
+   "direction_a_rad": 5.946819885446965,
+   "impact_parameter_frac": 0.5524125219423917,
+   "frame0_surface_gap": 1.1093221255669068,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5829,
+   "frame0_seg_pixels_b": 5774,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7408920873924103,
+     "dy": -0.5200595880573928,
+     "distance": 0.9051978017489372
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4369762133293875,
+     "dy": -0.4867056612897329,
+     "distance": 0.6540876177907411
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.563028044143266,
+     "dy": -0.5132954030788994,
+     "distance": 0.761887622496731
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4369762133293875,
+     "dy": -0.4867056612897329,
+     "distance": 0.6540876177907411
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4583495694131443,
+     "dy": -0.36328367582871124,
+     "distance": 0.5848584075695885
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.3273586927359702,
+     "dy": -0.5390349222222426,
+     "distance": 0.6306523298021997
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00014",
+   "seed": 14,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 2.0296139512007153e-16,
+   "momentum_abs_error": 4.577566798522237e-16,
+   "ke_ratio": 0.9999999999999999,
+   "ke_lost": 1.1102230246251565e-16,
+   "restitution": 1.0,
+   "restitution_measured": 1.0,
+   "impulse_magnitude": 0.4270970823728922,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.7385928663546741,
+   "direction_a_rad": 3.4454676566136655,
+   "impact_parameter_frac": 0.6860820802780739,
+   "frame0_surface_gap": 1.6763433969345745,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3288,
+   "frame0_seg_pixels_b": 3252,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.35778694974328573,
+     "dy": -0.5279068430173766,
+     "distance": 0.637728105316974
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5413563963898014,
+     "dy": -0.5016309381373105,
+     "distance": 0.7380381738153319
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.45864573234530326,
+     "dy": -0.4983679974942561,
+     "distance": 0.6772935617034864
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5413563963898014,
+     "dy": -0.5016309381373105,
+     "distance": 0.7380381738153319
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.576759215292725,
+     "dy": -0.39963078974943755,
+     "distance": 0.7016808110108463
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.7179948702531789,
+     "dy": -0.6209544039994199,
+     "distance": 0.9492634015678441
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00015",
+   "seed": 15,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.8139111044832961,
+   "ke_lost": 0.0505267825547234,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000001,
+   "impulse_magnitude": 0.4684385424198979,
+   "mass_ratio": 1.0,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7072187656651789,
+   "direction_a_rad": 0.9188871164319168,
+   "impact_parameter_frac": 0.6468942391879241,
+   "frame0_surface_gap": 1.5931798572030056,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5842,
+   "frame0_seg_pixels_b": 5783,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7581489816361966,
+     "dy": -0.27189078118061616,
+     "distance": 0.8054281316461498
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4046981964991687,
+     "dy": -0.4946843559786771,
+     "distance": 0.6391347606723626
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.6026488597768775,
+     "dy": -0.5064078388248845,
+     "distance": 0.7871686905699825
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4046981964991687,
+     "dy": -0.4946843559786771,
+     "distance": 0.6391347606723626
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5771795161704745,
+     "dy": -0.7118152271793576,
+     "distance": 0.9164153597202436
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.2611752326283181,
+     "dy": -0.5320423898657225,
+     "distance": 0.592690143964353
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00016",
+   "seed": 16,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.5667862506908586e-16,
+   "momentum_abs_error": 1.2412670766236366e-16,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000004,
+   "impulse_magnitude": 0.2890941689939436,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7296790672713058,
+   "direction_a_rad": 0.13606239782453391,
+   "impact_parameter_frac": 0.7871691401509839,
+   "frame0_surface_gap": 1.5563006830508226,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5847,
+   "frame0_seg_pixels_b": 3245,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.8334148907969166,
+     "dy": -0.5233634902474478,
+     "distance": 0.9841187545850484
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4990023345168879,
+     "dy": -0.5195983787484693,
+     "distance": 0.7204066942021998
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5802029773973914,
+     "dy": -0.5805388902010122,
+     "distance": 0.8207684801554095
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4990023345168879,
+     "dy": -0.5195983787484693,
+     "distance": 0.7204066942021998
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3142535694246362,
+     "dy": -0.676443658547413,
+     "distance": 0.7458762156585593
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.3451306006788286,
+     "dy": -0.38083910651891983,
+     "distance": 0.5139587109671926
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00017",
+   "seed": 17,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 9.351657448362637e-17,
+   "momentum_abs_error": 6.938893903907228e-18,
+   "ke_ratio": 0.7278523859202638,
+   "ke_lost": 0.0055200654859035615,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000001,
+   "impulse_magnitude": 0.05474178068287825,
+   "mass_ratio": 1.0,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.5467238836027958,
+   "direction_a_rad": 2.4242039241371565,
+   "impact_parameter_frac": 0.3853480491842476,
+   "frame0_surface_gap": 1.334340252767553,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1447,
+   "frame0_seg_pixels_b": 1445,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.4869191375588571,
+     "dy": -0.4749179499424372,
+     "distance": 0.6801744671028077
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5302573535956867,
+     "dy": -0.4918133999892973,
+     "distance": 0.7232242262613536
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4697458395099261,
+     "dy": -0.5081908574857437,
+     "distance": 0.6920398119826494
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5302573535956867,
+     "dy": -0.4918133999892973,
+     "distance": 0.7232242262613536
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4920708458780041,
+     "dy": -0.5641950529866335,
+     "distance": 0.7486319357185376
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5692633033147274,
+     "dy": -0.5054489623337588,
+     "distance": 0.7612748268694223
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00018",
+   "seed": 18,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 2.307216193757719e-16,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 0.5830317258172801,
+   "ke_lost": 0.022231219740600237,
+   "restitution": 0.6,
+   "restitution_measured": 0.5999999999999999,
+   "impulse_magnitude": 0.15392516864074451,
+   "mass_ratio": 0.01875,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.8863970936817869,
+   "direction_a_rad": 3.54325624082152,
+   "impact_parameter_frac": 0.5798888659361219,
+   "frame0_surface_gap": 2.095041056300958,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1466,
+   "frame0_seg_pixels_b": 5765,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.44222181717020703,
+     "dy": -0.5695701063567924,
+     "distance": 0.7210896210850686
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5689670487878402,
+     "dy": -0.47296173422228094,
+     "distance": 0.73987587110602
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48593060632998686,
+     "dy": -0.536838230361468,
+     "distance": 0.7241020920739432
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5689670487878402,
+     "dy": -0.47296173422228094,
+     "distance": 0.73987587110602
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5331819062284922,
+     "dy": -0.635571704369184,
+     "distance": 0.8295989009902304
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5402054421414277,
+     "dy": -0.4522240289654178,
+     "distance": 0.7045058495803498
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00019",
+   "seed": 19,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 7.706197797061719e-17,
+   "momentum_abs_error": 2.0816681711721685e-17,
+   "ke_ratio": 0.6964400035954574,
+   "ke_lost": 0.02417964088603832,
+   "restitution": 0.6,
+   "restitution_measured": 0.5999999999999999,
+   "impulse_magnitude": 0.28866859423894764,
+   "mass_ratio": 0.06328125000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.5897445562409004,
+   "direction_a_rad": 4.512491060094816,
+   "impact_parameter_frac": 0.7028690235913648,
+   "frame0_surface_gap": 1.2906407952344994,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3275,
+   "frame0_seg_pixels_b": 5781,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.40959977912206114,
+     "dy": -0.6661852586761512,
+     "distance": 0.7820324660359388
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5905772158282048,
+     "dy": -0.4715510556919753,
+     "distance": 0.755739271164077
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.41843936102822,
+     "dy": -0.5185272481611776,
+     "distance": 0.6663047395473849
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5905772158282048,
+     "dy": -0.4715510556919753,
+     "distance": 0.755739271164077
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3667651357671957,
+     "dy": -0.4672859192008332,
+     "distance": 0.5940309714970231
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5593007744319038,
+     "dy": -0.4331062341209986,
+     "distance": 0.707388412623928
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00020",
+   "seed": 20,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.6125426355042818e-16,
+   "momentum_abs_error": 1.3877787807814457e-17,
+   "ke_ratio": 1.0000000000000007,
+   "ke_lost": -1.734723475976807e-17,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000004,
+   "impulse_magnitude": 0.16414365113571672,
+   "mass_ratio": 0.044444444444444425,
+   "radius_a": 0.3,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.6341257839483923,
+   "direction_a_rad": 0.450124550409349,
+   "impact_parameter_frac": 0.08907000823667863,
+   "frame0_surface_gap": 1.583289984124938,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1457,
+   "frame0_seg_pixels_b": 3252,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.581958179522843,
+     "dy": -0.4511690636365415,
+     "distance": 0.7363618992697919
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4689352898827792,
+     "dy": -0.5346645324359258,
+     "distance": 0.711172600950271
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5307887368845741,
+     "dy": -0.5045648788837696,
+     "distance": 0.7323403581713318
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4689352898827792,
+     "dy": -0.5346645324359258,
+     "distance": 0.711172600950271
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.6121930098827306,
+     "dy": -0.4500520481868193,
+     "distance": 0.7598204573624142
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.44200894873904417,
+     "dy": -0.503595925728547,
+     "distance": 0.6700602713008638
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00021",
+   "seed": 21,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.8930801920109092,
+   "ke_lost": 0.08790734000680855,
+   "restitution": 0.2,
+   "restitution_measured": 0.19999999999999993,
+   "impulse_magnitude": 0.3240992119009283,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.7338214871432569,
+   "direction_a_rad": 6.162615393341174,
+   "impact_parameter_frac": 0.38106465512378046,
+   "frame0_surface_gap": 1.7886107917663987,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3286,
+   "frame0_seg_pixels_b": 3247,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7102393914119318,
+     "dy": -0.4862368120050462,
+     "distance": 0.860735865676586
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.468487877389407,
+     "dy": -0.5435255635509009,
+     "distance": 0.7175659757082664
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5315078651372005,
+     "dy": -0.45647417035684157,
+     "distance": 0.7006206383669206
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.468487877389407,
+     "dy": -0.5435255635509009,
+     "distance": 0.7175659757082664
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.37746844498474275,
+     "dy": -0.42125164042181495,
+     "distance": 0.5656282980167009
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.30315742445691285,
+     "dy": -0.5731834335857116,
+     "distance": 0.6484162802864026
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00022",
+   "seed": 22,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.9334720779814748e-16,
+   "momentum_abs_error": 5.815852873680767e-17,
+   "ke_ratio": 1.0000000000000002,
+   "ke_lost": -2.7755575615628914e-17,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999999,
+   "impulse_magnitude": 0.2565548988549492,
+   "mass_ratio": 0.5062500000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.6567016701347761,
+   "direction_a_rad": 6.205748936807588,
+   "impact_parameter_frac": 0.7664112628660177,
+   "frame0_surface_gap": 1.4499382499723752,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3278,
+   "frame0_seg_pixels_b": 1446,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.60766244268288,
+     "dy": -0.4953355911461017,
+     "distance": 0.7839712954588213
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5020246370637551,
+     "dy": -0.5085499216799576,
+     "distance": 0.7145990197724078
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5457136481667249,
+     "dy": -0.5015204384759215,
+     "distance": 0.7411653904524391
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5020246370637551,
+     "dy": -0.5085499216799576,
+     "distance": 0.7145990197724078
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.40616655047926997,
+     "dy": -0.618057622686564,
+     "distance": 0.739571829972719
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4970879321606958,
+     "dy": -0.41301587668135653,
+     "distance": 0.6462805325016885
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00023",
+   "seed": 23,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 9.773451130496829e-17,
+   "momentum_abs_error": 2.220446049250313e-16,
+   "ke_ratio": 0.8789402705384749,
+   "ke_lost": 0.10231472121531848,
+   "restitution": 0.2,
+   "restitution_measured": 0.19999999999999973,
+   "impulse_magnitude": 0.34965075322030476,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.7440054846005644,
+   "direction_a_rad": 5.362429148508308,
+   "impact_parameter_frac": 0.18160122099636566,
+   "frame0_surface_gap": 1.8499101147467696,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3287,
+   "frame0_seg_pixels_b": 3250,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.6011356731721662,
+     "dy": -0.6117668361619337,
+     "distance": 0.8576845337230559
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.48323665827354034,
+     "dy": -0.42047004980929614,
+     "distance": 0.6405565788328228
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5253835067819637,
+     "dy": -0.5746898337059179,
+     "distance": 0.7786502643443006
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.48323665827354034,
+     "dy": -0.42047004980929614,
+     "distance": 0.6405565788328228
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4392423670724952,
+     "dy": -0.39974220970583474,
+     "distance": 0.5939088240226374
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.41398360304123116,
+     "dy": -0.30994630093533715,
+     "distance": 0.5171548443653006
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00024",
+   "seed": 24,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.949012417717409e-16,
+   "momentum_abs_error": 9.930136612989092e-16,
+   "ke_ratio": 0.8920592855930185,
+   "ke_lost": 0.19355490402340902,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000012,
+   "impulse_magnitude": 1.1167091552260349,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.7038956283436129,
+   "direction_a_rad": 3.5794509390730456,
+   "impact_parameter_frac": 0.7867048781166671,
+   "frame0_surface_gap": 1.495681173563247,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5850,
+   "frame0_seg_pixels_b": 3249,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.23388348883128174,
+     "dy": -0.5755606119887204,
+     "distance": 0.6212660496282754
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.577137881584747,
+     "dy": -0.5205310501378904,
+     "distance": 0.7772005587477304
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4364979830652942,
+     "dy": -0.4455431266409846,
+     "distance": 0.6237300433016629
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.577137881584747,
+     "dy": -0.5205310501378904,
+     "distance": 0.7772005587477304
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.648404426255297,
+     "dy": -0.2863298057882844,
+     "distance": 0.7088110168939373
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5984572171401226,
+     "dy": -0.5694888485441538,
+     "distance": 0.8261165712919974
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00025",
+   "seed": 25,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.2677103814191244e-16,
+   "momentum_abs_error": 6.206335383118183e-17,
+   "ke_ratio": 1.0000000000000002,
+   "ke_lost": -1.3877787807814457e-17,
+   "restitution": 1.0,
+   "restitution_measured": 1.0,
+   "impulse_magnitude": 0.2013813389456007,
+   "mass_ratio": 1.2,
+   "radius_a": 0.6,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.450911793606436,
+   "direction_a_rad": 1.2131755169936251,
+   "impact_parameter_frac": 0.8917759610182863,
+   "frame0_surface_gap": 0.8317279811676059,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5805,
+   "frame0_seg_pixels_b": 1444,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.4998419701756234,
+     "dy": -0.32754974601380127,
+     "distance": 0.5976042430093301
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5081019772222248,
+     "dy": -0.5219185607186603,
+     "distance": 0.7284000297087941
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4231285201310584,
+     "dy": -0.4385185668156737,
+     "distance": 0.6093736768111763
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5081019772222248,
+     "dy": -0.5219185607186603,
+     "distance": 0.7284000297087941
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3213412061184613,
+     "dy": -0.5660798617543321,
+     "distance": 0.6509274772457153
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5582688110848721,
+     "dy": -0.5026214659931725,
+     "distance": 0.7511939852709435
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00026",
+   "seed": 26,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 2.1006317591429556e-16,
+   "momentum_abs_error": 7.850462293418876e-17,
+   "ke_ratio": 0.5703671965761828,
+   "ke_lost": 0.06550141024635509,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000012,
+   "impulse_magnitude": 0.24445060754139236,
+   "mass_ratio": 0.5062500000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.8159018406162482,
+   "direction_a_rad": 3.4453009999712534,
+   "impact_parameter_frac": 0.5708779238507923,
+   "frame0_surface_gap": 1.9398258518576912,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3290,
+   "frame0_seg_pixels_b": 1440,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.3845513304632959,
+     "dy": -0.5274275652650715,
+     "distance": 0.6527323818859704
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5158573198803538,
+     "dy": -0.5049369076210724,
+     "distance": 0.7218518235428051
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4540372179656629,
+     "dy": -0.5334963439629234,
+     "distance": 0.7005484596512969
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5158573198803538,
+     "dy": -0.5049369076210724,
+     "distance": 0.7218518235428051
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5574258186484826,
+     "dy": -0.5669460644662934,
+     "distance": 0.7950794823850943
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5185752475192658,
+     "dy": -0.46319214808460174,
+     "distance": 0.6953180951096378
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00027",
+   "seed": 27,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.8747927901774672,
+   "ke_lost": 0.04277859859678701,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000004,
+   "impulse_magnitude": 0.1230670508946637,
+   "mass_ratio": 6.666666666666668,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.8690453394190352,
+   "direction_a_rad": 4.9616260602715965,
+   "impact_parameter_frac": 0.00901721156428511,
+   "frame0_surface_gap": 2.1725941576212646,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1463,
+   "frame0_seg_pixels_b": 1446,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5038549157462171,
+     "dy": -0.6301063673015221,
+     "distance": 0.8067860994312857
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5079818593372352,
+     "dy": -0.4980250154054602,
+     "distance": 0.7113891237468587
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4920170762938483,
+     "dy": -0.501979242068046,
+     "distance": 0.7028968365499708
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5079818593372352,
+     "dy": -0.4980250154054602,
+     "distance": 0.7113891237468587
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4627762816048744,
+     "dy": -0.44018120017176443,
+     "distance": 0.6386872284621706
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.6249553328556772,
+     "dy": -9.7667170249062,
+     "distance": 9.786691504929404
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00028",
+   "seed": 28,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.2095594686261992e-16,
+   "momentum_abs_error": 7.757919228897728e-18,
+   "ke_ratio": 1.0000000000000004,
+   "ke_lost": -5.204170427930421e-18,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000002,
+   "impulse_magnitude": 0.06998733670169136,
+   "mass_ratio": 0.125,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.4725898772977205,
+   "direction_a_rad": 2.069775704508092,
+   "impact_parameter_frac": 0.7884033997115033,
+   "frame0_surface_gap": 0.9745965808192826,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1450,
+   "frame0_seg_pixels_b": 5779,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.48264123664472436,
+     "dy": -0.4563938796102889,
+     "distance": 0.6642574325182065
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4499357458047939,
+     "dy": -0.5631447420184372,
+     "distance": 0.7208149386742261
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.49145224935932674,
+     "dy": -0.5038860743108557,
+     "distance": 0.703865391452618
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4499357458047939,
+     "dy": -0.5631447420184372,
+     "distance": 0.7208149386742261
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5031700145627269,
+     "dy": -0.45894925408930476,
+     "distance": 0.6810392656698907
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.46528186821404915,
+     "dy": -0.622513377766154,
+     "distance": 0.777180881382566
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00029",
+   "seed": 29,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.2735692910516211e-16,
+   "momentum_abs_error": 2.964296775167217e-17,
+   "ke_ratio": 0.5137034171098276,
+   "ke_lost": 0.028758221967920473,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000003,
+   "impulse_magnitude": 0.3027128015330898,
+   "mass_ratio": 0.15,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.5081497401833254,
+   "direction_a_rad": 0.13025691928962535,
+   "impact_parameter_frac": 0.3544451648312924,
+   "frame0_surface_gap": 1.235899523068401,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3272,
+   "frame0_seg_pixels_b": 3249,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.6336764142848779,
+     "dy": -0.5252486668696861,
+     "distance": 0.8230625493055328
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5037603201486149,
+     "dy": -0.5038391053778923,
+     "distance": 0.7124803886874571
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4962375511134951,
+     "dy": -0.49616142680645225,
+     "distance": 0.7017320489942961
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5037603201486149,
+     "dy": -0.5038391053778923,
+     "distance": 0.7124803886874571
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5675812177447597,
+     "dy": -0.5480640384828916,
+     "distance": 0.7890010323280958
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4360447747235412,
+     "dy": -0.4638234248844526,
+     "distance": 0.6366060124089681
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00030",
+   "seed": 30,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 7.647991697700916e-17,
+   "momentum_abs_error": 4.440892098500626e-16,
+   "ke_ratio": 0.7397529396828552,
+   "ke_lost": 0.6061346565215047,
+   "restitution": 0.2,
+   "restitution_measured": 0.19999999999999998,
+   "impulse_magnitude": 1.976162005119395,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.8022144060021099,
+   "direction_a_rad": 5.451153324092465,
+   "impact_parameter_frac": 0.2938093705823257,
+   "frame0_surface_gap": 1.9749654485862347,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5873,
+   "frame0_seg_pixels_b": 3248,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7572053060538622,
+     "dy": -0.7262923946930044,
+     "distance": 1.0492190038809925
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4269302990549022,
+     "dy": -0.4844819383773995,
+     "distance": 0.6457493545215749
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5963110584759761,
+     "dy": -0.5847833538553857,
+     "distance": 0.8351996464361633
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4269302990549022,
+     "dy": -0.4844819383773995,
+     "distance": 0.6457493545215749
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4088403033435952,
+     "dy": -0.3308112243940968,
+     "distance": 0.5259148788760444
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.31756246041209124,
+     "dy": -0.3987584117838878,
+     "distance": 0.5097589501238695
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00031",
+   "seed": 31,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.7810375559471393,
+   "ke_lost": 0.028573254336414347,
+   "restitution": 0.2,
+   "restitution_measured": 0.1999999999999999,
+   "impulse_magnitude": 0.0947338419351489,
+   "mass_ratio": 3.375000000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7548424996224661,
+   "direction_a_rad": 0.24917890914463298,
+   "impact_parameter_frac": 0.04608982246514067,
+   "frame0_surface_gap": 1.8865357411351524,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3291,
+   "frame0_seg_pixels_b": 1443,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.6788479802750373,
+     "dy": -0.4222304860258532,
+     "distance": 0.799445535138652
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4782568548718018,
+     "dy": -0.4826575101367041,
+     "distance": 0.6794761889302894
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.575073595245442,
+     "dy": -0.5287623924189973,
+     "distance": 0.7812165561386805
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4782568548718018,
+     "dy": -0.4826575101367041,
+     "distance": 0.6794761889302894
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3893568536816474,
+     "dy": -0.4956824908578028,
+     "distance": 0.6303172941081877
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.42878977610791935,
+     "dy": -0.4859031045083668,
+     "distance": 0.6480451365958613
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00032",
+   "seed": 32,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 1.3472817987915793e-16,
+   "momentum_abs_error": 1.1102230246251565e-16,
+   "ke_ratio": 0.9999999999999998,
+   "ke_lost": 5.551115123125783e-17,
+   "restitution": 1.0,
+   "restitution_measured": 1.0,
+   "impulse_magnitude": 0.5963609056048408,
+   "mass_ratio": 0.3555555555555554,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.7589762496748454,
+   "direction_a_rad": 6.10871402710488,
+   "impact_parameter_frac": 0.8701472214916096,
+   "frame0_surface_gap": 1.531931881733158,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5839,
+   "frame0_seg_pixels_b": 3250,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7902134927900306,
+     "dy": -0.48781634138993013,
+     "distance": 0.9286560973333867
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.46602853987411663,
+     "dy": -0.515020980539191,
+     "distance": 0.6945712421146955
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5471231436195012,
+     "dy": -0.44118773269934763,
+     "distance": 0.7028444705398744
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.46602853987411663,
+     "dy": -0.515020980539191,
+     "distance": 0.6945712421146955
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3584147113134577,
+     "dy": -0.17742860893406487,
+     "distance": 0.39992751412498057
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4410040397273747,
+     "dy": -0.5650904101360936,
+     "distance": 0.7168066229351138
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00033",
+   "seed": 33,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 8.475517545613878e-17,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 0.7013714238408534,
+   "ke_lost": 0.034959240884859896,
+   "restitution": 0.6,
+   "restitution_measured": 0.6,
+   "impulse_magnitude": 0.3337572961937583,
+   "mass_ratio": 0.15,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.7149515717496818,
+   "direction_a_rad": 2.2564383715242644,
+   "impact_parameter_frac": 0.6807362553743911,
+   "frame0_surface_gap": 1.6221963240625323,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3281,
+   "frame0_seg_pixels_b": 3242,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.3583730524817952,
+     "dy": -0.367946699086815,
+     "distance": 0.5136302348129467
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5399620586421747,
+     "dy": -0.4582107265860884,
+     "distance": 0.7081780106241978
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4600336838822727,
+     "dy": -0.5417924665186433,
+     "distance": 0.7107531688868155
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5399620586421747,
+     "dy": -0.4582107265860884,
+     "distance": 0.7081780106241978
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4469575230825171,
+     "dy": -0.5715056192238421,
+     "distance": 0.7255271878051752
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5522933064760878,
+     "dy": -0.4672438635089975,
+     "distance": 0.7234256868297562
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00034",
+   "seed": 34,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 4.5934016453238696e-17,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999999,
+   "impulse_magnitude": 0.6549268120928229,
+   "mass_ratio": 0.125,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.6678415723364841,
+   "direction_a_rad": 4.954502064772443,
+   "impact_parameter_frac": 0.7926503088320765,
+   "frame0_surface_gap": 1.430199675212723,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1457,
+   "frame0_seg_pixels_b": 5776,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5228914131835722,
+     "dy": -0.5591519020419327,
+     "distance": 0.7655496584404073
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.533414006645728,
+     "dy": -0.45077372780070846,
+     "distance": 0.6983748679335446
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48493568489703875,
+     "dy": -0.5084047628118356,
+     "distance": 0.7025937811682643
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.533414006645728,
+     "dy": -0.45077372780070846,
+     "distance": 0.6983748679335446
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.37879899284132534,
+     "dy": -0.5054414778626324,
+     "distance": 0.6316326183166638
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5674170186474043,
+     "dy": -0.4438128095780485,
+     "distance": 0.7203692684979488
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00035",
+   "seed": 35,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 4.952949832217931e-17,
+   "momentum_abs_error": 1.7694179454963432e-16,
+   "ke_ratio": 0.9999999999999997,
+   "ke_lost": 3.3306690738754696e-16,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999998,
+   "impulse_magnitude": 1.9347917841569722,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.493553391159593,
+   "direction_a_rad": 0.005604736893973787,
+   "impact_parameter_frac": 0.40795914293456326,
+   "frame0_surface_gap": 1.1839861018273863,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5826,
+   "frame0_seg_pixels_b": 3244,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7378713989207029,
+     "dy": -0.540775350715279,
+     "distance": 0.9148181137725838
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5165709539179488,
+     "dy": -0.48682096175235756,
+     "distance": 0.7098170181343851
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5613141115200619,
+     "dy": -0.5396628912139363,
+     "distance": 0.7786588264091927
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5165709539179488,
+     "dy": -0.48682096175235756,
+     "distance": 0.7098170181343851
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4793634790046326,
+     "dy": -0.5963308471423829,
+     "distance": 0.7651142556879834
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.26222272223299115,
+     "dy": -0.3369123165969654,
+     "distance": 0.4269316867251883
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00036",
+   "seed": 36,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 4.800608111986739e-17,
+   "momentum_abs_error": 1.1102230246251565e-16,
+   "ke_ratio": 1.0000000000000002,
+   "ke_lost": -1.1102230246251565e-16,
+   "restitution": 1.0,
+   "restitution_measured": 1.0,
+   "impulse_magnitude": 2.02644399271151,
+   "mass_ratio": 1.0,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.7573520803625873,
+   "direction_a_rad": 3.2112160972499537,
+   "impact_parameter_frac": 0.48188389777407453,
+   "frame0_surface_gap": 1.816831193905896,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3287,
+   "frame0_seg_pixels_b": 3250,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.3174800603605945,
+     "dy": -0.49125248680132927,
+     "distance": 0.584912467395812
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5152332408269444,
+     "dy": -0.5077405739558287,
+     "distance": 0.7233711239011622
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48476463043459717,
+     "dy": -0.49225969213620147,
+     "distance": 0.6908808518278817
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5152332408269444,
+     "dy": -0.5077405739558287,
+     "distance": 0.7233711239011622
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5224488969976733,
+     "dy": -0.40850524887900974,
+     "distance": 0.6631963422213569
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.7009205682926449,
+     "dy": -0.5610344060339116,
+     "distance": 0.8978024547802865
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00037",
+   "seed": 37,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.972566367164008,
+   "ke_lost": 0.014755677891254981,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000007,
+   "impulse_magnitude": 0.132783768059716,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.5935329963514017,
+   "direction_a_rad": 2.8280345270236062,
+   "impact_parameter_frac": 0.8825530800622262,
+   "frame0_surface_gap": 1.1658290200535943,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3279,
+   "frame0_seg_pixels_b": 3246,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.3794228417115164,
+     "dy": -0.4236606168227013,
+     "distance": 0.5687266575948715
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5333542616486397,
+     "dy": -0.5744273499301471,
+     "distance": 0.7838581177525288
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.46664999582708333,
+     "dy": -0.42557371443876946,
+     "distance": 0.6315656775242209
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5333542616486397,
+     "dy": -0.5744273499301471,
+     "distance": 0.7838581177525288
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.6033521167068727,
+     "dy": -0.5010813197334869,
+     "distance": 0.7842934818806776
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.47901826200143205,
+     "dy": -0.5732415945611251,
+     "distance": 0.7470370948392415
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00038",
+   "seed": 38,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.4109763208573674e-16,
+   "momentum_abs_error": 1.1102230246251565e-16,
+   "ke_ratio": 0.8607598423966243,
+   "ke_lost": 0.047640154230135734,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000003,
+   "impulse_magnitude": 0.41522907442056817,
+   "mass_ratio": 1.0,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.8696572839038963,
+   "direction_a_rad": 0.24834387033729713,
+   "impact_parameter_frac": 0.7515812907125168,
+   "frame0_surface_gap": 2.009191842823063,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1465,
+   "frame0_seg_pixels_b": 1437,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5972539090052749,
+     "dy": -0.43945708604348965,
+     "distance": 0.7415084371036625
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5465860581404058,
+     "dy": -0.5295484750555772,
+     "distance": 0.7610373882978119
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.453416070597882,
+     "dy": -0.4704509927613003,
+     "distance": 0.653383707836763
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5465860581404058,
+     "dy": -0.5295484750555772,
+     "distance": 0.7610373882978119
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.44347146163113393,
+     "dy": -0.47949431625477246,
+     "distance": 0.6531322504683764
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.5137927857145428,
+     "dy": -0.586705278556451,
+     "distance": 0.7798757019796891
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00039",
+   "seed": 39,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.483220274663947e-16,
+   "momentum_abs_error": 1.4304896245381992e-17,
+   "ke_ratio": 0.27311944271943306,
+   "ke_lost": 0.02490907239605335,
+   "restitution": 0.2,
+   "restitution_measured": 0.20000000000000015,
+   "impulse_magnitude": 0.0884512703030873,
+   "mass_ratio": 0.2962962962962962,
+   "radius_a": 0.3,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.71063310546078,
+   "direction_a_rad": 4.971800587052305,
+   "impact_parameter_frac": 0.13596658442949786,
+   "frame0_surface_gap": 1.7716805737787824,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1456,
+   "frame0_seg_pixels_b": 3246,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.46814225875255033,
+     "dy": -0.5161736117958498,
+     "distance": 0.6968445823455273
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.48808570261911655,
+     "dy": -0.4298610790856401,
+     "distance": 0.6503908059112364
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5111322406747263,
+     "dy": -0.49126929178765977,
+     "distance": 0.708944063033689
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.48808570261911655,
+     "dy": -0.4298610790856401,
+     "distance": 0.6503908059112364
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5043421246711546,
+     "dy": -0.5015573035283296,
+     "distance": 0.711281032673038
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.47210916176243245,
+     "dy": -0.47030809186884426,
+     "distance": 0.6663908476992612
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00040",
+   "seed": 40,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.5353783853959961,
+   "ke_lost": 0.01824606303159285,
+   "restitution": 0.6,
+   "restitution_measured": 0.6,
+   "impulse_magnitude": 0.13269975695400058,
+   "mass_ratio": 0.125,
+   "radius_a": 0.3,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7607344368265441,
+   "direction_a_rad": 5.795594538842743,
+   "impact_parameter_frac": 0.4281148597688772,
+   "frame0_surface_gap": 1.8423902574756723,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1458,
+   "frame0_seg_pixels_b": 5772,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5093491759546396,
+     "dy": -0.5206211764852071,
+     "distance": 0.728342633964614
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4588937330378826,
+     "dy": -0.4184598816040648,
+     "distance": 0.6210411666979343
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4808788438088527,
+     "dy": -0.5308081742358866,
+     "distance": 0.7162414259581571
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4588937330378826,
+     "dy": -0.4184598816040648,
+     "distance": 0.6210411666979343
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5467171083802214,
+     "dy": -0.628575079839166,
+     "distance": 0.8330703617284945
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.3858950785948423,
+     "dy": -0.3623576533433379,
+     "distance": 0.5293562889209971
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00041",
+   "seed": 41,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.2289105063838102e-16,
+   "momentum_abs_error": 1.1102230246251565e-16,
+   "ke_ratio": 0.7477910460195106,
+   "ke_lost": 0.0947953084491816,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000003,
+   "impulse_magnitude": 0.6416308263798809,
+   "mass_ratio": 1.0,
+   "radius_a": 0.6,
+   "radius_b": 0.6,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.832082433044038,
+   "direction_a_rad": 2.197750380034445,
+   "impact_parameter_frac": 0.46026831124391365,
+   "frame0_surface_gap": 1.993664592091147,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5871,
+   "frame0_seg_pixels_b": 5779,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.20462611273973152,
+     "dy": -0.21860841469026582,
+     "distance": 0.29943527679344084
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5723267585107124,
+     "dy": -0.5452296973841726,
+     "distance": 0.7904640038717865
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.43479188300017313,
+     "dy": -0.4568759761895649,
+     "distance": 0.6306977399214334
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5723267585107124,
+     "dy": -0.5452296973841726,
+     "distance": 0.7904640038717865
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4549251720328016,
+     "dy": -0.6965372461648371,
+     "distance": 0.83193812717291
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.7980187638225971,
+     "dy": -0.6823050778524191,
+     "distance": 1.0499400776597403
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00042",
+   "seed": 42,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 3.6920184554761255e-17,
+   "momentum_abs_error": 5.551115123125783e-17,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000007,
+   "impulse_magnitude": 0.2857462699196161,
+   "mass_ratio": 6.666666666666667,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.4923798065494423,
+   "direction_a_rad": 6.13001602516006,
+   "impact_parameter_frac": 0.6850257317913176,
+   "frame0_surface_gap": 1.0847978180553093,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3267,
+   "frame0_seg_pixels_b": 3252,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.626048820560527,
+     "dy": -0.46668342937434204,
+     "distance": 0.7808524501964654
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.48687284475602155,
+     "dy": -0.5104537752424676,
+     "distance": 0.705413512501787
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5131303483479428,
+     "dy": -0.4895459586650759,
+     "distance": 0.7091953186823707
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.48687284475602155,
+     "dy": -0.5104537752424676,
+     "distance": 0.705413512501787
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4196883059896095,
+     "dy": -0.495890666945229,
+     "distance": 0.649650542790362
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.3050749885254618,
+     "dy": -0.6013359407385792,
+     "distance": 0.6742964201653178
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00043",
+   "seed": 43,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 0.0,
+   "momentum_abs_error": 0.0,
+   "ke_ratio": 0.8816157959850326,
+   "ke_lost": 0.013830195898374961,
+   "restitution": 0.2,
+   "restitution_measured": 0.19999999999999993,
+   "impulse_magnitude": 0.06590820181752433,
+   "mass_ratio": 3.375000000000001,
+   "radius_a": 0.45,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.7142143714146263,
+   "direction_a_rad": 1.4118646008618196,
+   "impact_parameter_frac": 0.676613044636754,
+   "frame0_surface_gap": 1.6422328450287607,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3282,
+   "frame0_seg_pixels_b": 1441,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.5164680011326936,
+     "dy": -0.3108580057656809,
+     "distance": 0.6028033642429479
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5065795452846942,
+     "dy": -0.537156958108568,
+     "distance": 0.7383498041885684
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.4911056529724078,
+     "dy": -0.4806740685127693,
+     "distance": 0.6871916199445927
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5065795452846942,
+     "dy": -0.537156958108568,
+     "distance": 0.7383498041885684
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.4940288232861576,
+     "dy": -0.6550692265286813,
+     "distance": 0.820475575372229
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4002137853226486,
+     "dy": -0.5688424205872877,
+     "distance": 0.695523380931143
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00044",
+   "seed": 44,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 9.7750607309833e-17,
+   "momentum_abs_error": 5.551115123125783e-17,
+   "ke_ratio": 0.7153550167368755,
+   "ke_lost": 0.04227381782630821,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000001,
+   "impulse_magnitude": 0.4085368087322671,
+   "mass_ratio": 1.2,
+   "radius_a": 0.6,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "metal",
+   "speed_a": 0.5230427061535051,
+   "direction_a_rad": 5.38653501362992,
+   "impact_parameter_frac": 0.14674074396395895,
+   "frame0_surface_gap": 1.3018285496012887,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5827,
+   "frame0_seg_pixels_b": 1443,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.7082810723001671,
+     "dy": -0.6735746945284404,
+     "distance": 0.9774277193162451
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.47770242386366135,
+     "dy": -0.47537671127440717,
+     "distance": 0.6739307259557826
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5429456770149272,
+     "dy": -0.5912015898571497,
+     "distance": 0.8026888114573537
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.47770242386366135,
+     "dy": -0.47537671127440717,
+     "distance": 0.6739307259557826
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.47026945016250465,
+     "dy": -0.529671873559522,
+     "distance": 0.70831183061996
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.47240061236931297,
+     "dy": -0.3973129604384553,
+     "distance": 0.6172681160559579
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00045",
+   "seed": 45,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 3.7615890550607084e-17,
+   "momentum_abs_error": 2.7755575615628914e-17,
+   "ke_ratio": 0.9075947582613584,
+   "ke_lost": 0.0231686530492341,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000002,
+   "impulse_magnitude": 0.24435339402962844,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.6796029848403257,
+   "direction_a_rad": 4.8967355789119305,
+   "impact_parameter_frac": 0.7165019740140403,
+   "frame0_surface_gap": 1.495201504548082,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5847,
+   "frame0_seg_pixels_b": 3244,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.6435477069731519,
+     "dy": -0.7600543411451355,
+     "distance": 0.9959097612956547
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.44174550874117813,
+     "dy": -0.44048927530332094,
+     "distance": 0.6238348308248323
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5647189625749434,
+     "dy": -0.53718787036658,
+     "distance": 0.7794089521943547
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.44174550874117813,
+     "dy": -0.44048927530332094,
+     "distance": 0.6238348308248323
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5651664500475704,
+     "dy": -0.35023072168735325,
+     "distance": 0.66488696383146
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.39402146792377835,
+     "dy": -0.39613952248970463,
+     "distance": 0.558730201853435
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00046",
+   "seed": 46,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.31360945451152e-16,
+   "momentum_abs_error": 1.5515838457795457e-17,
+   "ke_ratio": 0.9999999999999998,
+   "ke_lost": 1.3877787807814457e-17,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999999,
+   "impulse_magnitude": 0.09735062062769807,
+   "mass_ratio": 1.0,
+   "radius_a": 0.3,
+   "radius_b": 0.3,
+   "material_a": "rubber",
+   "material_b": "rubber",
+   "speed_a": 0.8703127837302139,
+   "direction_a_rad": 0.5337364035858356,
+   "impact_parameter_frac": 0.5663067900551659,
+   "frame0_surface_gap": 2.091829869891202,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 1461,
+   "frame0_seg_pixels_b": 1437,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.547792664520756,
+     "dy": -0.46319063045604025,
+     "distance": 0.7173718446140841
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5146856354447209,
+     "dy": -0.5263913912069427,
+     "distance": 0.7361991578845474
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.48531542892249036,
+     "dy": -0.47360222258265594,
+     "distance": 0.6781077575027824
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5146856354447209,
+     "dy": -0.5263913912069427,
+     "distance": 0.7361991578845474
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.49324550708098513,
+     "dy": -0.481332916723602,
+     "distance": 0.6891824917808259
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.46479246846058686,
+     "dy": -0.6180120928200594,
+     "distance": 0.7732858369383959
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00047",
+   "seed": 47,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.6431224095594336e-16,
+   "momentum_abs_error": 4.440892098500626e-16,
+   "ke_ratio": 1.0,
+   "ke_lost": 0.0,
+   "restitution": 1.0,
+   "restitution_measured": 0.9999999999999999,
+   "impulse_magnitude": 1.3945826140274926,
+   "mass_ratio": 2.8125000000000013,
+   "radius_a": 0.45,
+   "radius_b": 0.6,
+   "material_a": "metal",
+   "material_b": "rubber",
+   "speed_a": 0.8850833324215801,
+   "direction_a_rad": 2.015333703421836,
+   "impact_parameter_frac": 0.18029839609658366,
+   "frame0_surface_gap": 2.2010176020902286,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3306,
+   "frame0_seg_pixels_b": 5780,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 0.7755102040816326,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.44296091123618453,
+     "dy": -0.3576294028052871,
+     "distance": 0.5693093698807857
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.5395122713405271,
+     "dy": -0.5753396631336329,
+     "distance": 0.7887263269992557
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5492065040083958,
+     "dy": -0.4599608178866106,
+     "distance": 0.7163740210504871
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.5395122713405271,
+     "dy": -0.5753396631336329,
+     "distance": 0.7887263269992557
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.5824099064457755,
+     "dy": -0.5668881063929803,
+     "distance": 0.8127505301726944
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00048",
+   "seed": 48,
+   "contact_frame": 20.066666666666666,
+   "contact_discrepancy": 0.06666666666666643,
+   "momentum_rel_error": 9.778471503537019e-17,
+   "momentum_abs_error": 2.220446049250313e-16,
+   "ke_ratio": 0.7707077281625714,
+   "ke_lost": 0.19358949460926533,
+   "restitution": 0.6,
+   "restitution_measured": 0.6000000000000003,
+   "impulse_magnitude": 1.5377259999395,
+   "mass_ratio": 1.0,
+   "radius_a": 0.45,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.7436235373890255,
+   "direction_a_rad": 5.423122828661231,
+   "impact_parameter_frac": 0.5308586989168317,
+   "frame0_surface_gap": 1.7649504930159525,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 3290,
+   "frame0_seg_pixels_b": 3245,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.577618796818058,
+     "dy": -0.6395323033829925,
+     "distance": 0.8617685544900654
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4602356406981585,
+     "dy": -0.45818984273410024,
+     "distance": 0.6494264984996716
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5397654236707012,
+     "dy": -0.5418080285266456,
+     "distance": 0.7647892862523258
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4602356406981585,
+     "dy": -0.45818984273410024,
+     "distance": 0.6494264984996716
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.3737439762681447,
+     "dy": -0.46217005654582977,
+     "distance": 0.5943784324521701
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.4851197656080899,
+     "dy": -0.26921891904038375,
+     "distance": 0.5548152966104313
+    }
+   ]
+  },
+  {
+   "scene_id": "scene_00049",
+   "seed": 49,
+   "contact_frame": 20.033333333333335,
+   "contact_discrepancy": 0.03333333333333499,
+   "momentum_rel_error": 1.8894638988539683e-16,
+   "momentum_abs_error": 1.0190492755571723e-15,
+   "ke_ratio": 1.0000000000000002,
+   "ke_lost": -4.440892098500626e-16,
+   "restitution": 1.0,
+   "restitution_measured": 1.0000000000000002,
+   "impulse_magnitude": 2.289631901629617,
+   "mass_ratio": 2.37037037037037,
+   "radius_a": 0.6,
+   "radius_b": 0.45,
+   "material_a": "metal",
+   "material_b": "metal",
+   "speed_a": 0.7451166042256985,
+   "direction_a_rad": 0.0853624864807074,
+   "impact_parameter_frac": 0.6987020424640032,
+   "frame0_surface_gap": 1.664974866519769,
+   "frame0_fully_in_frame": true,
+   "frame0_seg_pixels_a": 5851,
+   "frame0_seg_pixels_b": 3248,
+   "in_frame_fraction_a": 1.0,
+   "in_frame_fraction_b": 1.0,
+   "num_rejections": 0,
+   "seg_agreement": [
+    {
+     "frame": 0,
+     "object": "A",
+     "dx": -0.817382878551058,
+     "dy": -0.5389879630297685,
+     "distance": 0.9790928426045166
+    },
+    {
+     "frame": 0,
+     "object": "B",
+     "dx": -0.4803884523986426,
+     "dy": -0.5015334594859269,
+     "distance": 0.6944846119115129
+    },
+    {
+     "frame": 20,
+     "object": "A",
+     "dx": -0.5449123636255422,
+     "dy": -0.5597287828225603,
+     "distance": 0.7811695042383567
+    },
+    {
+     "frame": 20,
+     "object": "B",
+     "dx": -0.4803884523986426,
+     "dy": -0.5015334594859269,
+     "distance": 0.6944846119115129
+    },
+    {
+     "frame": 48,
+     "object": "A",
+     "dx": -0.29673318922311864,
+     "dy": -0.6809311234283655,
+     "distance": 0.7427770731787156
+    },
+    {
+     "frame": 48,
+     "object": "B",
+     "dx": -0.3736098222814235,
+     "dy": -0.3642487775580321,
+     "distance": 0.5217868063277161
+    }
+   ]
+  }
+ ]
+}
