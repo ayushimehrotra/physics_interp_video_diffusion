@@ -229,6 +229,49 @@ ls -d momentum_dataset/probe_set/scene_*/ | wc -l          # 150
 ls momentum_dataset/probe_set/scene_*/_COMPLETE | wc -l     # 150
 ```
 
+## Regenerating probe_set instead of copying it
+
+Viable, because scene `i` is a pure function of seed `seed_offset + i`
+(`rng = np.random.default_rng([seed, attempt])`) and `generate_scene.py` is
+committed. The **labels reproduce exactly**; rendered pixels may differ by a hair
+across GPU/denoiser versions, which does not matter for probing. Requires the
+whole Kubric install standing up first (`KUBRIC_INSTALL.md`) and costs several
+GPU-hours.
+
+**Use exactly this command. Two flags are not defaults and both matter:**
+
+```bash
+/workspace/kubric/.venv/bin/python momentum_dataset/run_batch.py \
+    --num-scenes 150 --output-dir momentum_dataset/probe_set \
+    --seed-offset 0 --violate-frac 0.5 --workers 3
+```
+
+* `--violate-frac 0.5` — **defaults to 0.0.** Omit it and every scene conserves
+  momentum, so `momentum_conserved` has one class and the entire plausibility
+  experiment is dead. The recorded set is 75 conserved / 75 violated.
+* `--workers 3` — defaults to 4. At 5, seventeen scenes were SIGKILLed.
+* `--seed-offset 0` — the recorded set's offset. Changing it changes every scene.
+
+Then validate and diff against what git already carries:
+
+```bash
+python momentum_dataset/validate.py --dataset-dir momentum_dataset/probe_set
+```
+
+`probe_set/manifest.json` and `probe_set/_validation/validation_report.json` are
+tracked, so they survive a clone and are the reference to check a regenerated set
+against. Targets to reproduce:
+
+| quantity | recorded value |
+|---|---|
+| scenes | 150, all with `_COMPLETE` |
+| `momentum_conserved` | 75 True / 75 False |
+| `stratum` | 109 `wide` / 41 `matched_momentum` |
+| `corr(log abs p_total, log mass_A)` | +0.61 overall, +0.20 matched |
+
+If the class balance or the stratum split comes out different, the flags were
+wrong — stop and fix them before spending GPU-hours on capture.
+
 ---
 
 ## Design decisions worth not re-deriving
