@@ -35,14 +35,32 @@ def is_complete(directory: Path) -> bool:
   return (directory / "_COMPLETE").exists() and (directory / "labels.json").exists()
 
 
-def run_one(index: int, root: Path, seed_offset: int, timeout: int, python: str) -> dict:
+def is_violation(index: int, violate_frac: float) -> bool:
+  """Whether scene ``index`` breaks momentum conservation.
+
+  Deterministic in the index and interleaved rather than blocked, so any prefix
+  of the dataset is already close to the requested class balance — a run killed
+  half way through still gives a usable two-class set instead of one class.
+  """
+  if violate_frac <= 0:
+    return False
+  return int((index + 1) * violate_frac) > int(index * violate_frac)
+
+
+def run_one(index: int, root: Path, seed_offset: int, timeout: int, python: str,
+            no_render: bool = False, violate_frac: float = 0.0) -> dict:
   directory = scene_dir(root, index)
   seed = seed_offset + index
   started = time.time()
+  violate = is_violation(index, violate_frac)
   cmd = [python, str(HERE / "generate_scene.py"),
          "--seed", str(seed),
          "--output-dir", str(directory),
          "--scene-id", directory.name]
+  if no_render:
+    cmd.append("--no-render")
+  if violate:
+    cmd.append("--violate")
   try:
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
   except subprocess.TimeoutExpired:
@@ -68,6 +86,14 @@ def main():
   parser.add_argument("--timeout", type=int, default=3600, help="per-scene seconds")
   parser.add_argument("--python", type=str, default=sys.executable)
   parser.add_argument("--force", action="store_true", help="regenerate scenes already complete")
+  parser.add_argument("--no-render", action="store_true",
+                      help="physics and labels only, no images. Seconds per scene "
+                           "instead of minutes — use it to check label coverage "
+                           "and confounds before committing to a full render")
+  parser.add_argument("--violate-frac", type=float, default=0.0,
+                      help="fraction of scenes whose post-contact motion breaks "
+                           "momentum conservation, interleaved. 0.5 gives the "
+                           "balanced two-class set a plausibility probe needs")
   args = parser.parse_args()
 
   logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s: %(message)s")
@@ -84,7 +110,8 @@ def main():
   started = time.time()
   if todo:
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-      futures = [pool.submit(run_one, i, root, args.seed_offset, args.timeout, args.python)
+      futures = [pool.submit(run_one, i, root, args.seed_offset, args.timeout,
+                             args.python, args.no_render, args.violate_frac)
                  for i in todo]
       for n, future in enumerate(futures, start=1):
         result = future.result()

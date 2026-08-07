@@ -165,6 +165,14 @@ class HookManager:
         self.timesteps_seen: list[float] = []
         self._checked_layout: set[str] = set()
 
+        #: When not None, this is used as ``ctx.step`` instead of deriving it
+        #: from the call counter. Sampling loops call the denoiser once (or
+        #: ``calls_per_step`` times) per step, so counting works; an inversion
+        #: loop does not — a Heun correction is a second call at the *same*
+        #: step, and the caller is the only thing that knows that. Setting it to
+        #: a negative value marks a call no step-filtered hook should fire on.
+        self.step_override: int | None = None
+
     # ---- registration ----------------------------------------------------- #
 
     def add(
@@ -237,6 +245,7 @@ class HookManager:
         self.step = 0
         self.timestep = float("nan")
         self.timesteps_seen = []
+        self.step_override = None
         for h in self._hooks:
             h.calls = 0
 
@@ -289,7 +298,10 @@ class HookManager:
         if torch.is_tensor(ts):
             ts = ts.flatten()[0].item() if ts.numel() else float("nan")
         self.timestep = float(ts) if ts is not None else float("nan")
-        self.step = self.call_idx // max(1, self.adapter.calls_per_step)
+        if self.step_override is None:
+            self.step = self.call_idx // max(1, self.adapter.calls_per_step)
+        else:
+            self.step = self.step_override
         self.timesteps_seen.append(self.timestep)
         self.call_idx += 1
         return None

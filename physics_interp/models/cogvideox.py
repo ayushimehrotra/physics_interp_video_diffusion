@@ -202,3 +202,100 @@ class CogVideoXAdapter(ModelAdapter):
         )
         call.update(kwargs)
         return self.pipe(**call)
+
+    # ---- inversion primitives --------------------------------------------- #
+    #
+    # Two axis orders are in play and mixing them up produces a latent that is
+    # the right *size* and complete nonsense, which no shape check would catch:
+    #   VAE:         [B, C, F, H, W]
+    #   transformer: [B, F, C, H, W]
+
+    @torch.no_grad()
+    def encode_video(self, video: torch.Tensor) -> torch.Tensor:
+        """``float [T, H, W, 3]`` in [0, 1] -> scaled latent ``[1, F, C, h, w]``."""
+        x = video.to(device=self.device, dtype=self.dtype)
+        x = x * 2.0 - 1.0                                   # VAE convention
+        x = x.permute(3, 0, 1, 2).unsqueeze(0)              # [1, C, T, H, W]
+
+        self._reset_vae_cache()
+        dist = self.pipe.vae.encode(x).latent_dist
+        # The distribution mode, not a sample: inversion is meant to be a
+        # deterministic function of the clip, and drawing from the posterior
+        # would make every probe feature carry an extra dose of VAE noise.
+        latents = dist.mode() * self.pipe.vae.config.scaling_factor
+        return latents.permute(0, 2, 1, 3, 4)               # -> [1, F, C, h, w]
+
+    @torch.no_grad()
+    def decode_latents(self, latents: torch.Tensor) -> torch.Tensor:
+        """Inverse of :meth:`encode_video`, as ``float [T, H, W, 3]`` in [0, 1]."""
+        z = latents.to(device=self.device, dtype=self.dtype)
+        z = z.permute(0, 2, 1, 3, 4) / self.pipe.vae.config.scaling_factor
+
+        self._reset_vae_cache()
+        frames = self.pipe.vae.decode(z).sample                    # [1, C, T, H, W]
+        frames = (frames / 2.0 + 0.5).clamp(0, 1)
+        return frames[0].permute(1, 2, 3, 0).float()               # [T, H, W, 3]
+
+    def _reset_vae_cache(self) -> None:
+        """Clear the causal VAE's inter-chunk state.
+
+        CogVideoX's VAE is causal over time and caches the tail of the previous
+        chunk. Left over from an earlier call, that cache silently conditions
+        the first frames of the next clip on a *different scene* — the kind of
+        leak that shows up as a mysteriously well-performing probe.
+        """
+        for name in ("clear_cache", "_clear_fake_context_parallel_cache"):
+            fn = getattr(self.pipe.vae, name, None)
+            if callable(fn):
+                fn()
+                return
+
+    @torch.no_grad()
+    def embed_prompt(self, prompt: str) -> torch.Tensor:
+        embeds, _ = self.pipe.encode_prompt(
+            prompt=prompt,
+            negative_prompt=None,
+            do_classifier_free_guidance=False,
+            num_videos_per_prompt=1,
+            device=self.device,
+            dtype=self.dtype,
+        )
+        return embeds
+
+    @torch.no_grad()
+    def denoise(
+        self, latents: torch.Tensor, timestep: torch.Tensor, prompt_embeds: torch.Tensor
+    ) -> torch.Tensor:
+        h = latents.to(dtype=self.dtype)
+        rotary = self._rotary_embeddings(h)
+        out = self.denoiser(
+            hidden_states=h,
+            encoder_hidden_states=prompt_embeds.to(dtype=self.dtype),
+            timestep=timestep.expand(h.shape[0]).to(device=self.device),
+            image_rotary_emb=rotary,
+            return_dict=False,
+        )[0]
+        return out
+
+    def _rotary_embeddings(self, latents: torch.Tensor):
+        """RoPE tables, or None for checkpoints that do not use them.
+
+        CogVideoX-2b has ``use_rotary_positional_embeddings=False`` while 5b has
+        it on, so this cannot be decided once for the architecture. Cached by
+        latent shape since it is a pure function of the grid.
+        """
+        if not getattr(self.denoiser.config, "use_rotary_positional_embeddings", False):
+            return None
+
+        spatial = 2 ** (len(self.pipe.vae.config.block_out_channels) - 1)
+        _, frames, _, lat_h, lat_w = latents.shape
+        key = (frames, lat_h, lat_w)
+        if getattr(self, "_rope_key", None) != key:
+            self._rope_key = key
+            self._rope = self.pipe._prepare_rotary_positional_embeddings(
+                height=lat_h * spatial,
+                width=lat_w * spatial,
+                num_frames=frames,
+                device=self.device,
+            )
+        return self._rope

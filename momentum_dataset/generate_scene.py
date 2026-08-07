@@ -50,18 +50,27 @@ CONTACT_TOLERANCE = 1.0         # accept |actual - target| <= this, in frames
 
 # Camera: straight down, centred on the origin. CAMERA_DISTANCE is measured from the
 # plane containing the sphere centres, which is what sets the visible world extent.
-CAMERA_DISTANCE = 14.0
+# Raised from 14 to buy the room a wide speed range needs: A must travel
+# speed * 2.5 s before contact and still start fully inside the frame.
+CAMERA_DISTANCE = 20.0
 FOCAL_LENGTH = 50.0             # mm
 SENSOR_WIDTH = 36.0             # mm
 
-# Radii levels and the common height of both sphere centres above the floor.
-RADII = (0.30, 0.45, 0.60)
-CENTER_HEIGHT = max(RADII) + 0.05   # every centre sits here, so contact normals are horizontal
+# Radii are continuous, not a 3-level grid. Levels made every derived quantity
+# (mass, mass ratio, momentum) land on a handful of discrete values, which a probe
+# can fit as a lookup rather than a linear readout, and which makes any regression
+# R^2 a statement about 6 clusters instead of a continuum.
+RADIUS_RANGE = (0.30, 0.60)
+MAX_RADIUS = RADIUS_RANGE[1]
+CENTER_HEIGHT = MAX_RADIUS + 0.05   # every centre sits here: contact normals stay horizontal
 
-# Two material levels: visually distinct, different densities.
+# Two material levels: visually distinct, different densities. Density is *visible*
+# via colour on purpose. Momentum is mass x velocity, so if mass were unreadable
+# from the pixels then momentum would not be inferable from the video at all and a
+# failed probe would say nothing about the representation.
 MATERIALS = {
     "metal": {
-        "density": 8.0,
+        "density": 6.0,
         "color": (0.72, 0.74, 0.78),
         "metallic": 0.9,
         "roughness": 0.25,
@@ -69,7 +78,7 @@ MATERIALS = {
         "ior": 2.5,
     },
     "rubber": {
-        "density": 1.2,
+        "density": 1.5,
         "color": (0.80, 0.10, 0.10),
         "metallic": 0.0,
         "roughness": 0.8,
@@ -78,14 +87,74 @@ MATERIALS = {
     },
 }
 
-RESTITUTIONS = (0.2, 0.6, 1.0)  # pair coefficient; see restitution note in README
-SPEED_RANGE = (0.45, 0.90)      # world units / second
-IMPACT_PARAM_MAX_FRAC = 0.9     # |b| <= this * (r_a + r_b); 1.0 would be a grazing miss
+RESTITUTION_RANGE = (0.05, 1.0)  # pair coefficient, continuous; see restitution note
 
-# Contact point placement. 0.0 puts every collision at the exact frame centre, which
-# maximises how long both spheres stay in frame. Raise it to decorrelate collision
-# location from collision timing (see README).
-CONTACT_JITTER_RADIUS = 0.0
+# World units / second. The floor is set by legibility, not by physics: at the
+# visible extent of 14.4 units across 720 px, 0.22 units/s is 1.4 px/frame, and a
+# ball drifting that slowly has a velocity the video barely encodes — which would
+# make a failed momentum probe uninformative about the representation. 0.35 is
+# ~2.2 px/frame, about 2.7 latent cells of travel over the 20 frames before
+# contact. The ceiling is set by the frame: A must travel speed * 2.5 s and still
+# start fully in view.
+SPEED_RANGE = (0.35, 1.55)
+IMPACT_PARAM_MAX_FRAC = 0.9      # |b| <= this * (r_a + r_b); 1.0 would be a grazing miss
+
+# Probability that B is already moving at frame 0 rather than sitting at rest.
+#
+# This is the single most important change for probing *total* momentum. With B
+# always at rest the total momentum of the scene is exactly A's momentum, so a
+# probe that finds "the momentum of the one moving ball" is indistinguishable from
+# one that finds the momentum of the system. Once both bodies move, total momentum
+# is a vector sum that equals neither ball's, and pointing at it requires combining
+# two objects' masses and velocities.
+B_MOVING_PROB = 0.7
+
+# Contact point placement. Non-zero decorrelates *where* the collision happens from
+# *when* it happens; at 0.0 every collision is at the frame centre and a probe could
+# read contact location off a constant.
+CONTACT_JITTER_RADIUS = 1.2
+
+# ---- the momentum/mass confound, and the stratum that breaks it ---------------
+#
+# Momentum is mass x speed, so with a wide mass range and a narrow speed range the
+# two are nearly the same variable: the original pilot had corr(|p|, mass_A) = 0.97,
+# which means a probe "decoding momentum" could have been reading apparent size and
+# colour. Widening the speed range helps but cannot fix it outright — decorrelating
+# a product needs the two factors to span comparable log ranges, and speed is capped
+# by how far a ball can travel and stay in frame.
+#
+# So a configurable fraction of scenes are drawn from a *matched-momentum* stratum:
+# |p_A| comes from a fixed band that does not depend on mass at all, mass roams its
+# full range, and speed takes up the slack. The rest of the dataset keeps the wide
+# ranges, so overall coverage does not shrink, and `stratum` is recorded per scene so
+# analysis can select on it. Measured over 400 scenes, corr(log|p_A|, log mass_A)
+# falls from +0.97 in the original pilot to +0.29 inside this stratum.
+#
+# The band is a range rather than a single value on purpose. Pinning |p_A| exactly
+# would decorrelate it from mass but leave it with no variance, so the stratum could
+# only falsify a probe ("momentum is constant here, does your readout stay
+# constant?") and never fit one.
+#
+# Its width is the knob that trades momentum variance against decorrelation. Momentum
+# and mass are exactly independent over the masses for which the *whole* band is
+# reachable at a legal speed — `[hi/v_max, lo/v_min]`, which is 0.81 to 2.29 units
+# here — and only partially independent at the edges, where some of the band is
+# unreachable and the draw gets rejected. A narrower band widens that core. At
+# (0.80, 1.25) against a 4.4x speed range the core spans 2.8x in mass, which is
+# enough for a mass-only readout to be clearly distinguishable from a momentum one.
+CONTROL_STRATUM_FRAC = 0.35
+CONTROL_MOMENTUM_RANGE = (0.80, 1.25)
+
+# ---- momentum-conservation violations ----------------------------------------
+#
+# Every scene here conserves momentum exactly, which makes "is momentum conserved"
+# a constant and therefore unprobeable — a classifier needs both classes. In a
+# violating scene the collision is simulated normally and then the post-contact
+# velocities are overwritten with ones that do *not* conserve momentum, and the
+# spheres are re-keyframed to fly along those. Everything before contact, and every
+# visual property, is untouched: the two classes differ only in what happens after
+# the balls touch.
+VIOLATION_SCALE_RANGE = (0.35, 0.75)   # |dp| / |p_pre| injected, either sign
 
 # Frame-0 sanity margins, in world units.
 MIN_SURFACE_GAP_AT_START = 0.15   # surface-to-surface clearance between the spheres
@@ -115,80 +184,157 @@ def half_extents():
   return half_w, half_h
 
 
-def sample_params(rng: np.random.Generator) -> dict:
-  """Draw one candidate parameter set. No validity checks here."""
+def sphere_mass(radius: float, density: float) -> float:
+  return float(density * 4.0 / 3.0 * np.pi * radius ** 3)
+
+
+def _speed_for(momentum: float, mass: float) -> float | None:
+  """Speed realising a target momentum, or None if it is out of range."""
+  speed = momentum / mass
+  return speed if SPEED_RANGE[0] <= speed <= SPEED_RANGE[1] else None
+
+
+def sample_params(rng: np.random.Generator, violate: bool = False) -> tuple[dict | None, str]:
+  """Draw one candidate parameter set.
+
+  Momentum is sampled *before* speed and speed is derived as ``p / m``. Drawing
+  speed directly would make momentum a deterministic increasing function of mass
+  whenever mass has the wider range, which is exactly how the pilot ended up with
+  momentum and mass 0.97-correlated. Sampling the target quantity first and letting
+  the free factor absorb it is what puts them on separate axes.
+
+  Returns ``(params, reason)``; ``params`` is None when the draw is infeasible, and
+  the reason is recorded so the rejection log says which constraint bit.
+  """
   mat_a = str(rng.choice(list(MATERIALS)))
   mat_b = str(rng.choice(list(MATERIALS)))
-  r_a = float(rng.choice(RADII))
-  r_b = float(rng.choice(RADII))
+  r_a = float(rng.uniform(*RADIUS_RANGE))
+  r_b = float(rng.uniform(*RADIUS_RANGE))
+  m_a = sphere_mass(r_a, MATERIALS[mat_a]["density"])
+  m_b = sphere_mass(r_b, MATERIALS[mat_b]["density"])
+
+  control = bool(rng.uniform() < CONTROL_STRATUM_FRAC)
+  if control:
+    # Matched-momentum stratum: |p_A| drawn from a fixed band that does not depend
+    # on mass at all, with speed absorbing whatever mass was sampled.
+    lo, hi = CONTROL_MOMENTUM_RANGE
+    target_p = float(np.exp(rng.uniform(np.log(lo), np.log(hi))))
+  else:
+    # Log-uniform over everything this mass could carry at a legal speed, so the
+    # wide-range half of the dataset stays evenly covered in log momentum.
+    lo, hi = m_a * SPEED_RANGE[0], m_a * SPEED_RANGE[1]
+    target_p = float(np.exp(rng.uniform(np.log(lo), np.log(hi))))
+
+  speed_a = _speed_for(target_p, m_a)
+  if speed_a is None:
+    return None, "momentum_unreachable_at_this_mass"
+
+  b_moves = bool(rng.uniform() < B_MOVING_PROB)
+  speed_b = 0.0
+  if b_moves:
+    lo, hi = m_b * SPEED_RANGE[0], m_b * SPEED_RANGE[1]
+    speed_b = _speed_for(float(np.exp(rng.uniform(np.log(lo), np.log(hi)))), m_b)
+    if speed_b is None:
+      return None, "momentum_unreachable_at_this_mass"
+
   jitter_r = CONTACT_JITTER_RADIUS * np.sqrt(rng.uniform())
   jitter_theta = rng.uniform(0, 2 * np.pi)
-  return {
+
+  params = {
       "radius_a": r_a,
       "radius_b": r_b,
       "material_a": mat_a,
       "material_b": mat_b,
       "density_a": MATERIALS[mat_a]["density"],
       "density_b": MATERIALS[mat_b]["density"],
-      "speed_a": float(rng.uniform(*SPEED_RANGE)),
+      "speed_a": float(speed_a),
+      "speed_b": float(speed_b),
       "direction_a_rad": float(rng.uniform(0, 2 * np.pi)),
+      "direction_b_rad": float(rng.uniform(0, 2 * np.pi)) if b_moves else 0.0,
+      "b_moving": b_moves,
+      "target_momentum_a": float(target_p),
+      "stratum": "matched_momentum" if control else "wide",
       "impact_parameter_frac": float(rng.uniform(0, IMPACT_PARAM_MAX_FRAC)),
       "impact_parameter_sign": int(rng.choice([-1, 1])),
-      "restitution": float(rng.choice(RESTITUTIONS)),
+      "restitution": float(rng.uniform(*RESTITUTION_RANGE)),
       "contact_offset": [float(jitter_r * np.cos(jitter_theta)),
                          float(jitter_r * np.sin(jitter_theta))],
+      "violates_momentum": bool(violate),
+      "violation_scale": (
+          float(rng.uniform(*VIOLATION_SCALE_RANGE)) * float(rng.choice([-1.0, 1.0]))
+          if violate else 0.0),
+      "violation_direction_rad": float(rng.uniform(0, 2 * np.pi)) if violate else 0.0,
   }
+  return params, ""
 
 
 def solve_geometry(p: dict) -> dict:
   """Analytic initial condition placing first contact exactly at TARGET_CONTACT_FRAME.
 
-  A travels in a straight line at constant velocity (no gravity, no friction, nothing
-  else in its path), so first contact is when |p_a(t) - p_b| == r_a + r_b. Rather than
-  solving that quadratic for t, we place the geometry so that t == t_contact by
-  construction and let the simulator confirm it.
+  Both spheres travel in straight lines at constant velocity (no gravity, no
+  friction, nothing else in the scene), so their *separation* is also a straight
+  line in time: ``d(t) = d_0 + v_rel * t``. First contact is the entering root of
+  ``|d(t)| == r_a + r_b``. Rather than solve that quadratic, place the geometry so
+  the root lands on ``t_contact`` by construction and let the simulator confirm it.
+
+  With B at rest this reduces exactly to the single-body case — the relative
+  velocity is just A's — which is why one code path covers both.
   """
   r_a, r_b = p["radius_a"], p["radius_b"]
   contact_radius = r_a + r_b
   t_contact = TARGET_CONTACT_FRAME / FRAME_RATE
 
-  theta = p["direction_a_rad"]
-  u = np.array([np.cos(theta), np.sin(theta), 0.0])          # direction of travel
-  w = np.array([-np.sin(theta), np.cos(theta), 0.0])         # left perpendicular
+  theta_a, theta_b = p["direction_a_rad"], p["direction_b_rad"]
+  vel_a = p["speed_a"] * np.array([np.cos(theta_a), np.sin(theta_a), 0.0])
+  vel_b = p["speed_b"] * np.array([np.cos(theta_b), np.sin(theta_b), 0.0])
+
+  v_rel = vel_a - vel_b
+  rel_speed = float(np.linalg.norm(v_rel))
+  if rel_speed < 1e-6:
+    # Parallel and equal: they never approach, so there is no contact to place.
+    return {"infeasible": "zero_relative_velocity"}
+
+  u = v_rel / rel_speed                                      # approach direction
+  w = np.array([-u[1], u[0], 0.0])                           # left perpendicular
 
   b = p["impact_parameter_sign"] * p["impact_parameter_frac"] * contact_radius
-  # Unit vector from A's centre to B's centre at the moment of contact. Its component
-  # along u is positive, which is what makes t_contact the *entering* root.
+  # Unit vector from A's centre to B's centre at contact. Its component along the
+  # *relative* velocity is positive, which is what makes t_contact the entering root.
   along = np.sqrt(max(contact_radius ** 2 - b ** 2, 0.0))
   normal = (along * u + b * w) / contact_radius
 
   contact_point = np.array([p["contact_offset"][0], p["contact_offset"][1], CENTER_HEIGHT])
   pos_a_contact = contact_point - r_a * normal
-  pos_b = contact_point + r_b * normal
+  pos_b_contact = contact_point + r_b * normal
 
-  travel = p["speed_a"] * t_contact
-  pos_a_start = pos_a_contact - travel * u
-  vel_a = p["speed_a"] * u
+  pos_a_start = pos_a_contact - vel_a * t_contact
+  pos_b_start = pos_b_contact - vel_b * t_contact
 
   return {
       "contact_radius": contact_radius,
       "t_contact_target_s": t_contact,
       "impact_parameter": float(b),
       "impact_parameter_abs": float(abs(b)),
+      "relative_speed": rel_speed,
       "contact_normal_analytic": normal.tolist(),
       "contact_point_analytic": contact_point.tolist(),
       "pos_a_contact_analytic": pos_a_contact.tolist(),
+      "pos_b_contact_analytic": pos_b_contact.tolist(),
       "pos_a_start": pos_a_start.tolist(),
-      "pos_b_start": pos_b.tolist(),
+      "pos_b_start": pos_b_start.tolist(),
       "vel_a_start": vel_a.tolist(),
-      "initial_separation": float(np.linalg.norm(pos_a_start - pos_b)),
-      "initial_surface_gap": float(np.linalg.norm(pos_a_start - pos_b) - contact_radius),
-      "travel_before_contact": float(travel),
+      "vel_b_start": vel_b.tolist(),
+      "initial_separation": float(np.linalg.norm(pos_a_start - pos_b_start)),
+      "initial_surface_gap": float(
+          np.linalg.norm(pos_a_start - pos_b_start) - contact_radius),
+      "travel_before_contact": float(p["speed_a"] * t_contact),
   }
 
 
 def check_frame0(p: dict, geo: dict) -> str | None:
   """Return a rejection reason, or None if the frame-0 layout is usable."""
+  if "infeasible" in geo:
+    return geo["infeasible"]
   if geo["initial_surface_gap"] < MIN_SURFACE_GAP_AT_START:
     return "overlap_or_too_close_at_frame0"
 
@@ -211,6 +357,57 @@ def derive_masses(p: dict) -> dict:
       "mass_a": float(mass_a), "mass_b": float(mass_b),
       "mass_ratio": float(mass_a / mass_b),
   }
+
+
+def apply_violation(p, geo, masses, spheres, animation, contact_frame):
+  """Overwrite post-contact motion so momentum is *not* conserved.
+
+  Bullet cannot produce this: it conserves momentum by construction, which is
+  precisely why every scene in the original pilot had an identical answer to "is
+  momentum conserved" and the question was unprobeable. So the collision is
+  simulated honestly and then the outgoing velocities are edited and the spheres
+  re-keyframed to fly along the edited ones.
+
+  The kick is applied as equal-and-*same*-direction impulses rather than
+  equal-and-opposite, which is what breaks the sum while leaving each ball's
+  motion individually unremarkable — no ball stops dead or reverses implausibly,
+  so the class difference is in the relationship between the two trajectories
+  rather than in either one alone.
+
+  Returns the edited post-contact velocities keyed by tag.
+  """
+  # Start the edited motion at the first frame rendered after contact, anchored on
+  # the last frame before it, so the trajectory deviates exactly at the collision
+  # rather than a frame later — the aftermath is wrong, the approach is not.
+  first_moving = int(np.ceil(contact_frame))
+  theta = p["violation_direction_rad"]
+  direction = np.array([np.cos(theta), np.sin(theta), 0.0])
+
+  p_pre = (masses["mass_a"] * np.array(animation[spheres["a"]]["velocity"][PRE_FRAME])
+           + masses["mass_b"] * np.array(animation[spheres["b"]]["velocity"][PRE_FRAME]))
+  delta_p = p["violation_scale"] * float(np.linalg.norm(p_pre)) * direction
+
+  edited = {}
+  for tag in ("a", "b"):
+    mass = masses[f"mass_{tag}"]
+    vel = np.array(animation[spheres[tag]]["velocity"][POST_FRAME], dtype=np.float64)
+    # Split the injected momentum in proportion to mass, so both balls take the
+    # same velocity change and neither trajectory looks individually absurd.
+    edited[tag] = vel + delta_p / (masses["mass_a"] + masses["mass_b"])
+    del mass
+
+  for tag in ("a", "b"):
+    sphere = spheres[tag]
+    anchor = np.array(animation[sphere]["position"][first_moving - 1], dtype=np.float64)
+    for frame in range(first_moving, NUM_FRAMES):
+      dt = (frame - (first_moving - 1)) / FRAME_RATE
+      pos = anchor + edited[tag] * dt
+      sphere.position = tuple(pos)
+      sphere.keyframe_insert("position", frame)
+      animation[sphere]["position"][frame] = pos
+      animation[sphere]["velocity"][frame] = edited[tag]
+
+  return edited
 
 
 # --------------------------------------------------------------------------------------
@@ -340,7 +537,7 @@ def build_and_simulate(p: dict, geo: dict, masses: dict, scratch_dir: str, rende
         name=f"sphere_{tag}",
         scale=p[f"radius_{tag}"],
         position=geo["pos_a_start"] if tag == "a" else geo["pos_b_start"],
-        velocity=geo["vel_a_start"] if tag == "a" else (0.0, 0.0, 0.0),
+        velocity=geo["vel_a_start"] if tag == "a" else geo["vel_b_start"],
         mass=masses[f"mass_{tag}"],
         friction=0.0,
         # PyBullet combines restitution multiplicatively, so each object carries the
@@ -521,6 +718,12 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
       },
       "mass_ratio": masses["mass_ratio"],
       "restitution": p["restitution"],
+      # Probe-facing scene labels, hoisted to the top level so a probe target is a
+      # short path rather than a reach into sampled_parameters.
+      "stratum": p["stratum"],
+      "b_moving": p["b_moving"],
+      "violates_momentum": p["violates_momentum"],
+      "momentum_conserved": (not p["violates_momentum"]),
       "collision": {
           "target_frame": TARGET_CONTACT_FRAME,
           "actual_frame": measurements["contact_frame"],
@@ -552,7 +755,13 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
               "kinetic_energy": ke_post,
           },
           "momentum_abs_error": float(np.linalg.norm(p_post - p_pre)),
-          "momentum_rel_error": measurements["momentum_rel_error"],
+          # Recomputed from the animation rather than reused from the acceptance
+          # check, because a violating scene edits the animation *after* that check
+          # ran — reporting the checked value would label every violation as
+          # perfectly conserved.
+          "momentum_rel_error": float(
+              np.linalg.norm(p_post - p_pre) / max(np.linalg.norm(p_pre), 1e-12)),
+          "momentum_rel_error_simulated": measurements["momentum_rel_error"],
           "kinetic_energy_lost": float(ke_pre - ke_post),
           "kinetic_energy_ratio": float(ke_post / ke_pre) if ke_pre > 0 else None,
       },
@@ -565,8 +774,13 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
           "camera_quaternion": [1.0, 0.0, 0.0, 0.0],
           "focal_length": FOCAL_LENGTH, "sensor_width": SENSOR_WIDTH,
           "visible_half_extents": list(half_extents()),
-          "radii_levels": list(RADII), "restitution_levels": list(RESTITUTIONS),
+          "radius_range": list(RADIUS_RANGE),
+          "restitution_range": list(RESTITUTION_RANGE),
           "speed_range": list(SPEED_RANGE), "materials": MATERIALS,
+          "b_moving_prob": B_MOVING_PROB,
+          "contact_jitter_radius": CONTACT_JITTER_RADIUS,
+          "control_stratum_frac": CONTROL_STRATUM_FRAC,
+          "control_momentum_range": list(CONTROL_MOMENTUM_RANGE),
           "pre_frame": PRE_FRAME, "post_frame": POST_FRAME,
           "samples_per_pixel": SAMPLES_PER_PIXEL,
           "render_device": gpu_desc,
@@ -636,7 +850,8 @@ def write_mp4(path: Path, rgb, frames_dir: Path):
 
 # --------------------------------------------------------------------------------------
 
-def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True) -> dict:
+def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
+             violate: bool = False) -> dict:
   import kubric as kb
   import pybullet as pb
 
@@ -648,7 +863,10 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True) -> di
     # --- Pass 1: search for a parameter set that passes every check, physics only.
     for attempt in range(MAX_ATTEMPTS):
       rng = np.random.default_rng([seed, attempt])
-      p = sample_params(rng)
+      p, reason = sample_params(rng, violate=violate)
+      if p is None:
+        rejections.append({"attempt": attempt, "reason": reason})
+        continue
       geo = solve_geometry(p)
       masses = derive_masses(p)
 
@@ -686,6 +904,13 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True) -> di
     if reason:
       raise RuntimeError(f"replay of accepted scene failed the check: {reason} {measurements}")
 
+    # Break conservation only after the honest simulation has been validated, so a
+    # violating scene is a *correct* collision with an edited aftermath rather than
+    # a scene that failed physics for some unrelated reason.
+    if p["violates_momentum"]:
+      apply_violation(p, geo, masses, spheres, animation,
+                      measurements["contact_frame"])
+
     out_dir.mkdir(parents=True, exist_ok=True)
     seg_stats = None
     if render:
@@ -721,6 +946,9 @@ def main():
   parser.add_argument("--scene-id", type=str, default=None)
   parser.add_argument("--no-render", action="store_true",
                       help="run physics and write labels only (fast; for debugging)")
+  parser.add_argument("--violate", action="store_true",
+                      help="break momentum conservation after contact, for the "
+                           "implausible class of a plausibility probe")
   parser.add_argument("--logging-level", type=str, default="INFO")
   args = parser.parse_args()
 
@@ -730,7 +958,8 @@ def main():
   out_dir = Path(args.output_dir)
   scene_id = args.scene_id or out_dir.name
   try:
-    labels = generate(args.seed, out_dir, scene_id, render=not args.no_render)
+    labels = generate(args.seed, out_dir, scene_id, render=not args.no_render,
+                      violate=args.violate)
   except Exception:  # pylint: disable=broad-except
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "_FAILED").write_text(traceback.format_exc())

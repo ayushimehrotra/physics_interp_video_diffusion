@@ -11,6 +11,47 @@ validate.py          correctness + coverage report    (needs only labels.json; r
 contact_sheet.py     visual spot-check grid           (needs only the PNG frames; runs anywhere)
 ```
 
+## Sampling for probe identifiability
+
+The dataset is built to make a *linear probe result interpretable*, which is a
+stronger requirement than being physically correct. Four things follow from it, and
+they are the main difference from the original pilot:
+
+**Momentum is sampled before speed.** Momentum is mass x velocity, so drawing speed
+directly makes momentum a near-deterministic function of mass whenever mass has the
+wider range. The pilot had `corr(|p|, mass_A) = 0.97` — a probe "decoding momentum"
+there could have been reading apparent size and colour and nothing else. Here a
+target momentum is drawn first and speed is derived as `p / m`.
+
+**A matched-momentum stratum.** Decorrelating a product needs both factors to span
+comparable log ranges, and speed is capped by how far a ball can travel while staying
+in frame, so sampling order alone is not enough. ~35% of scenes therefore draw `|p_A|`
+from a fixed band that does not depend on mass at all. Measured over 400 scenes:
+
+| subset | `corr(log \|p_total\|, log mass_A)` | `corr(log \|p_A\|, log mass_A)` |
+|---|---|---|
+| pilot (old) | +0.97 | +0.97 |
+| all scenes | +0.59 | +0.87 |
+| **matched-momentum stratum** | **+0.11** | **+0.29** |
+| wide stratum | +0.63 | +0.90 |
+
+Fit and report on the matched-momentum stratum; use the rest for coverage. Every
+scene records its `stratum` so the split is a filter, not a re-run.
+
+**Sphere B usually starts moving too** (`B_MOVING_PROB = 0.7`). With B always at rest
+the system's total momentum is exactly A's momentum, so "the momentum of the system"
+and "the momentum of the one moving ball" are the same variable and a probe cannot
+distinguish them. Once both move, total momentum is a vector sum equal to neither.
+
+**Half the scenes break momentum conservation** when generated with `--violate-frac
+0.5`. Conservation holds identically in every honest scene, which makes "is momentum
+conserved" a constant and therefore unprobeable — a classifier needs both classes.
+See below for how the violation is produced.
+
+Continuous radii, densities and restitution replace the pilot's 3-level grids, so
+derived quantities form a continuum rather than a handful of clusters that a probe
+could fit as a lookup table.
+
 ---
 
 ## Environment
@@ -35,6 +76,24 @@ docker run --rm --gpus all \
   --env KUBRIC_USE_GPU=1 \
   kubricdockerhub/kubruntu \
   /usr/bin/python3 run_batch.py --num-scenes 50 --output-dir pilot --workers 5
+```
+
+**Check the labels before paying for the pixels.** `--no-render` runs physics and
+writes `labels.json` only, at roughly a second per scene instead of two minutes, so
+the coverage and confound structure of a proposed sampler can be measured on
+hundreds of scenes in a few minutes. `validate.py` works on the result:
+
+```bash
+python3 run_batch.py --num-scenes 400 --output-dir /tmp/coverage \
+    --workers 12 --no-render --violate-frac 0.5
+python3 validate.py --dataset-dir /tmp/coverage      # prints the confound table
+```
+
+A full two-class set for probing, rendered:
+
+```bash
+python3 run_batch.py --num-scenes 1000 --output-dir full \
+    --workers 5 --violate-frac 0.5
 ```
 
 Drop `--gpus all` and `--env KUBRIC_USE_GPU=1` to render on CPU (~2.5x slower here, and
@@ -101,22 +160,23 @@ upward, and floor contacts would inject vertical impulses that corrupt exactly t
 momentum conservation this dataset is built to check.
 
 **The cost, and it is visible in the contact sheet.** Every centre sits at the same
-height but radii differ, so smaller spheres float above the floor — by 0.05 (r=0.60),
-0.20 (r=0.45), or 0.35 (r=0.30) world units. The floor is a visual backdrop only; the
-spheres never touch it.
+height but radii differ, so spheres smaller than the maximum float above the floor —
+by `0.65 - r`, i.e. up to 0.35 world units at the smallest radius. The floor is a
+visual backdrop only; the spheres never touch it.
 
 With the light tilted 24.6° off vertical, each sphere's shadow is displaced by
-`CENTER_HEIGHT x tan(24.6°) = 0.30` world units ≈ **21 px**. A sphere genuinely resting
-on the plane would still cast an offset shadow (`r x tan θ`), so the *artifact* is only
-the excess: **11 px for r=0.30, 6 px for r=0.45, 2 px for r=0.60**. In practice the
-small spheres read as hovering a little above the ground, and the shadow is a dark blob
-beside the ball rather than tucked under it.
+`CENTER_HEIGHT x tan(24.6°) = 0.30` world units ≈ **15 px** at the current camera
+distance of 20. A sphere genuinely resting on the plane would still cast an offset
+shadow (`r x tan θ`), so the *artifact* is only the excess: about **8 px at r=0.30**
+falling to **2 px at r=0.60**. In practice the small spheres read as hovering a little
+above the ground, and the shadow is a dark blob beside the ball rather than tucked
+under it.
 
 Three ways out, if that matters for the diffusion model — all one-line changes:
 
 | change | effect |
 |---|---|
-| light to `position=(2,-2,20)` (~8° tilt) | shadow offset 21 px → 7 px; shading gets flatter |
+| light to `position=(2,-2,20)` (~8° tilt) | shadow offset 15 px → 5 px; shading gets flatter |
 | sample one radius per scene (`radius_b = radius_a`) | removes the artifact entirely; costs the mass-ratio range that comes from radius |
 | drop the floor | no shadow at all, no floating cue, but also no ground plane |
 
@@ -142,19 +202,28 @@ not a broken label. If you want them to coincide identically, switch to
 
 ### The 720x480 aspect ratio and the scene layout
 
-The visible world region at the sphere plane is 10.08 x 6.72 units (camera 14 units
+The visible world region at the sphere plane is 14.4 x 9.6 units (camera 20 units
 above the plane, 50 mm lens, 36 mm sensor). The short axis is the binding constraint
 because direction is sampled over the full 360°.
 
+The camera was pulled back from 14 to 20 specifically to buy speed range. A ball must
+travel `speed x 2.5 s` before contact and still start fully inside the frame, so the
+visible half-height is what caps the top speed — and speed range is exactly what
+decorrelates momentum from mass. The cost is that spheres are smaller on screen: at
+r=0.60 the radius is ~35 px (was ~43), which is a little over 2 latent cells at
+CogVideoX's 16-px-per-cell grid.
+
 Consequences, all deliberate:
 
-* Contact is placed at the **frame centre** (`CONTACT_JITTER_RADIUS = 0.0`), which
-  maximises how long both spheres stay in frame given that they fly apart in arbitrary
-  directions. This does mean collision *location* is constant, mirroring the constant
-  collision *time* you asked for. Raise `CONTACT_JITTER_RADIUS` to decorrelate them.
-* `speed_A` is sampled in [0.45, 0.90] units/s. The upper end is set by the short axis:
-  A must start `speed x 2.5 s` upstream of the centre and still be fully in frame at
-  frame 0.
+* Contact is jittered within `CONTACT_JITTER_RADIUS = 1.2` of the frame centre, so
+  collision *location* varies even though collision *time* is fixed at frame 20. In
+  the pilot this was 0.0 and every collision happened at the same pixel, which meant
+  contact position was a constant a probe could not be tested on.
+* `speed_A` is sampled in [0.35, 1.55] units/s — a 4.4x range, against 2x in the
+  pilot. It is derived from the sampled momentum rather than drawn directly (see
+  above). The floor is a legibility constraint, not a physical one: below ~0.35 a
+  ball moves under 2 px/frame and the video barely encodes its velocity, so a
+  momentum probe would fail there for reasons that say nothing about the model.
 * **Nothing is clipped at frame 0** — that is a hard check, enforced before simulating
   and re-verified by `validate.py`. But **after the collision, B can leave the frame**,
   and sometimes does: an elastic hit from a much heavier A sends a light B off at up to
@@ -246,6 +315,9 @@ viewer — that is intentional, the values are meant to be read, not looked at.
 | `sampled_parameters` | every sampled value + `seed`; enough to reproduce the scene |
 | `objects.A/.B` | radius, material, **density**, volume, mass, friction, per-object restitution, segmentation id, colour |
 | `mass_ratio`, `restitution` | scene-level derived values |
+| `stratum` | `"matched_momentum"` or `"wide"` — which sampling regime produced the scene |
+| `b_moving` | whether sphere B started with a velocity |
+| `violates_momentum`, `momentum_conserved` | the plausibility class, as a pair of complementary booleans so either polarity is a direct probe target |
 | `per_frame[i].A/.B` | `position` (3D), `pixel` (2D), `in_frame`, `velocity`, `angular_velocity`, `momentum`, `speed`, `kinetic_energy`, `segmentation_pixel_count`, `segmentation_centroid_pixel` |
 | `per_frame[i]` | `total_momentum`, `total_kinetic_energy` |
 | `collision` | target/actual/rounded contact frame + discrepancy, contact point (world **and** pixel), contact normal (solver **and** analytic), impulse vector and magnitude, peak normal force, `restitution_measured`, pre/post velocities+momenta for both objects, pre/post total momentum and KE, momentum abs/rel error, KE lost, KE ratio |
@@ -260,9 +332,44 @@ happened and nothing else touched the spheres.
 **`angular_velocity` is identically zero in every scene.** Frictionless spheres cannot
 spin up. It is logged because you asked for it, not because it varies.
 
+In a violating scene `momentum_rel_error` is the *realised* error after the aftermath
+was edited, i.e. the size of the violation. `momentum_rel_error_simulated` keeps the
+solver's own figure from before the edit, which stays at ~1e-16 and confirms the
+underlying collision was simulated correctly.
+
+### Breaking conservation
+
+Bullet conserves momentum by construction, so a violating scene cannot be simulated —
+it has to be authored. The collision is simulated honestly and validated, and only
+then are the post-contact velocities overwritten and the spheres re-keyframed to fly
+along the edited ones, starting at the first frame rendered after contact. Everything
+before contact and every visual property is untouched, so the two classes differ only
+in what happens *after* the balls touch.
+
+The injected momentum is split between the balls in proportion to mass, giving both
+the same velocity change. Equal-and-opposite kicks would conserve momentum and defeat
+the point; equal-and-same-direction kicks break the sum while leaving each ball's own
+trajectory unremarkable — nothing stops dead or reverses implausibly. The difference
+between classes lives in the *relationship* between the two trajectories, which is
+what makes it a test of whether the model represents the conserved quantity rather
+than a test of whether it can spot one weird-looking ball.
+
+`VIOLATION_SCALE_RANGE = (0.35, 0.75)` sets `|Δp| / |p_pre|`, either sign. Below ~0.2
+the violation starts to be within the range of what a viewer would read as an
+inelastic collision, which would blur the classes.
+
 ## Tunables
 
 All at the top of `generate_scene.py`: `TARGET_CONTACT_FRAME`, `CONTACT_TOLERANCE`,
-`RADII`, `MATERIALS` (colour + density), `RESTITUTIONS`, `SPEED_RANGE`,
-`IMPACT_PARAM_MAX_FRAC`, `CONTACT_JITTER_RADIUS`, `CAMERA_DISTANCE`,
-`SAMPLES_PER_PIXEL`, `PRE_FRAME`/`POST_FRAME`.
+`RADIUS_RANGE`, `MATERIALS` (colour + density), `RESTITUTION_RANGE`, `SPEED_RANGE`,
+`B_MOVING_PROB`, `CONTROL_STRATUM_FRAC`, `CONTROL_MOMENTUM_RANGE`,
+`VIOLATION_SCALE_RANGE`, `IMPACT_PARAM_MAX_FRAC`, `CONTACT_JITTER_RADIUS`,
+`CAMERA_DISTANCE`, `SAMPLES_PER_PIXEL`, `PRE_FRAME`/`POST_FRAME`.
+
+## The pilot in `pilot/` predates all of this
+
+Those 50 scenes were generated with the old sampler: 3 radius levels, 3 restitution
+levels, B always at rest, contact always at the frame centre, no violations, and
+`corr(|p|, mass_A) = 0.97`. They are still valid physics and fine for exercising the
+capture path end to end, but a probe fit on them is not identifiable. Regenerate
+before drawing conclusions.

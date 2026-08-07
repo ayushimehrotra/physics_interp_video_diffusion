@@ -114,9 +114,16 @@ def analyse(scenes):
         "restitution_measured": collision["restitution_measured"],
         "impulse_magnitude": collision["impulse_magnitude"],
         "mass_ratio": scene["mass_ratio"],
+        "mass_a": scene["objects"]["A"]["mass"], "mass_b": scene["objects"]["B"]["mass"],
         "radius_a": params["radius_a"], "radius_b": params["radius_b"],
         "material_a": params["material_a"], "material_b": params["material_b"],
-        "speed_a": params["speed_a"],
+        "speed_a": params["speed_a"], "speed_b": params.get("speed_b", 0.0),
+        "b_moving": bool(params.get("b_moving", False)),
+        "stratum": scene.get("stratum", "wide"),
+        "violates_momentum": bool(scene.get("violates_momentum", False)),
+        "momentum_total_pre": float(np.linalg.norm(collision["pre"]["total_momentum"])),
+        "momentum_total_post": float(np.linalg.norm(collision["post"]["total_momentum"])),
+        "momentum_a_pre": float(np.linalg.norm(collision["pre"]["momentum_A"])),
         "direction_a_rad": params["direction_a_rad"],
         "impact_parameter_frac": params["impact_parameter_frac"],
         "frame0_surface_gap": surface_gap,
@@ -131,15 +138,53 @@ def analyse(scenes):
   return rows
 
 
+def confound_report(rows):
+  """Correlations between candidate probe targets, per stratum.
+
+  This is the check that decides whether a probing result will *mean* anything.
+  Momentum is mass x speed, so if the two factors are strongly correlated across
+  the dataset then a probe scoring well on momentum cannot be distinguished from
+  one reading apparent size and colour, and no amount of held-out accuracy fixes
+  that. Correlations are taken in log space because every one of these quantities
+  is sampled log-uniformly and spans more than a decade.
+  """
+  keys = ["momentum_total_pre", "momentum_a_pre", "mass_a", "speed_a", "radius_a"]
+  out = {}
+  for name, subset in (
+      ("all", rows),
+      ("matched_momentum", [r for r in rows if r["stratum"] == "matched_momentum"]),
+      ("wide", [r for r in rows if r["stratum"] == "wide"]),
+  ):
+    if len(subset) < 3:
+      continue
+    mat = np.array([[np.log(max(r[k], 1e-12)) for k in keys] for r in subset])
+    corr = np.corrcoef(mat.T)
+    out[name] = {
+        "n": len(subset),
+        "pairs": {
+            f"{keys[i]}~{keys[j]}": round(float(corr[i, j]), 3)
+            for i in range(len(keys)) for j in range(i + 1, len(keys))
+        },
+    }
+  return out
+
+
 def summarise(rows):
   arr = lambda key: np.array([r[key] for r in rows], dtype=float)  # noqa: E731
 
   contact = arr("contact_frame")
-  momentum = arr("momentum_rel_error")
   ke_ratio = arr("ke_ratio")
   gaps = arr("frame0_surface_gap")
   seg_distances = np.array([d["distance"] for r in rows for d in r["seg_agreement"]])
   restitution_err = np.array([abs(r["restitution_measured"] - r["restitution"]) for r in rows])
+
+  # Violating scenes break conservation on purpose, so they are held to the
+  # opposite standard: the conserving ones must conserve, and the violating ones
+  # must actually violate. Pooling them would let a silently-inert violation
+  # (or a broken simulation) pass as success.
+  violates = np.array([r["violates_momentum"] for r in rows], dtype=bool)
+  honest = np.array([r["momentum_rel_error"] for r in rows], dtype=float)[~violates]
+  broken = np.array([r["momentum_rel_error"] for r in rows], dtype=float)[violates]
 
   checks = {
       "contact_frame": {
@@ -149,21 +194,39 @@ def summarise(rows):
                     f"{int(np.sum(np.abs(contact - 20) <= CONTACT_TOL))}/{len(contact)} within +/-1",
       },
       "momentum_conservation": {
-          "pass": bool(np.all(momentum <= MOMENTUM_TOL)),
-          "detail": f"relative error median {np.median(momentum):.2e}, "
-                    f"max {momentum.max():.2e} (tolerance {MOMENTUM_TOL:.0e})",
+          "pass": bool(honest.size and np.all(honest <= MOMENTUM_TOL)),
+          "detail": f"{honest.size} conserving scene(s): relative error median "
+                    f"{np.median(honest) if honest.size else float('nan'):.2e}, "
+                    f"max {honest.max() if honest.size else float('nan'):.2e} "
+                    f"(tolerance {MOMENTUM_TOL:.0e})",
+      },
+      "violations_actually_violate": {
+          "pass": bool(broken.size == 0 or np.all(broken > 0.05)),
+          "detail": (f"{broken.size} violating scene(s): |dp|/|p| median "
+                     f"{np.median(broken):.3f}, min {broken.min():.3f}"
+                     if broken.size else "no violating scenes in this set"),
       },
       "energy_never_increases": {
-          "pass": bool(np.all(ke_ratio <= 1.0 + ENERGY_TOL)),
-          "detail": f"KE_post/KE_pre max {ke_ratio.max():.6f}, min {ke_ratio.min():.4f}, "
-                    f"{int(np.sum(ke_ratio > 1.0 + ENERGY_TOL))} scenes with an increase",
+          # Only meaningful for honest collisions; an injected impulse does work.
+          "pass": bool(np.all(ke_ratio[~violates] <= 1.0 + ENERGY_TOL)),
+          "detail": f"conserving scenes: KE_post/KE_pre max "
+                    f"{ke_ratio[~violates].max() if (~violates).any() else float('nan'):.6f}, "
+                    f"min {ke_ratio[~violates].min() if (~violates).any() else float('nan'):.4f}, "
+                    f"{int(np.sum(ke_ratio[~violates] > 1.0 + ENERGY_TOL))} with an increase",
       },
       "frame0_visible_and_separate": {
+          # Mask pixel counts only exist for rendered scenes; a --no-render batch
+          # (used to check coverage and confounds before committing to a render)
+          # still validates its geometry, just without the mask half.
           "pass": bool(all(r["frame0_fully_in_frame"] for r in rows) and np.all(gaps > 0) and
-                       all(r["frame0_seg_pixels_a"] and r["frame0_seg_pixels_b"] for r in rows)),
+                       all(r["frame0_seg_pixels_a"] is None or
+                           (r["frame0_seg_pixels_a"] and r["frame0_seg_pixels_b"])
+                           for r in rows)),
           "detail": f"all fully in frame: {all(r['frame0_fully_in_frame'] for r in rows)}; "
                     f"min surface gap {gaps.min():.3f} world units; "
-                    f"min mask pixels {min(min(r['frame0_seg_pixels_a'], r['frame0_seg_pixels_b']) for r in rows)}",
+                    + (f"min mask pixels {min(min(r['frame0_seg_pixels_a'], r['frame0_seg_pixels_b']) for r in rows)}"
+                       if all(r["frame0_seg_pixels_a"] is not None for r in rows)
+                       else "no masks (physics-only batch)"),
       },
       "restitution_realised": {
           "pass": bool(np.all(restitution_err < 1e-3)),
@@ -174,8 +237,10 @@ def summarise(rows):
   extra = {
       "num_scenes": len(rows),
       "segmentation_vs_projection_px": {
-          "median": float(np.median(seg_distances)), "p95": float(np.percentile(seg_distances, 95)),
-          "max": float(seg_distances.max()), "n_samples": int(seg_distances.size),
+          "median": float(np.median(seg_distances)) if seg_distances.size else None,
+          "p95": float(np.percentile(seg_distances, 95)) if seg_distances.size else None,
+          "max": float(seg_distances.max()) if seg_distances.size else None,
+          "n_samples": int(seg_distances.size),
       },
       "in_frame_fraction": {
           "A_mean": float(arr("in_frame_fraction_a").mean()),
@@ -188,6 +253,19 @@ def summarise(rows):
       },
       "ke_ratio": {"min": float(ke_ratio.min()), "median": float(np.median(ke_ratio)),
                    "max": float(ke_ratio.max())},
+      "class_balance": {
+          "violating": int(violates.sum()),
+          "conserving": int((~violates).sum()),
+          "b_moving": int(sum(r["b_moving"] for r in rows)),
+          "matched_momentum_stratum": int(
+              sum(r["stratum"] == "matched_momentum" for r in rows)),
+      },
+      "label_ranges": {
+          key: {"min": float(arr(key).min()), "max": float(arr(key).max()),
+                "span_x": float(arr(key).max() / max(arr(key).min(), 1e-12))}
+          for key in ("mass_a", "speed_a", "momentum_total_pre", "mass_ratio")
+      },
+      "confounds": confound_report(rows),
   }
   return checks, extra
 
@@ -278,19 +356,16 @@ def make_plots(rows, scenes, out_path: Path):
           color=C_SERIES1, edgecolor="none")
   style_axis(ax, "Coverage: impact parameter (0 = head-on)", "|b| / (r_A + r_B)", "scenes")
 
-  # --- Row 3: discrete sampled parameters -------------------------------------------
+  # --- Row 3: sampled parameter coverage --------------------------------------------
   ax = fig.add_subplot(gs[2, 0])
-  radii = sorted(set(arr("radius_a")) | set(arr("radius_b")))
-  width = 0.36
-  x = np.arange(len(radii))
-  for offset, key, color, label in ((-width / 2, "radius_a", C_SERIES1, "sphere A"),
-                                    (width / 2, "radius_b", C_SERIES2, "sphere B")):
-    counts = [int(np.sum(arr(key) == r)) for r in radii]
-    bars = ax.bar(x + offset, counts, width * 0.92, color=color, edgecolor="none", label=label)
-    ax.bar_label(bars, fontsize=7, color=INK_MUTED, padding=2)
-  ax.set_xticks(x, [f"{r:g}" for r in radii])
+  # Radii are continuous now, so this is a density rather than a level count.
+  bins = np.linspace(min(arr("radius_a").min(), arr("radius_b").min()),
+                     max(arr("radius_a").max(), arr("radius_b").max()), 14)
+  for key, color, label in (("radius_a", C_SERIES1, "sphere A"),
+                            ("radius_b", C_SERIES2, "sphere B")):
+    ax.hist(arr(key), bins=bins, color=color, edgecolor="none", alpha=0.65, label=label)
   ax.legend(fontsize=7.5, frameon=False, labelcolor=INK_MUTED)
-  style_axis(ax, "Coverage: radius levels", "radius (world units)", "scenes")
+  style_axis(ax, "Coverage: radius", "radius (world units)", "scenes")
 
   ax = fig.add_subplot(gs[2, 1])
   combos = {}
@@ -305,12 +380,9 @@ def make_plots(rows, scenes, out_path: Path):
   style_axis(ax, "Coverage: material pairing (A→B)", None, "scenes")
 
   ax = fig.add_subplot(gs[2, 2])
-  levels = sorted(set(restitution))
-  bars = ax.bar(range(len(levels)), [int(np.sum(restitution == e)) for e in levels], 0.55,
-                color=C_SERIES1, edgecolor="none")
-  ax.bar_label(bars, fontsize=7, color=INK_MUTED, padding=2)
-  ax.set_xticks(range(len(levels)), [f"{e:g}" for e in levels])
-  style_axis(ax, "Coverage: restitution levels", "pair restitution e", "scenes")
+  # Restitution is sampled continuously, so this is a density and not a level count.
+  ax.hist(restitution, bins=16, color=C_SERIES1, edgecolor="none")
+  style_axis(ax, "Coverage: restitution", "pair restitution e", "scenes")
 
   # --- Row 4: derived quantities and label diagnostics ------------------------------
   ax = fig.add_subplot(gs[3, 0])
@@ -319,12 +391,26 @@ def make_plots(rows, scenes, out_path: Path):
 
   ax = fig.add_subplot(gs[3, 1])
   distances = np.array([d["distance"] for r in rows for d in r["seg_agreement"]])
-  ax.hist(distances, bins=20, color=C_SERIES3, edgecolor="none")
-  ax.annotate(f"median {np.median(distances):.2f} px\np95 {np.percentile(distances, 95):.2f} px",
-              xy=(0.97, 0.93), xycoords="axes fraction", ha="right", va="top",
-              fontsize=8, color=INK_MUTED)
-  style_axis(ax, "2D label check: projected centre vs mask centroid",
-             "pixel distance", "object-frames")
+  if distances.size:
+    ax.hist(distances, bins=20, color=C_SERIES3, edgecolor="none")
+    ax.annotate(
+        f"median {np.median(distances):.2f} px\np95 {np.percentile(distances, 95):.2f} px",
+        xy=(0.97, 0.93), xycoords="axes fraction", ha="right", va="top",
+        fontsize=8, color=INK_MUTED)
+    style_axis(ax, "2D label check: projected centre vs mask centroid",
+               "pixel distance", "object-frames")
+  else:
+    # Physics-only batch: no masks to compare against, so spend the panel on the
+    # thing such a batch is actually run to answer.
+    for stratum, color in (("wide", C_SERIES1), ("matched_momentum", C_SERIES2)):
+      sel = [r for r in rows if r["stratum"] == stratum]
+      if sel:
+        ax.scatter([np.log10(r["mass_a"]) for r in sel],
+                   [np.log10(r["momentum_total_pre"]) for r in sel],
+                   s=7, alpha=0.6, color=color, edgecolor="none", label=stratum)
+    ax.legend(fontsize=7.5, frameon=False, labelcolor=INK_MUTED)
+    style_axis(ax, "Confound check: momentum vs mass",
+               "log₁₀ mass_A", "log₁₀ |p_total| pre")
 
   ax = fig.add_subplot(gs[3, 2])
   num_frames = len(scenes[0]["per_frame"])
@@ -375,16 +461,38 @@ def main():
   width = max(len(k) for k in checks)
   for name, result in checks.items():
     print(f"  {'PASS' if result['pass'] else 'FAIL'}  {name:<{width}}  {result['detail']}")
-  print(f"\n  2D labels: projected centre vs segmentation centroid — "
-        f"median {extra['segmentation_vs_projection_px']['median']:.2f} px, "
-        f"p95 {extra['segmentation_vs_projection_px']['p95']:.2f} px, "
-        f"max {extra['segmentation_vs_projection_px']['max']:.2f} px")
+  seg = extra["segmentation_vs_projection_px"]
+  if seg["median"] is not None:
+    print(f"\n  2D labels: projected centre vs segmentation centroid — "
+          f"median {seg['median']:.2f} px, p95 {seg['p95']:.2f} px, max {seg['max']:.2f} px")
+  else:
+    print("\n  2D labels: not checked (physics-only batch, no masks rendered)")
   print(f"  in-frame: A {extra['in_frame_fraction']['A_mean']*100:.1f}% of frames, "
         f"B {extra['in_frame_fraction']['B_mean']*100:.1f}%; "
         f"B leaves frame in {extra['in_frame_fraction']['scenes_with_B_leaving']} scenes, "
         f"A in {extra['in_frame_fraction']['scenes_with_A_leaving']}")
   print(f"  resampling: {extra['rejections_per_scene']['mean']:.2f} rejected draws per "
         f"accepted scene (max {extra['rejections_per_scene']['max']})")
+
+  bal = extra["class_balance"]
+  print(f"\n  composition: {bal['conserving']} conserving / {bal['violating']} violating, "
+        f"{bal['b_moving']} with B already moving, "
+        f"{bal['matched_momentum_stratum']} in the matched-momentum stratum")
+  print("  label span: " + ", ".join(
+      f"{k} {v['span_x']:.0f}x" for k, v in extra["label_ranges"].items()))
+
+  # The confound table is the one that decides whether a probing result on this
+  # dataset can be interpreted, so it is printed rather than buried in the JSON.
+  print("\n  confounds (log-space correlation; momentum~mass is the one that matters):")
+  for stratum, block in extra["confounds"].items():
+    pairs = block["pairs"]
+    print(f"    {stratum:<18} n={block['n']:<4} "
+          f"|p_tot|~mass_A {pairs['momentum_total_pre~mass_a']:+.2f}   "
+          f"|p_A|~mass_A {pairs['momentum_a_pre~mass_a']:+.2f}   "
+          f"|p_tot|~speed_A {pairs['momentum_total_pre~speed_a']:+.2f}")
+  print("    a momentum probe is only identifiable where |p|~mass is small; fit and")
+  print("    report on the matched-momentum stratum, use the rest for coverage.")
+
   print(f"\n  wrote {out_dir/'validation_report.json'} and {out_dir/'validation_plots.png'}\n")
 
   return 0 if all(c["pass"] for c in checks.values()) else 1

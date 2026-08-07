@@ -1,9 +1,16 @@
-"""Tests for the hook substrate, against a synthetic model.
+"""Tests for the hook substrate and the inversion path, against a toy model.
 
 These run in a second on CPU with no weights, and they cover the parts that are
 easy to get subtly wrong and expensive to discover later: step indexing, CFG
-branch labelling, write-back through tuple outputs and keyword inputs, and the
-token-index <-> (frame, y, x) mapping.
+branch labelling, write-back through tuple outputs and keyword inputs, the
+token-index <-> (frame, y, x) mapping, and the schedule algebra that inversion
+rests on.
+
+The inversion tests use an *oracle* denoiser — one that returns the exact noise
+a latent was built from. Against an oracle the recovered trajectory has a
+closed form, so the test can assert the loop reproduces it to floating-point
+precision. That isolates the integrator and the parameterisation algebra from
+any question about whether a real checkpoint is well-behaved.
 
     .venv/bin/python -m pytest tests/ -q
     .venv/bin/python tests/test_hooks.py      # no pytest needed
@@ -13,19 +20,49 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import torch
 import torch.nn as nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from physics_interp.config import InversionConfig  # noqa: E402
+from physics_interp.interp import fit_probe  # noqa: E402
 from physics_interp.interp.hooks import HookManager, StepFilter  # noqa: E402
 from physics_interp.models.base import ModelAdapter, SiteSpec, TokenLayout  # noqa: E402
+from physics_interp.runner import (  # noqa: E402
+    ActivationRecorder,
+    VideoDiffusionRunner,
+    build_pool_weights,
+)
+from physics_interp.video import masks_to_latent_grid, pixel_frame_to_latent  # noqa: E402
 
 DIM = 8
 TEXT_LEN = 5
 FRAMES, H, W = 2, 3, 4
 N_VIDEO = FRAMES * H * W
+N_TIMESTEPS = 1000
+
+
+class ToyScheduler:
+    """A DDPM-style schedule with a_bar[0] == 1 exactly.
+
+    The exact 1.0 at the clean end matters: it makes the first inversion step's
+    ``(x0, eps)`` split the identity, so an oracle trajectory has a closed form
+    the test can check against rather than approximate.
+    """
+
+    def __init__(self, prediction_type: str = "epsilon"):
+        betas = torch.linspace(0.0, 0.02, N_TIMESTEPS, dtype=torch.float64)
+        self.alphas_cumprod = torch.cumprod(1.0 - betas, dim=0)
+        self.config = SimpleNamespace(prediction_type=prediction_type)
+        self.timesteps = torch.arange(N_TIMESTEPS - 1, -1, -1)
+
+    def set_timesteps(self, num_steps: int, device=None):
+        stride = N_TIMESTEPS // num_steps
+        self.timesteps = torch.arange(0, N_TIMESTEPS, stride)[:num_steps].flip(0)
 
 
 class ToyBlock(nn.Module):
@@ -51,8 +88,14 @@ class ToyAdapter(ModelAdapter):
     key = "toy"
     calls_per_step = 1
 
-    def __init__(self):
+    def __init__(self, prediction_type: str = "epsilon"):
         self._denoiser = ToyDenoiser()
+        self._scheduler = ToyScheduler(prediction_type)
+        #: When set, denoise() returns this instead of the block stack's output,
+        #: making the adapter an oracle for a latent built from this noise. The
+        #: blocks still run, so hooks fire exactly as they would for real.
+        self.oracle_eps: torch.Tensor | None = None
+        self.latent: torch.Tensor | None = None
         super().__init__(pipe=None, repo="toy", device=torch.device("cpu"), dtype=torch.float32)
 
     @classmethod
@@ -92,6 +135,31 @@ class ToyAdapter(ModelAdapter):
 
     def generate(self, **kw):
         raise NotImplementedError
+
+    # ---- inversion primitives (latent is [1, F, C, H, W], as for CogVideoX) -- #
+
+    @property
+    def scheduler(self):
+        return self._scheduler
+
+    def encode_video(self, video):
+        return self.latent
+
+    def decode_latents(self, latents):
+        return latents
+
+    def embed_prompt(self, prompt):
+        return torch.zeros(1, TEXT_LEN, DIM)
+
+    def denoise(self, latents, timestep, prompt_embeds):
+        b, f, c, hh, ww = latents.shape
+        tokens = latents.permute(0, 1, 3, 4, 2).reshape(b, f * hh * ww, c)
+        out = self._denoiser(
+            hidden_states=tokens, timestep=timestep, encoder_hidden_states=prompt_embeds
+        )
+        if self.oracle_eps is not None:
+            return self.oracle_eps
+        return out.reshape(b, f, hh, ww, c).permute(0, 1, 4, 2, 3)
 
 
 def make(batch: int = 2, guidance: float = 6.0):
@@ -273,6 +341,239 @@ def test_unknown_site_pattern_raises():
         assert "matched nothing" in str(exc)
     else:
         raise AssertionError("expected a ValueError for an unmatched pattern")
+
+
+# --------------------------------------------------------------------------- #
+# schedule algebra and inversion
+# --------------------------------------------------------------------------- #
+
+
+def test_split_prediction_roundtrips_every_parameterisation():
+    """x0/eps recovered from a model output must rebuild the sample exactly.
+
+    Each parameterisation encodes the same information differently; getting one
+    of the sign conventions wrong still produces a plausible-looking latent, so
+    the check is algebraic rather than visual.
+    """
+    torch.manual_seed(0)
+    x0 = torch.randn(4)
+    eps = torch.randn(4)
+    alpha, sigma = 0.6, 0.8
+    sample = alpha * x0 + sigma * eps
+
+    for kind, model_out in [
+        ("epsilon", eps),
+        ("v_prediction", alpha * eps - sigma * x0),
+        ("sample", x0),
+        ("flow_prediction", eps - x0),
+    ]:
+        adapter = ToyAdapter(prediction_type=kind)
+        if kind == "flow_prediction":
+            # Rectified flow uses x_t = (1-s) x0 + s eps, so alpha + sigma == 1.
+            a, s = 0.4, 0.6
+            smp = a * x0 + s * eps
+            got_x0, got_eps = adapter.split_prediction(model_out, smp, a, s)
+        else:
+            got_x0, got_eps = adapter.split_prediction(model_out, sample, alpha, sigma)
+        assert torch.allclose(got_x0, x0, atol=1e-5), (kind, got_x0, x0)
+        assert torch.allclose(got_eps, eps, atol=1e-5), (kind, got_eps, eps)
+
+
+def test_alpha_sigma_is_a_unit_decomposition():
+    adapter = ToyAdapter()
+    for t in (0, 100, 999):
+        alpha, sigma = adapter.alpha_sigma(t)
+        assert abs(alpha**2 + sigma**2 - 1.0) < 1e-6, (t, alpha, sigma)
+    assert adapter.alpha_sigma(0)[0] == 1.0        # clean end is exact
+
+
+def make_runner(num_frames=FRAMES, prediction_type="epsilon"):
+    adapter = ToyAdapter(prediction_type)
+    from physics_interp.config import GenerationConfig
+
+    runner = VideoDiffusionRunner(adapter, GenerationConfig(num_frames=num_frames))
+    return adapter, runner
+
+
+def test_inversion_recovers_the_oracle_trajectory():
+    """Against an oracle, every visited latent must equal alpha*x0 + sigma*eps.
+
+    This is the whole correctness claim of the inversion loop: that it lands on
+    the noise levels the scheduler defines, carrying the right x0 and eps. If
+    the timestep the model is conditioned on were off by one step — the easiest
+    mistake to make here — the reconstruction would still look fine while every
+    recorded activation came from the wrong point on the trajectory.
+    """
+    torch.manual_seed(0)
+    adapter, runner = make_runner()
+
+    x0 = torch.randn(1, FRAMES, DIM, H, W)
+    eps = torch.randn(1, FRAMES, DIM, H, W)
+    adapter.latent, adapter.oracle_eps = x0, eps
+
+    cfg = InversionConfig(num_steps=10, num_captures=3)
+    result = runner.invert(torch.zeros(FRAMES, 4, 4, 3), inversion=cfg)
+
+    final_t = result.timesteps[-1]
+    alpha, sigma = adapter.alpha_sigma(final_t)
+    expected = alpha * x0 + sigma * eps
+    assert torch.allclose(result.noise, expected, atol=1e-5), (
+        (result.noise - expected).abs().max()
+    )
+    # Ascending noise: the ladder must run clean -> noise, not the other way.
+    assert result.timesteps[0] < result.timesteps[-1]
+    assert len(result.timesteps) == 10
+
+
+def test_heun_matches_euler_on_a_linear_oracle():
+    """A second-order correction must not move an already-exact trajectory."""
+    torch.manual_seed(0)
+    adapter, runner = make_runner()
+    adapter.latent = torch.randn(1, FRAMES, DIM, H, W)
+    adapter.oracle_eps = torch.randn(1, FRAMES, DIM, H, W)
+
+    euler = runner.invert(
+        torch.zeros(1), inversion=InversionConfig(num_steps=8, solver="euler")
+    )
+    heun = runner.invert(
+        torch.zeros(1), inversion=InversionConfig(num_steps=8, solver="heun")
+    )
+    assert torch.allclose(euler.noise, heun.noise, atol=1e-5)
+
+
+def test_capture_steps_are_spread_and_recorded_once():
+    """Recording must happen at the requested steps, exactly once each.
+
+    The Heun correction calls the denoiser a second time within the same step;
+    if that call were not excluded, it would silently overwrite the step's
+    activations with states from a point the trajectory only tentatively
+    visited.
+    """
+    torch.manual_seed(0)
+    adapter, runner = make_runner()
+    adapter.latent = torch.randn(1, FRAMES, DIM, H, W)
+
+    layout = runner.layout
+    regions = {"all": np.ones((layout.frames, layout.height, layout.width), np.float32)}
+    weights, names = build_pool_weights(layout, regions, {"all": (0, layout.frames)})
+
+    for solver in ("euler", "heun"):
+        recorder = ActivationRecorder(weights, names)
+        cfg = InversionConfig(num_steps=9, num_captures=3, solver=solver)
+        result = runner.invert(
+            torch.zeros(1), inversion=cfg, recorder=recorder,
+            sites="block.*.resid_post",
+        )
+        assert result.captured_steps == [0, 4, 8], result.captured_steps
+        acts = result.activations
+        assert set(acts) == {f"block.{i}.resid_post" for i in range(3)}
+        for site, arr in acts.items():
+            assert arr.shape == (3, 1, DIM), (site, arr.shape)
+        # Each toy block adds exactly 1 to the stream, so consecutive blocks
+        # must differ by 1 at every captured step. That pins the site-to-block
+        # mapping and the per-step bookkeeping together: an off-by-one in
+        # either would break this while leaving shapes intact.
+        for i in range(2):
+            delta = (
+                acts[f"block.{i + 1}.resid_post"].astype(np.float64)
+                - acts[f"block.{i}.resid_post"].astype(np.float64)
+            )
+            assert np.allclose(delta, 1.0, atol=1e-2), (solver, i, delta)
+        assert result.noise_levels == [0.0, 0.5, 1.0]
+
+
+def test_recorder_never_perturbs_the_trajectory():
+    torch.manual_seed(0)
+    adapter, runner = make_runner()
+    adapter.latent = torch.randn(1, FRAMES, DIM, H, W)
+    adapter.oracle_eps = torch.randn(1, FRAMES, DIM, H, W)
+    cfg = InversionConfig(num_steps=6, num_captures=6)
+
+    clean = runner.invert(torch.zeros(1), inversion=cfg)
+
+    layout = runner.layout
+    regions = {"all": np.ones((layout.frames, layout.height, layout.width), np.float32)}
+    weights, names = build_pool_weights(layout, regions, {"all": (0, layout.frames)})
+    watched = runner.invert(
+        torch.zeros(1), inversion=cfg,
+        recorder=ActivationRecorder(weights, names), sites="block.*.resid_post",
+    )
+    assert torch.allclose(clean.noise, watched.noise)
+
+
+def test_step_override_restored_after_inversion():
+    """A leaked override would silently mislabel every later generation step."""
+    torch.manual_seed(0)
+    adapter, runner = make_runner()
+    adapter.latent = torch.randn(1, FRAMES, DIM, H, W)
+    runner.invert(torch.zeros(1), inversion=InversionConfig(num_steps=4))
+    assert runner.hooks.step_override is None
+
+
+# --------------------------------------------------------------------------- #
+# pooling and mask alignment
+# --------------------------------------------------------------------------- #
+
+
+def test_pool_weights_are_normalised_and_disjoint_by_phase():
+    layout = TokenLayout("video", FRAMES, H, W, 0)
+    occ = np.zeros((FRAMES, H, W), np.float32)
+    occ[:, 0, 0] = 1.0
+    weights, names = build_pool_weights(
+        layout, {"A": occ}, {"pre": (0, 1), "post": (1, FRAMES)}
+    )
+    assert names == ["A.pre", "A.post"]
+    assert np.allclose(weights.sum(1).numpy(), 1.0)
+    # A phase split must not let one phase's tokens bleed into the other.
+    assert float((weights[0] * weights[1]).sum()) == 0.0
+
+
+def test_empty_pool_is_zero_not_nan():
+    """An object outside the frame must yield a droppable row, not NaNs."""
+    layout = TokenLayout("video", FRAMES, H, W, 0)
+    empty = np.zeros((FRAMES, H, W), np.float32)
+    weights, _ = build_pool_weights(layout, {"gone": empty}, {"all": (0, FRAMES)})
+    assert np.isfinite(weights.numpy()).all()
+    assert float(weights.abs().sum()) == 0.0
+
+
+def test_pixel_frame_to_latent_matches_the_vae_grouping():
+    # First frame alone, then groups of four: the causal VAE's actual layout.
+    assert [pixel_frame_to_latent(f) for f in range(9)] == [0, 1, 1, 1, 1, 2, 2, 2, 2]
+    # The dataset's contact frame is the last pixel frame of its latent cell,
+    # so pre- and post-collision phases split cleanly with no straddling cell.
+    assert pixel_frame_to_latent(20) == 5
+    assert pixel_frame_to_latent(21) == 6
+    assert pixel_frame_to_latent(48) == 12
+
+
+def test_masks_to_latent_grid_measures_coverage():
+    layout = TokenLayout("video", 13, 30, 45, 0)
+    masks = np.zeros((49, 480, 720), np.uint8)
+    masks[:, :16, :16] = 1          # exactly one latent cell, fully covered
+    occ = masks_to_latent_grid(masks, layout, ids=(1,))
+    assert occ.shape == (1, 13, 30, 45)
+    assert occ[0, :, 0, 0].min() == 1.0
+    assert occ[0, :, 0, 1].max() == 0.0
+    # Half a cell reads as half occupancy, which is what makes soft weights
+    # meaningful for objects smaller than a 16x16 block.
+    masks[:] = 0
+    masks[:, :8, :16] = 1
+    occ = masks_to_latent_grid(masks, layout, ids=(1,))
+    assert abs(occ[0, 0, 0, 0] - 0.5) < 1e-6
+
+
+def test_probe_separates_signal_from_shuffled_control():
+    rng = np.random.default_rng(0)
+    n, d = 80, 64
+    Y = rng.normal(size=(n, 2))
+    X = Y @ rng.normal(size=(2, d)) + rng.normal(size=(n, d)) * 0.5
+    good = fit_probe(X, Y, split_seed=0)
+    assert good["r2"] > 0.8, good
+    assert good["r2_shuffled"] < 0.3, good
+
+    noise_only = fit_probe(rng.normal(size=(n, d)), Y, split_seed=0)
+    assert noise_only["r2"] < 0.3, noise_only
 
 
 if __name__ == "__main__":

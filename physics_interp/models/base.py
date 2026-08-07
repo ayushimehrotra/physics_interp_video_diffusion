@@ -178,12 +178,20 @@ class SiteSpec:
 class ModelAdapter(ABC):
     """Uniform handle on a loaded video diffusion model.
 
-    Subclasses own three responsibilities:
+    Subclasses own four responsibilities:
 
     1. Loading the pipeline (``load``) with the checkpoint's correct dtype.
     2. Exposing the denoiser and its per-block tap points (``build_sites``).
     3. Running the sampler (``generate``) and reporting how the batch axis is
        organised under classifier-free guidance (``cfg_batch_order``).
+    4. The three primitives inversion needs — ``encode_video``,
+       ``embed_prompt`` and ``denoise`` — so that the trajectory recovery in
+       :meth:`physics_interp.runner.VideoDiffusionRunner.invert` is written
+       once against any backbone.
+
+    The *schedule algebra* that inversion rests on lives here rather than in
+    each subclass, because it is a property of the noise parameterisation
+    (epsilon / v / flow) and not of the architecture. See :meth:`alpha_sigma`.
     """
 
     #: Registry key.
@@ -285,6 +293,111 @@ class ModelAdapter(ABC):
     @abstractmethod
     def generate(self, *, prompt: str, generation, generator, **kwargs) -> Any:
         """Run the sampler. Returns an object with ``.frames[0]`` (list of PIL)."""
+
+    # ---- inversion primitives --------------------------------------------- #
+
+    @property
+    def scheduler(self):
+        """The pipeline's noise scheduler."""
+        return self.pipe.scheduler
+
+    @abstractmethod
+    def encode_video(self, video: "torch.Tensor") -> torch.Tensor:
+        """Encode ``float [T, H, W, 3]`` in [0, 1] to a scaled clean latent.
+
+        Returns the latent in the layout the denoiser consumes, already
+        multiplied by the VAE's scaling factor — i.e. the ``Z_1`` that
+        inversion integrates backwards from.
+        """
+
+    @abstractmethod
+    def decode_latents(self, latents: torch.Tensor) -> torch.Tensor:
+        """Inverse of :meth:`encode_video`, as ``float [T, H, W, 3]`` in [0, 1].
+
+        Only needed to verify that a recovered trajectory still reconstructs
+        its source clip — the reconstruction check that tells you the inversion
+        did not diverge.
+        """
+
+    @abstractmethod
+    def embed_prompt(self, prompt: str) -> torch.Tensor:
+        """Text embeddings for a single unbatched prompt, ``[1, tokens, dim]``."""
+
+    @abstractmethod
+    def denoise(
+        self, latents: torch.Tensor, timestep: torch.Tensor, prompt_embeds: torch.Tensor
+    ) -> torch.Tensor:
+        """One raw denoiser forward. No guidance, no scheduler step.
+
+        This is the call whose internals the hooks observe. Whatever the model
+        parameterises (epsilon, v, or flow velocity) is returned verbatim;
+        :meth:`split_prediction` is what turns it into ``(x0, eps)``.
+        """
+
+    # ---- schedule algebra -------------------------------------------------- #
+
+    def alpha_sigma(self, timestep) -> tuple[float, float]:
+        """Coefficients ``(alpha, sigma)`` with ``x_t = alpha * x_0 + sigma * eps``.
+
+        This single form covers both families we care about, which is what lets
+        one inversion loop serve all of them:
+
+        * **DDPM/DDIM** (CogVideoX): ``alpha = sqrt(a_bar_t)``,
+          ``sigma = sqrt(1 - a_bar_t)``.
+        * **Flow matching** (LTX, Wan): ``x_t = (1 - s) x_0 + s * eps``, so
+          ``alpha = 1 - s`` and ``sigma = s``.
+
+        Expressing the update as a re-projection onto ``(alpha, sigma)`` at the
+        next noise level — rather than as a hand-rolled per-scheduler formula —
+        also makes the Euler step *exact* for rectified flow, where the ODE
+        solution between two noise levels is precisely this interpolation.
+        """
+        sched = self.scheduler
+        if hasattr(sched, "alphas_cumprod"):
+            idx = int(timestep)
+            a_bar = float(sched.alphas_cumprod[idx])
+            return a_bar**0.5, (1.0 - a_bar) ** 0.5
+        if hasattr(sched, "sigmas"):
+            # Flow-matching schedulers index sigmas by step, not by timestep, so
+            # locate the entry matching this timestep rather than assuming order.
+            ts = getattr(sched, "timesteps", None)
+            if ts is None:
+                raise RuntimeError("flow scheduler exposes sigmas but no timesteps")
+            pos = int((ts - float(timestep)).abs().argmin())
+            s = float(sched.sigmas[pos])
+            return 1.0 - s, s
+        raise RuntimeError(
+            f"{type(sched).__name__} exposes neither alphas_cumprod nor sigmas; "
+            "alpha_sigma() cannot infer its noise parameterisation."
+        )
+
+    def split_prediction(
+        self, model_out: torch.Tensor, sample: torch.Tensor, alpha: float, sigma: float
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Convert a raw denoiser output into ``(x0_pred, eps_pred)``.
+
+        Reads ``prediction_type`` off the scheduler config rather than assuming
+        one, because it genuinely differs between checkpoints of the *same*
+        architecture — so hardcoding it would silently produce a wrong
+        trajectory rather than an error.
+        """
+        kind = getattr(self.scheduler.config, "prediction_type", "epsilon")
+        if kind == "epsilon":
+            eps = model_out
+            x0 = (sample - sigma * eps) / max(alpha, 1e-8)
+        elif kind == "v_prediction":
+            x0 = alpha * sample - sigma * model_out
+            eps = alpha * model_out + sigma * sample
+        elif kind == "sample":
+            x0 = model_out
+            eps = (sample - alpha * x0) / max(sigma, 1e-8)
+        elif kind in ("flow_prediction", "flow"):
+            # Rectified flow: the model predicts v = eps - x0.
+            x0 = sample - sigma * model_out
+            eps = sample + alpha * model_out
+        else:
+            raise NotImplementedError(f"unsupported prediction_type {kind!r}")
+        return x0, eps
 
     def cfg_batch_order(self, guidance_scale: float) -> list[str]:
         """Names of the batch-axis groups during denoising, in order.

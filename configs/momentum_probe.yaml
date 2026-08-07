@@ -1,0 +1,107 @@
+# Is momentum linearly decodable from CogVideoX-2b's internal states?
+#
+# Two stages, both driven by this file:
+#
+#   python scripts/run_experiment.py configs/momentum_probe.yaml --mode capture
+#   python scripts/run_experiment.py configs/momentum_probe.yaml --mode probe
+#
+# Capture inverts every scene in `dataset_dir` — encoding the rendered clip to a
+# clean latent and integrating the model's own sampler backwards to noise — and
+# records pooled activations at every transformer block along the way. Probe fits
+# ridge regressions from those activations to the simulator's labels. Only capture
+# needs a GPU; probe re-runs in seconds against different targets.
+
+name: momentum_probe
+output_dir: outputs
+dataset_dir: momentum_dataset/probe_set
+notes: >
+  Momentum decodability along the inverted trajectory. Report on the
+  matched-momentum stratum: momentum and mass are only decorrelated there, so it
+  is the subset where a momentum probe is distinguishable from a mass probe.
+
+model:
+  id: cogvideox-2b
+  dtype: auto          # -> fp16, the dtype CogVideoX-2b was trained in
+  vae_tiling: true
+  vae_slicing: true
+  # 24GB is enough for inversion (no CFG doubling, no VAE decode) but tight.
+  # Turn model_cpu_offload on if the encode step OOMs.
+  cpu_offload: false
+  model_cpu_offload: false
+
+generation:
+  num_frames: 49       # 13 latent frames at the VAE's 4x temporal compression
+  height: 480
+  width: 720           # -> 30 x 45 patch grid, 17550 video tokens
+  # Unused in capture mode (nothing is sampled), but they define the token layout
+  # that the pooling masks are built against, so they must match the dataset.
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  fps: 8
+
+inversion:
+  # Trajectory fidelity, not reconstruction quality, is what carries the signal:
+  # a coarse inversion still rebuilds the clip while visiting different internal
+  # states. The reference paper measures probe accuracy collapsing from 0.82 at
+  # 100 steps to 0.57 at 20, with most of it recovered by 40 — so 50 sits on the
+  # plateau at half the cost. Raise to 100 for final numbers; do not go below 40.
+  num_steps: 50
+  solver: euler        # "heun" is 2nd order at 2x the cost; worth it below ~40 steps
+  prompt: ""           # held constant so no scene information enters via the text stream
+  guidance_scale: 1.0  # unguided: a CFG trajectory is not the one being inverted
+  num_captures: 9      # recorded points along the trajectory; storage only
+  use_segmentation: true
+
+# Every block's video-token residual stream. ~3 MB per scene once pooled.
+sites: "block.*.resid_post"
+
+probe:
+  # The default list covers both experiments; `--targets` overrides it so a
+  # single capture can be interrogated several ways without a second config.
+  targets:
+    # --- plausibility (binary; scored by accuracy, not R2) ------------------
+    - momentum_conserved
+    # --- the conserved quantity itself --------------------------------------
+    - momentum_pre               # 2-vector
+    - momentum_post
+    - momentum_magnitude_pre
+    - momentum_delta             # zero iff conserved; the violation as a vector
+    # --- other physical variables -------------------------------------------
+    - kinetic_energy_pre
+    - kinetic_energy_post
+    - ke_ratio
+    - velocity_A_pre
+    - velocity_B_pre
+    - velocity_A_post
+    - impulse
+    - restitution
+    # --- controls -----------------------------------------------------------
+    # Readable off a single frame. A dynamic quantity has to beat these to be
+    # interesting; if momentum only matches mass_A, the probe found mass.
+    - mass_A
+    - radius_A
+    - speed_A_pre
+  # Which pooled regions to use as probe input; each is fit separately.
+  # Conservation is a statement about the *aftermath*, so the post pools are the
+  # ones that can carry it — a pre-collision pool scoring above chance on
+  # plausibility would mean something has leaked.
+  pools:
+    - all.pre                    # frame-wide, latent frames 0-5 (pre-collision)
+    - all.post                   # frame-wide, latent frames 6-12
+    - all.all                    # whole clip
+    - A.pre                      # tokens where sphere A actually is
+    - A.post
+    - B.post
+  alphas: [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0]
+  train_fraction: 0.6            # the protocol the reference paper uses
+  split_seed: 0
+  standardize: true
+  # Restrict the fit to a labelled subset. Fit on everything first for coverage,
+  # then re-run with the line below uncommented: momentum and mass are only
+  # decorrelated inside the matched-momentum stratum (+0.11 vs +0.59 overall), so
+  # that is the subset where a high momentum R2 rules out a mass readout. Probing
+  # is cheap to repeat — it reads the captures, not the GPU.
+  #   where: {stratum: matched_momentum}
+  where: {}
+
+resume: true

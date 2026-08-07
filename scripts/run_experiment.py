@@ -1,26 +1,41 @@
 #!/usr/bin/env python
 """Run one experiment config. This is the only script an experiment needs.
 
-Single GPU:
+Three modes, normally run in sequence:
 
-    .venv/bin/python scripts/run_experiment.py configs/red_ball_smoke.yaml
+    # 1. invert every simulator scene and store pooled activations
+    .venv/bin/python scripts/run_experiment.py configs/momentum_probe.yaml --mode capture
+
+    # 2. fit linear probes on what was captured
+    .venv/bin/python scripts/run_experiment.py configs/momentum_probe.yaml --mode probe
+
+    # generation sweeps (prompts x seeds) are the third mode, and the default
+    .venv/bin/python scripts/run_experiment.py configs/red_ball_slope.yaml
 
 All GPUs on the box (the wrapper picks the count):
 
-    ./scripts/run_experiment.sh configs/red_ball_smoke.yaml
+    ./scripts/run_experiment.sh configs/momentum_probe.yaml --mode capture
 
-Every run writes its own directory under ``output_dir/<experiment>/`` and a
-``DONE`` marker when complete, so re-running a config only executes what is
-missing. That makes an interrupted sweep resumable and makes it safe to hand a
-collaborator a config and say "just run this until it finishes".
+``capture`` and ``generate`` shard across ranks and skip finished work, so an
+interrupted sweep resumes. ``probe`` is cheap, single-process, and reads only
+what capture wrote — so it can be re-run with different targets, or restricted
+to a stratum, without touching a GPU.
+
+To check that an inversion actually stayed on the model's trajectory, use
+``VideoDiffusionRunner.resample()`` interactively on one scene and compare the
+result to the source clip. It is not wired into a sweep flag because it doubles
+the cost per scene and is a spot check, not something to run 1000 times.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import traceback
 from pathlib import Path
+
+import numpy as np
 
 # Allow running from a checkout without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -32,6 +47,7 @@ from physics_interp import (  # noqa: E402
     load_config,
     shard,
 )
+from physics_interp.interp import probe_grid  # noqa: E402
 from physics_interp.video import write_json  # noqa: E402
 
 
@@ -42,8 +58,16 @@ def parse_args(argv=None):
     )
     p.add_argument("config", type=Path, help="path to an experiment YAML")
     p.add_argument(
+        "--mode", choices=("generate", "capture", "probe"), default="generate",
+        help="generate videos, capture activations from a dataset, or fit probes",
+    )
+    p.add_argument(
         "-o", "--output-dir", default=None,
         help="override output_dir from the config",
+    )
+    p.add_argument(
+        "--dataset-dir", default=None,
+        help="override dataset_dir from the config (capture mode)",
     )
     p.add_argument(
         "--device", default=None,
@@ -51,15 +75,15 @@ def parse_args(argv=None):
     )
     p.add_argument(
         "--limit", type=int, default=None,
-        help="run at most this many specs on this rank (smoke tests)",
+        help="run at most this many units on this rank (smoke tests)",
     )
     p.add_argument(
         "--no-resume", action="store_true",
-        help="re-run specs that already have a DONE marker",
+        help="re-run units that are already complete",
     )
     p.add_argument(
         "--dry-run", action="store_true",
-        help="print the run plan and exit without loading the model",
+        help="print the plan and exit without loading the model",
     )
     p.add_argument(
         "--list-sites", action="store_true",
@@ -67,20 +91,276 @@ def parse_args(argv=None):
     )
     p.add_argument(
         "--keep-going", action="store_true",
-        help="continue past a failing run instead of aborting the rank",
+        help="continue past a failing unit instead of aborting the rank",
+    )
+    # Probe-mode overrides. Probing is cheap and re-reads captures, so asking a
+    # different question should not need a second config file.
+    p.add_argument(
+        "--targets", default=None,
+        help="probe mode: comma-separated label targets, overriding the config",
+    )
+    p.add_argument(
+        "--where", default=None,
+        help="probe mode: restrict scenes, as comma-separated key=value pairs "
+             "(e.g. 'stratum=matched_momentum'). Values true/false are parsed "
+             "as booleans, digits as numbers.",
+    )
+    p.add_argument(
+        "--tag", default=None,
+        help="probe mode: suffix for the results file, so several experiments "
+             "off one config do not overwrite each other",
     )
     return p.parse_args(argv)
 
 
-def main(argv=None) -> int:
-    args = parse_args(argv)
-    cfg = load_config(args.config)
-    if args.output_dir:
-        cfg.output_dir = args.output_dir
-    if args.no_resume:
-        cfg.resume = False
+def parse_where(spec: str | None) -> dict:
+    """Parse 'a=b,c=true' into {'a': 'b', 'c': True}."""
+    out: dict = {}
+    for item in (spec or "").split(","):
+        if not item.strip():
+            continue
+        key, _, value = item.partition("=")
+        value = value.strip()
+        if value.lower() in ("true", "false"):
+            parsed: object = value.lower() == "true"
+        elif value.lstrip("-").replace(".", "", 1).isdigit():
+            parsed = float(value) if "." in value else int(value)
+        else:
+            parsed = value
+        out[key.strip()] = parsed
+    return out
 
-    info = get_dist_info(args.device)
+
+# --------------------------------------------------------------------------- #
+# capture
+# --------------------------------------------------------------------------- #
+
+
+def scene_dirs(dataset_dir: Path) -> list[Path]:
+    """Complete scenes, in a stable order."""
+    return sorted(
+        d for d in dataset_dir.glob("scene_*")
+        if (d / "_COMPLETE").exists() and (d / "labels.json").exists()
+    )
+
+
+def run_capture(cfg, args, info) -> int:
+    dataset_dir = Path(args.dataset_dir or cfg.dataset_dir)
+    if not dataset_dir.is_dir():
+        info.log(f"dataset_dir {dataset_dir} does not exist")
+        return 1
+
+    out_root = Path(cfg.output_dir) / cfg.name / "activations"
+    scenes = scene_dirs(dataset_dir)
+    mine = shard(scenes, info)
+    todo = mine
+    if cfg.resume:
+        todo = [s for s in mine if not (out_root / f"{s.name}.npz").exists()]
+    skipped = len(mine) - len(todo)   # count before --limit, or the two conflate
+    if args.limit is not None:
+        todo = todo[: args.limit]
+
+    if info.is_main:
+        print(
+            f"capture '{cfg.name}': {len(scenes)} scene(s) in {dataset_dir} "
+            f"across {info.world_size} process(es) -> {out_root}",
+            flush=True,
+        )
+    info.log(f"assigned {len(mine)}, skipping {skipped} done, running {len(todo)}")
+    if args.dry_run:
+        for s in todo:
+            info.log(f"  would invert {s.name}")
+        return 0
+    if not todo and not args.list_sites:
+        info.log("nothing to do")
+        return 0
+
+    info.log(f"loading {cfg.model.id} ...")
+    runner = VideoDiffusionRunner.from_config(cfg, device=info.device)
+    info.log(f"loaded: {runner.describe()}")
+    if args.list_sites:
+        if info.is_main:
+            for name in runner.sites:
+                print(name)
+        runner.close()
+        return 0
+
+    inv = cfg.inversion
+    info.log(
+        f"inverting with {inv.num_steps} {inv.solver} steps, capturing at "
+        f"{inv.num_captures if inv.capture_steps is None else len(inv.capture_steps)} "
+        f"point(s), sites={cfg.sites!r}"
+    )
+
+    failures: list[tuple[str, str]] = []
+    out_root.mkdir(parents=True, exist_ok=True)
+    try:
+        for i, scene in enumerate(todo, 1):
+            info.log(f"[{i}/{len(todo)}] {scene.name}")
+            try:
+                rec = runner.capture_scene(scene, inversion=inv, sites=cfg.sites)
+                payload = {f"act.{k}": v for k, v in rec["activations"].items()}
+                meta = {k: v for k, v in rec.items() if k != "activations"}
+                # Labels are large; keep the whole thing so probing can ask a
+                # new question later without re-inverting anything.
+                payload["meta"] = np.frombuffer(
+                    json.dumps(meta, default=str).encode(), dtype=np.uint8
+                )
+                np.savez_compressed(out_root / f"{scene.name}.npz", **payload)
+                info.log(f"    -> {out_root / (scene.name + '.npz')}")
+            except Exception:
+                failures.append((scene.name, traceback.format_exc()))
+                info.log(f"    FAILED {scene.name}:\n{traceback.format_exc()}")
+                if not args.keep_going:
+                    raise
+    finally:
+        runner.close()
+
+    return _report_failures(failures, cfg, info, len(todo) - len(failures))
+
+
+# --------------------------------------------------------------------------- #
+# probe
+# --------------------------------------------------------------------------- #
+
+
+def load_captures(out_root: Path):
+    """Read every captured scene into stacked arrays + aligned labels."""
+    paths = sorted(out_root.glob("scene_*.npz"))
+    if not paths:
+        raise FileNotFoundError(f"no captures in {out_root}; run --mode capture first")
+
+    per_site: dict[str, list[np.ndarray]] = {}
+    labels, metas = [], []
+    for path in paths:
+        with np.load(path, allow_pickle=False) as z:
+            meta = json.loads(bytes(z["meta"]).decode())
+            for key in z.files:
+                if key.startswith("act."):
+                    per_site.setdefault(key[4:], []).append(z[key])
+        labels.append(meta["labels"])
+        metas.append(meta)
+
+    # A site missing from some scenes would stack into a misaligned array and
+    # silently pair scene i's activations with scene j's labels.
+    n = len(paths)
+    ragged = {s: len(v) for s, v in per_site.items() if len(v) != n}
+    if ragged:
+        raise ValueError(f"site(s) captured for only some scenes: {ragged} of {n}")
+
+    return {s: np.stack(v) for s, v in per_site.items()}, labels, metas
+
+
+def run_probe(cfg, args) -> int:
+    out_root = Path(cfg.output_dir) / cfg.name / "activations"
+    activations, labels, metas = load_captures(out_root)
+    pool_names = metas[0]["pools"]
+
+    targets = args.targets.split(",") if args.targets else cfg.probe.targets
+    where = parse_where(args.where) if args.where else (cfg.probe.where or None)
+
+    print(
+        f"probe '{cfg.name}': {len(labels)} scene(s), {len(activations)} site(s), "
+        f"{len(metas[0]['captured_steps'])} capture step(s), pools={pool_names}"
+        + (f", where={where}" if where else ""),
+        flush=True,
+    )
+
+    rows = probe_grid(
+        activations,
+        labels,
+        targets=[t.strip() for t in targets],
+        pools=cfg.probe.pools,
+        pool_names=pool_names,
+        alphas=cfg.probe.alphas,
+        train_fraction=cfg.probe.train_fraction,
+        split_seed=cfg.probe.split_seed,
+        standardize=cfg.probe.standardize,
+        where=where,
+    )
+
+    suffix = f"_{args.tag}" if args.tag else ""
+    dest = Path(cfg.output_dir) / cfg.name / f"probes{suffix}.json"
+    write_json(
+        {
+            "config": {"probe": cfg.probe.__dict__, "inversion": cfg.inversion.__dict__},
+            "targets": targets,
+            "where": where,
+            "num_scenes": len(labels),
+            "noise_levels": metas[0]["noise_levels"],
+            "results": rows,
+        },
+        dest,
+    )
+
+    _print_summary(rows, metas[0])
+    print(f"\nfull grid ({len(rows)} fits) -> {dest}", flush=True)
+    return 0
+
+
+def _print_summary(rows, meta) -> None:
+    """Best fit per (target, pool), with the controls beside it.
+
+    Binary targets are scored and ranked by accuracy rather than R-squared: a
+    ridge fit can separate two classes cleanly while having an unimpressive
+    R-squared, so ranking those by R-squared would pick the wrong block.
+    """
+    if not rows:
+        print("no probes fit — every pool was empty or too few scenes")
+        return
+
+    levels = meta["noise_levels"]
+    by_key: dict[tuple, list] = {}
+    for r in rows:
+        by_key.setdefault((r["target"], r["pool"]), []).append(r)
+
+    binary = {t for (t, _), g in by_key.items() if "accuracy" in g[0]}
+    if binary:
+        print(f"\n{'target':<24} {'pool':<10} {'best site':<22} {'noise':>6} "
+              f"{'acc':>7} {'bal':>7} {'shuf':>7} {'VAE':>7}")
+        print("-" * 96)
+        for (target, pool), group in sorted(by_key.items()):
+            if target not in binary:
+                continue
+            real = [r for r in group if r["site"] != "vae.latent"]
+            best = max(real or group, key=lambda r: r.get("accuracy", 0.0))
+            vae = max((r.get("accuracy", float("nan")) for r in group
+                       if r["site"] == "vae.latent"), default=float("nan"))
+            noise = levels[best["step_index"]] if best["step_index"] < len(levels) else 0.0
+            print(f"{target:<24} {pool:<10} {best['site']:<22} {noise:>6.2f} "
+                  f"{best['accuracy']:>7.3f} {best['balanced_accuracy']:>7.3f} "
+                  f"{best.get('accuracy_shuffled', float('nan')):>7.3f} {vae:>7.3f}")
+        print("\nacc/bal are held-out accuracy and balanced accuracy; chance is 0.50.")
+
+    continuous = [k for k in by_key if k[0] not in binary]
+    if continuous:
+        print(f"\n{'target':<24} {'pool':<10} {'best site':<22} {'noise':>6} "
+              f"{'R2':>7} {'shuf':>7} {'VAE':>7}")
+        print("-" * 96)
+        for (target, pool) in sorted(continuous):
+            group = by_key[(target, pool)]
+            real = [r for r in group if r["site"] != "vae.latent"]
+            best = max(real or group, key=lambda r: np.nan_to_num(r["r2"], nan=-9e9))
+            vae_r2 = max((r["r2"] for r in group if r["site"] == "vae.latent"),
+                         default=float("nan"))
+            noise = levels[best["step_index"]] if best["step_index"] < len(levels) else 0.0
+            print(f"{target:<24} {pool:<10} {best['site']:<22} {noise:>6.2f} "
+                  f"{best['r2']:>7.3f} {best.get('r2_shuffled', float('nan')):>7.3f} "
+                  f"{vae_r2:>7.3f}")
+
+    print(
+        "\n'shuf' is the same pipeline on permuted labels; 'VAE' is the raw "
+        "autoencoder latent, which carries no\nphysical objective. A block only "
+        "tells you something if it clears both."
+    )
+
+
+# --------------------------------------------------------------------------- #
+# generate (the original grid)
+# --------------------------------------------------------------------------- #
+
+
+def run_generate(cfg, args, info) -> int:
     specs = expand_grid(cfg)
     mine = shard(specs, info)
 
@@ -117,6 +397,7 @@ def main(argv=None) -> int:
         if info.is_main:
             for name in runner.sites:
                 print(name)
+        runner.close()
         return 0
 
     failures: list[tuple[str, str]] = []
@@ -134,16 +415,36 @@ def main(argv=None) -> int:
     finally:
         runner.close()
 
-    if failures:
-        # A failure report per rank, so a sweep's damage is auditable after the
-        # fact rather than lost in interleaved stdout.
-        report = Path(cfg.output_dir) / cfg.name / f"failures_rank{info.rank}.json"
-        write_json([{"run": n, "traceback": tb} for n, tb in failures], report)
-        info.log(f"{len(failures)} run(s) failed; report written to {report}")
-        return 1
+    return _report_failures(failures, cfg, info, len(todo) - len(failures))
 
-    info.log(f"done: {len(todo)} run(s)")
-    return 0
+
+def _report_failures(failures, cfg, info, completed: int = 0) -> int:
+    if not failures:
+        info.log(f"done: {completed} unit(s), no failures")
+        return 0
+    # A failure report per rank, so a sweep's damage is auditable after the
+    # fact rather than lost in interleaved stdout.
+    report = Path(cfg.output_dir) / cfg.name / f"failures_rank{info.rank}.json"
+    write_json([{"unit": n, "traceback": tb} for n, tb in failures], report)
+    info.log(f"{len(failures)} unit(s) failed; report written to {report}")
+    return 1
+
+
+def main(argv=None) -> int:
+    args = parse_args(argv)
+    cfg = load_config(args.config)
+    if args.output_dir:
+        cfg.output_dir = args.output_dir
+    if args.no_resume:
+        cfg.resume = False
+
+    if args.mode == "probe":
+        return run_probe(cfg, args)
+
+    info = get_dist_info(args.device)
+    if args.mode == "capture":
+        return run_capture(cfg, args, info)
+    return run_generate(cfg, args, info)
 
 
 if __name__ == "__main__":

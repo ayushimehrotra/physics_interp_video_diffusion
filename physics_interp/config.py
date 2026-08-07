@@ -27,6 +27,9 @@ __all__ = [
     "ModelConfig",
     "GenerationConfig",
     "PromptConfig",
+    "InversionConfig",
+    "ProbeConfig",
+    "HookConfig",
     "ExperimentConfig",
     "load_config",
     "stable_hash",
@@ -120,6 +123,82 @@ class PromptConfig:
 
 
 # --------------------------------------------------------------------------- #
+# inversion / probing
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class InversionConfig:
+    """How to recover a latent trajectory for an existing video.
+
+    These are the knobs that decide whether recorded activations mean anything,
+    so the defaults are deliberately expensive rather than fast.
+    """
+
+    # Integration steps from clean latent to noise. Probe signal degrades much
+    # faster than reconstruction quality as this drops: a coarse trajectory
+    # still rebuilds the video but stops passing through the states the model
+    # would actually have visited. 100 is the safe default; below ~40 the
+    # recorded states stop being worth probing.
+    num_steps: int = 100
+    # "euler" (1 network call/step) or "heun" (2 calls/step, 2nd order). Heun
+    # measurably recovers signal at low step counts; at num_steps=100 Euler is
+    # usually enough and half the cost.
+    solver: str = "euler"
+    # Text conditioning during inversion. Held constant across the dataset on
+    # purpose: a per-scene prompt would inject scene information through the
+    # text stream, and a probe reading that is not reading the video.
+    prompt: str = ""
+    # Inversion runs unguided. CFG is not the gradient of any potential, so a
+    # guided trajectory is not the one being inverted. Exposed to make the
+    # choice visible, not because it should be changed.
+    guidance_scale: float = 1.0
+    # How many points along the trajectory to record at, spread evenly.
+    # Integration cost is set by num_steps; this only sets storage.
+    num_captures: int = 9
+    # Explicit step indices, overriding num_captures when set.
+    capture_steps: list[int] | None = None
+    # Pool activations over per-object regions from the simulator's masks. With
+    # this off, only the frame-wide "all" region is recorded.
+    use_segmentation: bool = True
+
+
+@dataclass
+class ProbeConfig:
+    """How to fit and score linear probes on captured activations."""
+
+    # Label paths into labels.json, dotted, with the probe target derived by
+    # `physics_interp.probe.extract_label`. Vector-valued targets are fit
+    # component-wise and scored jointly.
+    targets: list[str] = field(
+        default_factory=lambda: [
+            "collision.pre.total_momentum",
+            "collision.post.total_momentum",
+            "momentum_conserved",
+        ]
+    )
+    # Which pooled regions to use as probe input. Each is fit separately.
+    pools: list[str] = field(default_factory=lambda: ["all.pre", "all.post", "A.pre", "B.post"])
+    # Ridge penalties swept per fit; the best is chosen on a validation split
+    # carved out of the training half, never on the test half.
+    alphas: list[float] = field(
+        default_factory=lambda: [1e-2, 1e-1, 1.0, 1e1, 1e2, 1e3, 1e4]
+    )
+    # Fraction of scenes used for training. The paper's protocol is 60/40.
+    train_fraction: float = 0.6
+    # Seed for the train/test split, so a rerun scores the same partition.
+    split_seed: int = 0
+    # Standardise features before fitting. With 1920 dims and few hundred
+    # scenes this matters more than the penalty value itself.
+    standardize: bool = True
+    # Restrict the fit to scenes whose labels match, e.g.
+    # {"stratum": "matched_momentum"}. Momentum and mass are only decorrelated
+    # inside that stratum, so it is the subset where a momentum probe can be
+    # told apart from a mass probe. Empty means all scenes.
+    where: dict[str, Any] = field(default_factory=dict)
+
+
+# --------------------------------------------------------------------------- #
 # hooks (extension point)
 # --------------------------------------------------------------------------- #
 
@@ -168,6 +247,14 @@ class ExperimentConfig:
     prompts: list[PromptConfig] = field(default_factory=list)
     seeds: list[int] = field(default_factory=lambda: [0])
     hooks: list[HookConfig] = field(default_factory=list)
+    # Probing side. Unused by the generation grid, and vice versa — a config
+    # normally drives one or the other.
+    inversion: InversionConfig = field(default_factory=InversionConfig)
+    probe: ProbeConfig = field(default_factory=ProbeConfig)
+    # Directory of simulator scenes to invert (each with labels.json).
+    dataset_dir: str = ""
+    # Which sites to record during inversion.
+    sites: str | list[str] = "block.*.resid_post"
     # Skip runs whose output directory already has a completion marker.
     resume: bool = True
     # Free-form notes carried into every run's metadata.json.
@@ -187,12 +274,16 @@ class ExperimentConfig:
         generation = _from_dict(GenerationConfig, data.pop("generation", {}))
         prompts = [_from_dict(PromptConfig, p) for p in data.pop("prompts", []) or []]
         hooks = [_from_dict(HookConfig, h) for h in data.pop("hooks", []) or []]
+        inversion = _from_dict(InversionConfig, data.pop("inversion", {}))
+        probe = _from_dict(ProbeConfig, data.pop("probe", {}))
 
         cfg = _from_dict(cls, data)
         cfg.model = model
         cfg.generation = generation
         cfg.prompts = prompts
         cfg.hooks = hooks
+        cfg.inversion = inversion
+        cfg.probe = probe
         cfg.validate()
         return cfg
 
@@ -200,13 +291,24 @@ class ExperimentConfig:
         return dataclasses.asdict(self)
 
     def validate(self) -> None:
-        if not self.prompts:
-            raise ValueError("config has no prompts")
+        # A config drives generation (prompts x seeds) or probing (a dataset of
+        # existing videos), so neither side is required on its own — but one of
+        # them has to be there or the config does nothing at all.
+        if not self.prompts and not self.dataset_dir:
+            raise ValueError(
+                "config has neither `prompts` (generation) nor `dataset_dir` (probing)"
+            )
         ids = [p.id for p in self.prompts]
         if len(set(ids)) != len(ids):
             raise ValueError(f"duplicate prompt ids: {ids}")
-        if not self.seeds:
-            raise ValueError("config has no seeds")
+        if self.prompts and not self.seeds:
+            raise ValueError("config has prompts but no seeds")
+        if self.inversion.solver not in ("euler", "heun"):
+            raise ValueError(
+                f"unknown solver {self.inversion.solver!r}; use 'euler' or 'heun'"
+            )
+        if not 0.0 < self.probe.train_fraction < 1.0:
+            raise ValueError("probe.train_fraction must be strictly between 0 and 1")
 
     def save(self, path: str | Path) -> None:
         path = Path(path)
