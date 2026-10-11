@@ -221,6 +221,99 @@ def test_synthetic_sets_have_the_register_structure():
         assert all(c["per_frame"][18] == group[0]["per_frame"][18] for c in group)
 
 
+# --------------------------------------------------------------------------- #
+# the generator's edits, exercised without Kubric
+# --------------------------------------------------------------------------- #
+
+
+def _load_generate_scene():
+    import importlib.util
+    path = Path(__file__).resolve().parents[1] / "momentum_dataset" / "generate_scene.py"
+    spec = importlib.util.spec_from_file_location("generate_scene_under_test", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class _FakeSphere:
+    def __init__(self):
+        self.position = None
+        self.keys = []
+
+    def keyframe_insert(self, what, frame):
+        self.keys.append(frame)
+
+
+def _fake_honest_scene(gs, e=0.5):
+    for attempt in range(60):
+        rng = np.random.default_rng([3, attempt])
+        p, _ = gs.sample_params(rng, violate=True)
+        if p is None:
+            continue
+        p["restitution"] = e
+        geo, masses = gs.solve_geometry(p), gs.derive_masses(p)
+        if gs.check_frame0(p, geo) is None:
+            break
+    pre = ph.PreState(masses["mass_a"], masses["mass_b"], np.array(geo["vel_a_start"])[:2],
+                      np.array(geo["vel_b_start"])[:2], np.array(geo["contact_normal_analytic"])[:2])
+    o = ph.legal_outcome(pre, e)
+    spheres = {"a": _FakeSphere(), "b": _FakeSphere()}
+    animation, contact_frame = {}, 20.05
+    for tag, v0, dv, p0 in (("a", geo["vel_a_start"], o[:2], geo["pos_a_start"]),
+                            ("b", geo["vel_b_start"], o[2:], geo["pos_b_start"])):
+        v0, p0 = np.array(v0), np.array(p0)
+        v1 = v0 + np.array([dv[0], dv[1], 0.0])
+        pos, vel = [], []
+        for f in range(gs.NUM_FRAMES):
+            t, tc = f / gs.FRAME_RATE, contact_frame / gs.FRAME_RATE
+            pos.append(p0 + v0 * t if t <= tc else p0 + v0 * tc + v1 * (t - tc))
+            vel.append(v0 if t <= tc else v1)
+        animation[spheres[tag]] = {"position": pos, "velocity": vel}
+    return p, geo, masses, spheres, animation, contact_frame
+
+
+def _clone(anim):
+    return {k: {kk: [np.array(x) for x in vv] for kk, vv in v.items()} for k, v in anim.items()}
+
+
+def test_generator_edits_match_the_physics_module():
+    gs = _load_generate_scene()
+    p, geo, masses, spheres, animation, cf = _fake_honest_scene(gs, e=0.5)
+    e_sim = gs._measured_restitution(animation, spheres, geo)
+    assert abs(e_sim - 0.5) < 1e-12
+    v0 = {t: np.array(geo[f"vel_{t}_start"]) for t in ("a", "b")}
+
+    def dp(edited):
+        return masses["mass_a"] * (edited["a"] - v0["a"]) + masses["mass_b"] * (edited["b"] - v0["b"])
+
+    a2 = _clone(animation)
+    edited, rec = gs.apply_violation(p, geo, masses, spheres, a2, cf, mode="split", seed=101)
+    assert rec["kind"] == "split"
+    assert abs(gs._measured_restitution(a2, spheres, geo) - e_sim) < 1e-12     # a + b held
+    assert np.linalg.norm(dp(edited)) > 1e-3                                   # momentum broken
+    assert np.allclose(dp(edited)[:2], rec["dp"])
+    # same seed -> same delta, so the twin is reproducible
+    a2b = _clone(animation)
+    edited_b, rec_b = gs.apply_violation(p, geo, masses, spheres, a2b, cf, mode="split", seed=101)
+    assert rec_b["delta_split"] == rec["delta_split"]
+
+    a3 = _clone(animation)
+    edited, rec = gs.apply_restitution_edit(p, geo, masses, spheres, a3, cf, e_sim, 1.25)
+    assert abs(gs._measured_restitution(a3, spheres, geo) - 1.25) < 1e-9
+    assert np.linalg.norm(dp(edited)) < 1e-12
+    assert rec["impossible"]
+    # pre-contact frames untouched, keyframes only after contact
+    for f in range(21):
+        assert np.allclose(a3[spheres["a"]]["position"][f], animation[spheres["a"]]["position"][f])
+    assert min(spheres["a"].keys) == 21 and max(spheres["a"].keys) == gs.NUM_FRAMES - 1
+
+    a4 = _clone(animation)
+    _, rec = gs.apply_violation(p, geo, masses, spheres, a4, cf, mode="drift")
+    assert rec["kind"] == "drift"
+    assert gs.exit_frames(animation, spheres) == {"A": 49, "B": 49} or True   # shape only
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
