@@ -18,6 +18,22 @@ Physics design (see README.md "Design decisions" for the reasoning):
     to check where contact actually landed; scenes that miss by more than
     CONTACT_TOLERANCE frames are rejected and resampled before a single
     pixel is rendered.
+
+Edited aftermaths (the register's conservation / ladder sets). The collision is
+always simulated honestly and validated first; an edit then overwrites the
+post-contact velocities and re-keyframes the spheres along them, so every clip
+of one seed shares a bit-identical pre-contact segment:
+  --violate --violation-mode drift   legacy probe_set edit: a common drift of both
+                                     balls in a random direction (VIOLATION_SCALE_RANGE)
+  --violate --violation-mode split   conservation_set_v1 edit: keep the total kick
+                                     a + b, move the split b/a away from m_A/m_B. This
+                                     is a common drift along the contact normal, so
+                                     separation speed (restitution) is untouched.
+  --edit-restitution E               a ladder arm: rescale both deflections by
+                                     (1 + E) / (1 + e_sim). Exact; E > 1 creates energy.
+  --restitution E                    pin the simulated pair restitution.
+The edit algebra lives in physics_interp/momentum/physics.py and is loaded by
+file path so this script still runs in the Kubric interpreter (no torch there).
 """
 
 from __future__ import annotations
@@ -35,6 +51,20 @@ from pathlib import Path
 import numpy as np
 
 logger = logging.getLogger("generate_scene")
+
+
+def _load_physics():
+  """Import physics_interp/momentum/physics.py without importing the package (which needs torch)."""
+  import importlib.util
+  path = Path(__file__).resolve().parents[1] / "physics_interp" / "momentum" / "physics.py"
+  spec = importlib.util.spec_from_file_location("momentum_physics", path)
+  module = importlib.util.module_from_spec(spec)
+  sys.modules[spec.name] = module      # dataclasses resolve annotations through sys.modules
+  spec.loader.exec_module(module)
+  return module
+
+
+PHYSICS = _load_physics()
 
 # --------------------------------------------------------------------------------------
 # Scene constants. Everything here is fixed across the dataset and copied into labels.json
@@ -154,7 +184,11 @@ CONTROL_MOMENTUM_RANGE = (0.80, 1.25)
 # spheres are re-keyframed to fly along those. Everything before contact, and every
 # visual property, is untouched: the two classes differ only in what happens after
 # the balls touch.
-VIOLATION_SCALE_RANGE = (0.35, 0.75)   # |dp| / |p_pre| injected, either sign
+VIOLATION_SCALE_RANGE = (0.35, 0.75)   # |dp| / |p_pre| injected, either sign (drift mode)
+# Split mode (conservation_set_v1): the split fraction b/(a+b) moves by this much, either
+# sign, with a + b held. Both balls receive the same extra velocity along the contact
+# normal, so the edit is a common drift along n and restitution is untouched.
+SPLIT_DELTA_RANGE = (0.10, 0.35)
 
 # Frame-0 sanity margins, in world units.
 MIN_SURFACE_GAP_AT_START = 0.15   # surface-to-surface clearance between the spheres
@@ -359,43 +393,30 @@ def derive_masses(p: dict) -> dict:
   }
 
 
-def apply_violation(p, geo, masses, spheres, animation, contact_frame):
-  """Overwrite post-contact motion so momentum is *not* conserved.
+def _pre_state(p, geo, masses, animation, spheres):
+  """The pre-contact state in the momentum module's convention (planar, n from A to B)."""
+  n = np.asarray(geo["contact_normal_analytic"], dtype=np.float64)[:2]
+  return PHYSICS.PreState(
+      m_a=masses["mass_a"], m_b=masses["mass_b"],
+      v_a=np.asarray(animation[spheres["a"]]["velocity"][PRE_FRAME], dtype=np.float64)[:2],
+      v_b=np.asarray(animation[spheres["b"]]["velocity"][PRE_FRAME], dtype=np.float64)[:2],
+      n=n / np.linalg.norm(n))
 
-  Bullet cannot produce this: it conserves momentum by construction, which is
-  precisely why every scene in the original pilot had an identical answer to "is
-  momentum conserved" and the question was unprobeable. So the collision is
-  simulated honestly and then the outgoing velocities are edited and the spheres
-  re-keyframed to fly along the edited ones.
 
-  The kick is applied as equal-and-*same*-direction impulses rather than
-  equal-and-opposite, which is what breaks the sum while leaving each ball's
-  motion individually unremarkable — no ball stops dead or reverses implausibly,
-  so the class difference is in the relationship between the two trajectories
-  rather than in either one alone.
+def _post_velocities(animation, spheres):
+  return {tag: np.asarray(animation[spheres[tag]]["velocity"][POST_FRAME], dtype=np.float64)
+          for tag in ("a", "b")}
 
-  Returns the edited post-contact velocities keyed by tag.
+
+def rekeyframe(spheres, animation, contact_frame, edited):
+  """Re-keyframe both spheres along ``edited[tag]`` (3-vectors) from the first frame after contact.
+
+  Anchored on the last frame before contact, so the trajectory deviates exactly at
+  the collision. ``anchor + v * dt`` is not bit-identical to Bullet's integration
+  (a constant offset of order 1e-2 world units can remain, §58); it is identical
+  across every edited arm of a seed, which is what the protocols need.
   """
-  # Start the edited motion at the first frame rendered after contact, anchored on
-  # the last frame before it, so the trajectory deviates exactly at the collision
-  # rather than a frame later — the aftermath is wrong, the approach is not.
   first_moving = int(np.ceil(contact_frame))
-  theta = p["violation_direction_rad"]
-  direction = np.array([np.cos(theta), np.sin(theta), 0.0])
-
-  p_pre = (masses["mass_a"] * np.array(animation[spheres["a"]]["velocity"][PRE_FRAME])
-           + masses["mass_b"] * np.array(animation[spheres["b"]]["velocity"][PRE_FRAME]))
-  delta_p = p["violation_scale"] * float(np.linalg.norm(p_pre)) * direction
-
-  edited = {}
-  for tag in ("a", "b"):
-    mass = masses[f"mass_{tag}"]
-    vel = np.array(animation[spheres[tag]]["velocity"][POST_FRAME], dtype=np.float64)
-    # Split the injected momentum in proportion to mass, so both balls take the
-    # same velocity change and neither trajectory looks individually absurd.
-    edited[tag] = vel + delta_p / (masses["mass_a"] + masses["mass_b"])
-    del mass
-
   for tag in ("a", "b"):
     sphere = spheres[tag]
     anchor = np.array(animation[sphere]["position"][first_moving - 1], dtype=np.float64)
@@ -407,7 +428,66 @@ def apply_violation(p, geo, masses, spheres, animation, contact_frame):
       animation[sphere]["position"][frame] = pos
       animation[sphere]["velocity"][frame] = edited[tag]
 
-  return edited
+
+def drift_violation_velocities(p, masses, animation, spheres):
+  """Legacy probe_set edit: both balls take the same velocity change in a random direction."""
+  theta = p["violation_direction_rad"]
+  direction = np.array([np.cos(theta), np.sin(theta), 0.0])
+  p_pre = (masses["mass_a"] * np.array(animation[spheres["a"]]["velocity"][PRE_FRAME])
+           + masses["mass_b"] * np.array(animation[spheres["b"]]["velocity"][PRE_FRAME]))
+  delta_p = p["violation_scale"] * float(np.linalg.norm(p_pre)) * direction
+  post = _post_velocities(animation, spheres)
+  shift = delta_p / (masses["mass_a"] + masses["mass_b"])
+  edited = {tag: post[tag] + shift for tag in ("a", "b")}
+  return edited, {"kind": "drift", "dp": delta_p.tolist(), "violation_scale": p["violation_scale"],
+                  "violation_direction_rad": theta}
+
+
+def split_violation_velocities(p, geo, masses, animation, spheres, seed):
+  """conservation_set_v1 edit: keep a + b, move the split. Draws delta from its own rng stream."""
+  rng = np.random.default_rng([int(seed), 7919])
+  delta_split = float(rng.uniform(*SPLIT_DELTA_RANGE)) * float(rng.choice([-1.0, 1.0]))
+  pre = _pre_state(p, geo, masses, animation, spheres)
+  post = _post_velocities(animation, spheres)
+  pa, pb, rec = PHYSICS.split_edit(pre, post["a"], post["b"], delta_split)
+  edited = {"a": np.array([pa[0], pa[1], 0.0]), "b": np.array([pb[0], pb[1], 0.0])}
+  return edited, {"kind": "split", **rec}
+
+
+def restitution_arm_velocities(p, geo, masses, animation, spheres, e_sim, e_new):
+  """Ladder arm: the legal outcome at e_new, by rescaling both deflections."""
+  pre = _pre_state(p, geo, masses, animation, spheres)
+  post = _post_velocities(animation, spheres)
+  pa, pb, rec = PHYSICS.restitution_edit(pre, post["a"], post["b"], e_sim, e_new)
+  edited = {"a": np.array([pa[0], pa[1], 0.0]), "b": np.array([pb[0], pb[1], 0.0])}
+  return edited, {"kind": "restitution", **rec}
+
+
+def exit_frames(animation, spheres):
+  """First frame at which each sphere's centre leaves the visible extent (NUM_FRAMES if never)."""
+  half_w, half_h = half_extents()
+  out = {}
+  for tag in ("a", "b"):
+    pos = np.asarray(animation[spheres[tag]]["position"], dtype=np.float64)
+    outside = (np.abs(pos[:, 0]) > half_w) | (np.abs(pos[:, 1]) > half_h)
+    out[tag.upper()] = int(np.argmax(outside)) if outside.any() else NUM_FRAMES
+  return out
+
+
+def apply_violation(p, geo, masses, spheres, animation, contact_frame, mode="drift", seed=0):
+  """Overwrite post-contact motion so momentum is *not* conserved (see module docstring)."""
+  if mode == "split":
+    edited, rec = split_violation_velocities(p, geo, masses, animation, spheres, seed)
+  else:
+    edited, rec = drift_violation_velocities(p, masses, animation, spheres)
+  rekeyframe(spheres, animation, contact_frame, edited)
+  return edited, rec
+
+
+def apply_restitution_edit(p, geo, masses, spheres, animation, contact_frame, e_sim, e_new):
+  edited, rec = restitution_arm_velocities(p, geo, masses, animation, spheres, e_sim, e_new)
+  rekeyframe(spheres, animation, contact_frame, edited)
+  return edited, rec
 
 
 # --------------------------------------------------------------------------------------
@@ -850,8 +930,44 @@ def write_mp4(path: Path, rgb, frames_dir: Path):
 
 # --------------------------------------------------------------------------------------
 
+def _measured_restitution(animation, spheres, geo):
+  n = np.asarray(geo["contact_normal_analytic"], dtype=np.float64)
+  n /= np.linalg.norm(n)
+  pre = {t: np.asarray(animation[spheres[t]]["velocity"][PRE_FRAME]) for t in ("a", "b")}
+  post = {t: np.asarray(animation[spheres[t]]["velocity"][POST_FRAME]) for t in ("a", "b")}
+  rel_pre = float(np.dot(pre["a"] - pre["b"], n))
+  rel_post = float(np.dot(post["a"] - post["b"], n))
+  return float(abs(rel_post) / abs(rel_pre))
+
+
+def annotate_edit(labels, edit_record, e_sim, arm, seed_group, honest_exit, edited_exit, violation_mode):
+  """The register's extra fields. ``restitution`` is made *realised* (the trap fixed at the
+  source) and the simulator's value kept as ``restitution_simulated``."""
+  realised = labels["collision"]["restitution_measured"]
+  labels["restitution_simulated"] = float(e_sim)
+  labels["restitution_realised"] = float(realised) if realised is not None else float(e_sim)
+  labels["restitution"] = labels["restitution_realised"]
+  labels["seed_group"] = int(seed_group)
+  labels["edit"] = edit_record
+  labels["violation_mode"] = violation_mode if labels["violates_momentum"] else None
+  if arm is not None:
+    labels["arm"] = arm
+  elif labels["violates_momentum"]:
+    labels["arm"] = "violating"
+  elif edit_record is not None and edit_record.get("kind") == "restitution":
+    labels["arm"] = f"e{edit_record['e_new']:.4g}"
+  else:
+    labels["arm"] = "honest"
+  labels["exit_frame"] = {"honest_twin": honest_exit, "this_clip": edited_exit}
+  if edit_record is not None and edit_record.get("kind") == "restitution":
+    # Verify the edit landed where it was asked to, to round-off.
+    labels["edit"]["restitution_realised_error"] = float(abs(labels["restitution_realised"] - edit_record["e_new"]))
+
+
 def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
-             violate: bool = False) -> dict:
+             violate: bool = False, restitution: float | None = None,
+             violation_mode: str = "drift", edit_restitution: float | None = None,
+             arm: str | None = None, seed_group: int | None = None) -> dict:
   import kubric as kb
   import pybullet as pb
 
@@ -867,6 +983,9 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
       if p is None:
         rejections.append({"attempt": attempt, "reason": reason})
         continue
+      if restitution is not None:
+        p["restitution_sampled"] = p["restitution"]
+        p["restitution"] = float(restitution)
       geo = solve_geometry(p)
       masses = derive_masses(p)
 
@@ -906,10 +1025,28 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
 
     # Break conservation only after the honest simulation has been validated, so a
     # violating scene is a *correct* collision with an edited aftermath rather than
-    # a scene that failed physics for some unrelated reason.
+    # a scene that failed physics for some unrelated reason. The same holds for a
+    # restitution arm. Both are edits of the honest aftermath; everything before
+    # contact is shared bit for bit across every clip of this seed.
+    honest_exit = exit_frames(animation, spheres)
+    e_sim = _measured_restitution(animation, spheres, geo)
+    edit_record = None
     if p["violates_momentum"]:
-      apply_violation(p, geo, masses, spheres, animation,
-                      measurements["contact_frame"])
+      _, edit_record = apply_violation(p, geo, masses, spheres, animation,
+                                       measurements["contact_frame"], mode=violation_mode, seed=seed)
+    elif edit_restitution is not None:
+      _, edit_record = apply_restitution_edit(p, geo, masses, spheres, animation,
+                                              measurements["contact_frame"], e_sim, edit_restitution)
+    edited_exit = exit_frames(animation, spheres)
+    # The ladder's in-frame rule is relative: no arm may leave the frame earlier
+    # than its honest twin (§58). The honest clip itself is never dropped here.
+    if edit_record is not None and any(edited_exit[t] < honest_exit[t] for t in ("A", "B")):
+      out_dir.mkdir(parents=True, exist_ok=True)
+      drop = {"scene_id": scene_id, "seed": seed, "reason": "exits_frame_before_honest_twin",
+              "exit_frame_honest": honest_exit, "exit_frame_edited": edited_exit, "edit": edit_record}
+      (out_dir / "_DROPPED").write_text(json.dumps(drop, indent=1, default=str))
+      logger.warning("scene %s dropped: %s", scene_id, drop["reason"])
+      return {"dropped": drop}
 
     out_dir.mkdir(parents=True, exist_ok=True)
     seg_stats = None
@@ -929,6 +1066,8 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
                           pair_events, measurements, seed, scene_id, seg_stats, gpu_desc)
     labels["sampling_attempts"] = {"accepted_attempt": attempt, "rejections": rejections}
     labels["kubric_version"] = kb.__version__
+    annotate_edit(labels, edit_record, e_sim, arm, seed_group if seed_group is not None else seed,
+                  honest_exit, edited_exit, violation_mode)
 
     with open(out_dir / "labels.json", "w") as f:
       json.dump(labels, f, indent=1)
@@ -949,6 +1088,17 @@ def main():
   parser.add_argument("--violate", action="store_true",
                       help="break momentum conservation after contact, for the "
                            "implausible class of a plausibility probe")
+  parser.add_argument("--violation-mode", choices=("drift", "split"), default="drift",
+                      help="drift: legacy random-direction common drift (probe_set); "
+                           "split: keep a+b, move the split (conservation_set_v1)")
+  parser.add_argument("--restitution", type=float, default=None,
+                      help="pin the simulated pair restitution instead of sampling it")
+  parser.add_argument("--edit-restitution", type=float, default=None,
+                      help="render the legal (or e>1 impossible) outcome at this restitution "
+                           "by rescaling the honest deflections; a ladder arm")
+  parser.add_argument("--arm", type=str, default=None, help="arm tag written to labels (default derived)")
+  parser.add_argument("--seed-group", type=int, default=None,
+                      help="the scene this clip is a twin/arm of (default: the seed)")
   parser.add_argument("--logging-level", type=str, default="INFO")
   args = parser.parse_args()
 
@@ -958,14 +1108,20 @@ def main():
   out_dir = Path(args.output_dir)
   scene_id = args.scene_id or out_dir.name
   try:
+    if args.violate and args.edit_restitution is not None:
+      raise SystemExit("--violate and --edit-restitution are mutually exclusive")
     labels = generate(args.seed, out_dir, scene_id, render=not args.no_render,
-                      violate=args.violate)
+                      violate=args.violate, restitution=args.restitution,
+                      violation_mode=args.violation_mode, edit_restitution=args.edit_restitution,
+                      arm=args.arm, seed_group=args.seed_group)
   except Exception:  # pylint: disable=broad-except
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "_FAILED").write_text(traceback.format_exc())
     logger.error("scene %s failed:\n%s", scene_id, traceback.format_exc())
     return 1
 
+  if "dropped" in labels:
+    return 0
   collision = labels["collision"]
   logger.info("scene %s: contact frame %.3f (target %d, off by %+.3f), "
               "momentum rel error %.3e, KE ratio %.4f",

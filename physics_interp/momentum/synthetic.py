@@ -233,9 +233,13 @@ class SyntheticEncoder:
         self.noise = np.linspace(noise0, noise1, len(self.sites))
         self.gain = np.linspace(0.3, 1.0, len(self.sites))
 
-    @staticmethod
-    def descriptor(labels: dict, tag: str, phase: str) -> np.ndarray:
+    truncate: int | None = None   # frames the encoder "sees"; later frames hold the last seen one
+
+    def descriptor(self, labels: dict, tag: str, phase: str) -> np.ndarray:
         frames = labels["per_frame"]
+        if self.truncate is not None:
+            k = self.truncate - 1
+            frames = [frames[min(f, k)] for f in range(len(frames))]
         if phase == "pre":
             fs = (2, 10, 18)
         elif phase == "post":
@@ -275,6 +279,6 @@ def write_synthetic_captures(clips: list[dict], root: Path, *, encoder: Syntheti
         acts = enc.encode(labels, rng)
         meta = {"labels": labels, "pools": POOLS, "sites": enc.sites, "model": model,
                 "frames": list(range(NUM_FRAMES)), "phase_split_frame": CONTACT_FRAME,
-                "truncate": None, "clip_id": clip_id}
+                "truncate": enc.truncate, "clip_id": clip_id}
         write_capture(root / f"{clip_id}.npz", acts, meta)
     return root
