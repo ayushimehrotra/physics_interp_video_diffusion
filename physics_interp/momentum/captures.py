@@ -142,7 +142,7 @@ class ClipSet:
 
     def describe(self) -> str:
         strata = {s: int((self.stratum == s).sum()) for s in ("elastic", "inelastic")}
-        arms = {a: int((self.arm == a).sum()) for a in np.unique(self.arm)}
+        arms = {str(a): int((self.arm == a).sum()) for a in np.unique(self.arm)}
         return (f"{self.n} clips, {len(np.unique(self.seed))} seeds, {len(self.sites)} sites, "
                 f"pools={self.pools}, strata={strata}, arms={arms}, dim={next(iter(self.acts.values())).shape[-1]}")
 
