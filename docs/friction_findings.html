@@ -1,0 +1,543 @@
+<title>Friction in Video World Models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F2F3EF;
+  --surface:#FBFCFA;
+  --surface-2:#E9EBE5;
+  --ink:#171A1A;
+  --ink-2:#414846;
+  --muted:#6B7370;
+  --rule:#D5D9D1;
+  --rule-strong:#B9BFB6;
+
+  --mu:#8C3A52;
+  --acc:#8A6420;
+  --theta:#276662;
+
+  --pos:#2F6B4A;
+  --neg:#9A3B32;
+
+  --accent:var(--mu);
+  --accent-wash:#F0E2E6;
+
+  --measure:69ch;
+  --s1:.4rem; --s2:.75rem; --s3:1.15rem; --s4:1.9rem; --s5:3rem; --s6:4.6rem;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#121514;
+    --surface:#191D1C;
+    --surface-2:#212625;
+    --ink:#E7EAE5;
+    --ink-2:#B4BCB7;
+    --muted:#828C87;
+    --rule:#2B3130;
+    --rule-strong:#3D4442;
+
+    --mu:#D9829A;
+    --acc:#CFA455;
+    --theta:#5FAAA4;
+
+    --pos:#6FBF92;
+    --neg:#E08277;
+    --accent-wash:#2A1E22;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121514;
+  --surface:#191D1C;
+  --surface-2:#212625;
+  --ink:#E7EAE5;
+  --ink-2:#B4BCB7;
+  --muted:#828C87;
+  --rule:#2B3130;
+  --rule-strong:#3D4442;
+
+  --mu:#D9829A;
+  --acc:#CFA455;
+  --theta:#5FAAA4;
+
+  --pos:#6FBF92;
+  --neg:#E08277;
+  --accent-wash:#2A1E22;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.6rem)}
+.col{max-width:var(--measure)}
+
+h1,h2,h3{font-family:"Spectral",Georgia,serif;text-wrap:balance;margin:0;line-height:1.16}
+h1{font-size:clamp(2.3rem,5.6vw,3.9rem);font-weight:700;letter-spacing:-.018em}
+h2{font-size:clamp(1.5rem,3vw,2.05rem);font-weight:600;letter-spacing:-.012em}
+h3{font-size:1.12rem;font-weight:600;letter-spacing:-.005em}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:.18em;text-decoration-thickness:1px}
+a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+strong{font-weight:600}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:.87em}
+code{background:var(--surface-2);padding:.09em .34em;border-radius:3px}
+
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:.7rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+
+/* ---------- header ---------- */
+header{
+  border-bottom:1px solid var(--rule);
+  background:var(--surface);
+  padding:clamp(2.6rem,7vw,4.6rem) 0 clamp(2rem,4vw,2.8rem);
+}
+.hgrid{display:flex;flex-direction:column;gap:var(--s3)}
+.deck{font-family:"Spectral",Georgia,serif;font-size:clamp(1.08rem,2.1vw,1.32rem);line-height:1.5;color:var(--ink-2);max-width:60ch}
+.deck em{color:var(--ink);font-style:italic}
+.meta{
+  display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);
+  margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:.76rem;color:var(--muted);
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ---------- verdict ---------- */
+.verdict{
+  margin:var(--s5) 0;padding:var(--s4);
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);border-radius:2px;
+}
+.verdict p{font-family:"Spectral",Georgia,serif;font-size:clamp(1.15rem,2.4vw,1.42rem);line-height:1.45}
+
+/* ---------- sections ---------- */
+section{padding:var(--s5) 0;border-top:1px solid var(--rule)}
+section:first-of-type{border-top:none}
+.shead{display:flex;gap:var(--s3);align-items:baseline;margin-bottom:var(--s3)}
+.snum{
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;font-weight:600;
+  color:var(--accent);flex:none;padding-top:.35rem;
+}
+.body>*+*{margin-top:var(--s3)}
+.body{max-width:var(--measure)}
+
+/* ---------- data ---------- */
+.scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:.5rem .72rem;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  background:var(--surface-2);position:sticky;top:0;
+}
+td{font-family:"IBM Plex Mono",monospace;font-size:.82rem}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:none}
+.lbl{font-family:"Archivo",sans-serif !important;font-size:.86rem !important;color:var(--ink-2)}
+.hi{color:var(--ink);font-weight:600}
+.dim{color:var(--muted)}
+.pos{color:var(--pos);font-weight:600}
+.neg{color:var(--neg);font-weight:600}
+.cap{font-size:.83rem;color:var(--muted);margin-top:var(--s2);max-width:var(--measure)}
+.cap b{color:var(--ink-2);font-weight:500}
+
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-top:var(--s3)}
+.big div{background:var(--surface);padding:var(--s3)}
+.big .n{font-family:"IBM Plex Mono",monospace;font-size:1.72rem;font-weight:600;line-height:1.1;letter-spacing:-.02em}
+.big .k{font-size:.79rem;color:var(--muted);margin-top:.3rem;line-height:1.35}
+
+/* ---------- chart ---------- */
+.figure{margin-top:var(--s4);background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:var(--s3)}
+.panels{display:grid;grid-template-columns:1fr;gap:var(--s4)}
+@media(min-width:820px){.panels{grid-template-columns:1fr 1fr}}
+.ptitle{font-family:"IBM Plex Mono",monospace;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.key{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--rule);font-size:.82rem}
+.key span{display:inline-flex;align-items:center;gap:.44rem;color:var(--ink-2)}
+.key i{width:15px;height:2.5px;border-radius:2px;display:inline-block}
+
+/* ---------- misc ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:var(--s3);margin-top:var(--s3)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:var(--s3)}
+.card h3{margin-bottom:.4rem}
+.card p{font-size:.88rem;color:var(--ink-2)}
+.tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;padding:.16rem .44rem;border-radius:2px;margin-bottom:.6rem}
+.tag.void{background:var(--accent-wash);color:var(--neg);border:1px solid var(--rule-strong)}
+.tag.ok{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--rule-strong)}
+
+ul{margin:0;padding-left:1.15rem}
+li+li{margin-top:.5rem}
+li::marker{color:var(--muted)}
+
+details{background:var(--surface);border:1px solid var(--rule);border-radius:2px;margin-top:var(--s3)}
+summary{padding:var(--s3);cursor:pointer;font-weight:500;font-size:.94rem}
+summary::marker{color:var(--accent)}
+details[open] summary{border-bottom:1px solid var(--rule)}
+.dbody{padding:var(--s3)}
+.dbody>*+*{margin-top:var(--s3)}
+
+footer{border-top:1px solid var(--rule);padding:var(--s4) 0 var(--s5);color:var(--muted);font-size:.83rem}
+footer code{font-size:.8rem}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="hgrid">
+    <div class="eyebrow">Mechanistic interpretability · physical variables</div>
+    <h1>Friction in Video World Models</h1>
+    <p class="deck">Do video encoders represent the coefficient of friction, or do they track acceleration and let the probe do the arithmetic? Across three datasets, two encoders and two probe protocols, the answer is <em>the second one</em> — and the decisive evidence is that a friction readout does not survive a change of floor geometry.</p>
+    <div class="meta">
+      <span><b>Models</b> VideoMAE-base · V-JEPA2-ViT-L</span>
+      <span><b>Datasets</b> slide_set_v2 (300) · incline_set_v2 (150)</span>
+      <span><b>Simulator</b> Kubric / Bullet</span>
+      <span><b>Probes</b> ridge · Joseph et al. linear · attentive-MLP</span>
+    </div>
+  </div>
+</header>
+
+<div class="verdict">
+  <p>A linear readout that decodes μ at <strong>0.94</strong> within one floor geometry transfers <strong>none</strong> of it to the other, while a visible control crosses the same gap at 0.83–0.95 — and the transferred probe predicts the target set's <strong>acceleration</strong> instead. These models hold no geometry-independent coefficient of friction.</p>
+</div>
+
+<!-- 1 -->
+<section>
+  <div class="shead"><div class="snum">§32</div><h2>The flat floor was measuring acceleration</h2></div>
+  <div class="body">
+    <p>Friction was chosen as a second physical domain because μ belongs to a <em>surface</em> rather than an object, and because deceleration is mass-independent — <code>a = μg</code> for any mass — so size and mass become genuine free controls.</p>
+    <p>The first set delivered strong numbers: μ decoded at <strong>0.93 / 0.97</strong>, steering worked, and causal patching localised μ to the object. All of it was an acceleration result. With <code>g = 1.0</code> on a level floor, μ and the deceleration are the same number.</p>
+    <div class="big">
+      <div><div class="n" style="color:var(--acc)">0.9998</div><div class="k">corr(μ, deceleration) on the flat floor</div></div>
+      <div><div class="n" style="color:var(--acc)">0.995</div><div class="k">R² predicting μ from acceleration with <em>no fitting at all</em></div></div>
+      <div><div class="n">0</div><div class="k">scenes in that set where a probe could tell them apart</div></div>
+    </div>
+    <p class="cap">The general lesson, broader than the identity trap that preceded it: <b>beware a target merely correlated with a directly visible scalar, even when it is not an exact identity.</b> Measure <code>corr(target, nearest visible scalar)</code> at design time, not after.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section>
+  <div class="shead"><div class="snum">§32a-b</div><h2>Three traps, none caught by a validator</h2></div>
+  <div class="body">
+    <p>The incline breaks the identity, because θ enters differently: <code>a = g(sin θ − μ cos θ)</code>, with θ drawn independently of μ. Getting a usable set took two failed renders.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <div class="tag ok">superseded</div>
+      <h3>slide_set_v2</h3>
+      <p>300 scenes, flat banded floor. Physics correct, validation clean — and μ ≡ acceleration by construction.</p>
+    </div>
+    <div class="card">
+      <div class="tag void">void</div>
+      <h3>incline_set_v1</h3>
+      <p>150 scenes, <strong>all seven checks green</strong>. Pinning the start position made <code>s(k) − s₀ = ½at²</code>, so μ read off a single frame's mask centroid + area at <strong>R² 0.988</strong>.</p>
+    </div>
+    <div class="card">
+      <div class="tag ok">used</div>
+      <h3>incline_set_v2</h3>
+      <p>150 scenes, eight checks. Nuisance draws (start jitter, launch speed) make one snapshot insufficient. Mask leak <strong>0.066</strong>.</p>
+    </div>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>Unknowns in the initial condition</th><th>What one frame gives you</th><th>1 frame</th><th>2 frames</th><th>3 frames</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">v1 — none (start pinned, from rest)</td><td class="lbl">the acceleration, solved</td><td class="neg">0.997</td><td>0.997</td><td>0.997</td></tr>
+        <tr><td class="lbl">+ start jitter</td><td class="lbl">1 equation, 2 unknowns — needs a velocity</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>
+        <tr><td class="lbl">+ launch speed <span class="dim">(v2)</span></td><td class="lbl">1 equation, 3 unknowns — needs an acceleration</td><td class="pos">0.077</td><td>0.46</td><td class="hi">0.997</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">R² recovering μ from world coordinates plus θ. The three-frame route must stay <b>high</b> — otherwise the set has been made unreadable rather than leak-free. Two of the three traps in this line were found by <b>watching the clips</b>, not by any validator.</p>
+</section>
+
+<!-- 3 -->
+<section>
+  <div class="shead"><div class="snum">§35</div><h2>μ decodes, and the network builds it</h2></div>
+  <div class="body">
+    <p>On <code>incline_set_v2</code>, μ is well above every null and rises from nothing at the patch embedding. But it appears only where acceleration matures — and θ was never built at all.</p>
+  </div>
+  <div class="figure">
+    <div class="panels">
+      <div><div class="ptitle">VideoMAE-base · cube · early</div><div id="c1"></div></div>
+      <div><div class="ptitle">V-JEPA2-ViT-L · cube · early</div><div id="c2"></div></div>
+    </div>
+    <div class="key">
+      <span><i style="background:var(--theta)"></i> θ — slope angle</span>
+      <span><i style="background:var(--acc)"></i> a — acceleration</span>
+      <span><i style="background:var(--mu)"></i> μ — friction coefficient</span>
+      <span><i style="background:var(--muted);height:0;border-top:2px dashed var(--muted)"></i> acceleration-only ceiling (0.394)</span>
+    </div>
+  </div>
+  <p class="cap">Ridge, single 60/40 split. <b>θ is pinned at ~1.0 at every layer including <code>embed.out</code></b> — it is the orientation of the floor in the image, present before any block runs. <b>a</b> starts high and is refined with depth. <b>μ</b> starts at zero and only rises where <code>a</code> tops out — VideoMAE jumps 0.07 → 0.37 at block 7; V-JEPA2 is flat until block 10.</p>
+
+  <div class="scroll" style="margin-top:var(--s4)">
+    <table>
+      <thead><tr><th>Best cell</th><th>VideoMAE</th><th>V-JEPA2</th><th>Reading</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">μ — ridge, 5-fold CV</td><td class="hi">0.470 ±0.043</td><td class="hi">0.728 ±0.039</td><td class="lbl dim">decodable</td></tr>
+        <tr><td class="lbl">μ — Joseph et al. linear probe</td><td>0.514 ±0.093</td><td>0.691 ±0.062</td><td class="lbl dim">estimator-independent</td></tr>
+        <tr><td class="lbl">μ at <code>embed.out</code></td><td class="dim">−0.002</td><td class="dim">−0.068</td><td class="lbl dim">not in the pixels</td></tr>
+        <tr><td class="lbl">50-perm grid-max null, 95th pct</td><td class="dim">0.019</td><td class="dim">0.021</td><td class="lbl"><span class="pos">p = 0.000</span></td></tr>
+        <tr><td class="lbl">acceleration alone — the bar</td><td colspan="2" style="text-align:center">0.394 ±0.056</td><td class="lbl dim">what a kinematic readout affords</td></tr>
+        <tr><td class="lbl">a — acceleration</td><td>0.827</td><td>0.929</td><td class="lbl dim">built with depth</td></tr>
+        <tr><td class="lbl">θ — slope angle</td><td class="hi">1.000</td><td class="hi">1.000</td><td class="lbl dim">free, at <code>embed.out</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">VideoMAE clears the acceleration-only bar by <b>+0.08</b>; V-JEPA2 by <b>+0.33</b> — but only by using θ, which was already perfect before block 0.</p>
+</section>
+
+<!-- 4 -->
+<section>
+  <div class="shead"><div class="snum">§35b</div><h2>μ is exactly what a and θ predict</h2></div>
+  <div class="body">
+    <p>Error in decoded μ is error in decoded <code>a</code>, amplified by <code>1/(g cos θ)</code> — mean <strong>2.740</strong> over this set. Propagate each model's own acceleration fidelity and the observed numbers fall out.</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>Model</th><th>R²(a)</th><th>sd(err in a)</th><th>→ sd(err in μ)</th><th>Predicted R²(μ)</th><th>Observed</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">VideoMAE</td><td>0.827</td><td>0.0167</td><td>0.0458</td><td class="hi">0.482</td><td>0.423</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td>0.929</td><td>0.0108</td><td>0.0296</td><td class="hi">0.784</td><td class="hi">0.779</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">V-JEPA2 lands on its predicted value to three decimals. <b>Nothing is left over for a friction variable to explain.</b></p>
+
+  <div class="body" style="margin-top:var(--s4)">
+    <h3>A warning for anyone extending this</h3>
+    <p>Over the sampled range μ is affine in the two factors — <code>μ = −0.021 − 2.645·a + 1.156·θ</code> at R² <strong>0.9972</strong>. Ridge is linear in the labels, so the fitted weights inherit the relation:</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>ridge α</th><th>‖w<sub>μ</sub> − (c₁w<sub>a</sub> + c₂w<sub>θ</sub>)‖ / ‖w<sub>μ</sub>‖</th><th>cos(w<sub>μ</sub>, combination)</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">1</td><td>0.072</td><td class="hi">0.9974</td></tr>
+        <tr><td class="lbl">10</td><td>0.068</td><td class="hi">0.9977</td></tr>
+        <tr><td class="lbl">100</td><td>0.058</td><td class="hi">0.9983</td></tr>
+        <tr><td class="lbl">1000</td><td>0.049</td><td class="hi">0.9988</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap"><b>INLP, subspace containment and the composition test are therefore vacuous for this target</b> — they confirm by construction, at any R², whatever the model contains. The direct-vs-composed tie (0.423/0.425 and 0.779/0.776) is that algebraic fact, not an independent measurement.</p>
+</section>
+
+<!-- 5 -->
+<section>
+  <div class="shead"><div class="snum">§35c</div><h2>The decisive test: a change of geometry</h2></div>
+  <div class="body">
+    <p>The same coefficient, two datasets where it is a <em>different function</em> of the visible kinematics — and where the sign of the μ↔a relation flips. Train on one, test on the other.</p>
+    <div class="scroll" style="margin-top:var(--s3)">
+      <table>
+        <thead><tr><th>Set</th><th>Geometry</th><th>μ as a function of kinematics</th><th>corr(μ, a)</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">slide_set_v2</td><td class="lbl">flat</td><td>μ = a/g</td><td class="pos">+0.9998</td></tr>
+          <tr><td class="lbl">incline_set_v2</td><td class="lbl">tilted</td><td>μ = (sin θ − a/g)/cos θ</td><td class="neg">−0.645</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="scroll" style="margin-top:var(--s4)">
+    <table>
+      <thead><tr><th>Model</th><th>Direction</th><th>Readout</th><th>Within-source</th><th>Transfer R²</th><th>Transfer corr</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">VideoMAE</td><td class="lbl">incline → slide</td><td class="lbl">μ</td><td>0.127</td><td class="neg">−0.663</td><td>+0.541</td></tr>
+        <tr><td class="lbl">VideoMAE</td><td class="lbl">incline → slide</td><td class="lbl">size <span class="dim">(control)</span></td><td>0.982</td><td class="pos">+0.829</td><td class="pos">+0.939</td></tr>
+        <tr><td class="lbl">VideoMAE</td><td class="lbl">slide → incline</td><td class="lbl">μ</td><td>0.937</td><td class="neg">−0.167</td><td>+0.072</td></tr>
+        <tr><td class="lbl">VideoMAE</td><td class="lbl">slide → incline</td><td class="lbl">size <span class="dim">(control)</span></td><td>0.995</td><td>+0.172</td><td>+0.440</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="lbl">incline → slide</td><td class="lbl">μ</td><td>0.622</td><td class="neg">−0.925</td><td>−0.072</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="lbl">incline → slide</td><td class="lbl">size <span class="dim">(control)</span></td><td>0.982</td><td class="pos">+0.874</td><td class="pos">+0.948</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="lbl">slide → incline</td><td class="lbl">μ</td><td>0.944</td><td class="neg">−0.553</td><td>−0.176</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="lbl">slide → incline</td><td class="lbl">size <span class="dim">(control)</span></td><td>0.990</td><td class="pos">+0.449</td><td class="pos">+0.826</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">Frame-wide pool (all-ones mask), overlapping μ range only, each domain standardised by its own moments. <b>The control crosses the gap; μ does not</b> — so the failure is not generic domain shift.</p>
+
+  <div class="body" style="margin-top:var(--s4)">
+    <h3>What the probe was actually reading</h3>
+    <p>Score the slide-trained μ probe against the incline set's <em>acceleration</em> instead of its μ:</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>slide → incline, correlation</th><th>μ → μ</th><th>μ → acceleration</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">VideoMAE</td><td class="dim">+0.072</td><td class="hi">+0.513</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="dim">−0.176</td><td class="hi">+0.793</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">On the flat floor μ <em>is</em> a/g, so that probe was an acceleration readout all along — and it behaves like one when moved. <b>Consistency check built in:</b> in the incline→slide direction <code>μ→μ</code> and <code>μ→accel</code> come out numerically identical (−0.663 vs −0.666), which they must at g = 1.0.</p>
+
+  <details>
+    <summary>Two caveats, recorded rather than argued away</summary>
+    <div class="dbody">
+      <ul>
+        <li><strong>The per-domain standardisation is load-bearing.</strong> Without it <em>everything</em> including the control transfers at large negative R² (−13 to −49), because the raw render gap dominates. The repair is legitimate only because the control passes after it.</li>
+        <li><strong>The largest |corr| anywhere on the layer grid</strong> for incline→slide μ is <strong>+0.771 / +0.731</strong> at early blocks, not ~0. But those layers read μ near zero within the incline set itself, and give an equal <code>μ→accel</code> correlation (+0.769 / +0.729) — so it reads as a shared low-level kinematic direction. Do not quote it as a positive without a permutation null on the best-over-grid selection.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<!-- 6 -->
+<section>
+  <div class="shead"><div class="snum">§35d</div><h2>The probe protocol does not change the verdict</h2></div>
+  <div class="body">
+    <p>We replicated Joseph et al.'s two probes to check the conclusion is not an artifact of our estimator. Neither moves it.</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>μ, best cell</th><th>Ridge (5-fold CV)</th><th>Joseph linear</th><th>Attentive-MLP (6 seeds)</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">VideoMAE</td><td class="hi">0.470 ±0.043</td><td>0.514 ±0.093</td><td>0.401 ±0.135</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td class="hi">0.728 ±0.039</td><td>0.691 ±0.062</td><td>0.377 ±0.380</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">The attentive probe — learned pooling over raw patches, <b>no segmentation mask anywhere</b> — reads μ <em>below</em> ridge and far noisier. So there is no non-linearly-encoded μ that linear probes are missing.</p>
+
+  <div class="body" style="margin-top:var(--s4)">
+    <h3>Their linear probe is ridge, stopped early</h3>
+    <p>A linear layer minimising MSE with an L2 penalty <em>is</em> ridge regression. Run their probe to convergence and it lands on the ridge solution — same R², same weight norm.</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>Their probe · epochs</th><th>wd 0.01</th><th>wd 0.1</th><th>wd 0.8</th><th>‖w‖</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">50 <span class="dim">(their setting)</span></td><td>0.385</td><td>0.388</td><td>0.408</td><td class="dim">0.69</td></tr>
+        <tr><td class="lbl">200</td><td>0.440</td><td class="hi">0.458</td><td>0.449</td><td class="dim">0.78</td></tr>
+        <tr><td class="lbl">1 000</td><td>0.427</td><td>0.421</td><td>0.430</td><td class="dim">0.64</td></tr>
+        <tr><td class="lbl">20 000 <span class="dim">(converged)</span></td><td>0.398</td><td>0.411</td><td>0.430</td><td class="dim">0.64</td></tr>
+        <tr><td class="lbl" style="border-top:2px solid var(--rule-strong)">Ridge α = 10 <span class="dim">(closed form)</span></td><td colspan="3" style="text-align:center;border-top:2px solid var(--rule-strong)" class="hi">0.423</td><td class="dim" style="border-top:2px solid var(--rule-strong)">0.60</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">Weight decay moves the answer by 0.02 across an 80× range; <b>the regularisation that matters is the unreported decision to stop at 50 epochs.</b> Cost on the V-JEPA2 grid: <b>10 h 21 m CPU</b> against <b>75 seconds</b> for closed-form ridge.</p>
+
+  <div class="body" style="margin-top:var(--s4)">
+    <h3>What is worth adopting: their 5-fold CV</h3>
+    <p>Not the estimator — the evaluation. Grid-argmax over 39 cells, repeated across 5 split seeds:</p>
+  </div>
+  <div class="scroll" style="margin-top:var(--s3)">
+    <table>
+      <thead><tr><th>μ, grid-argmax</th><th>Single 60/40 split</th><th>5-fold CV</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl">VideoMAE</td><td class="neg">0.321 ±0.150</td><td class="pos">0.486 ±0.049</td></tr>
+        <tr><td class="lbl">V-JEPA2</td><td>0.744 ±0.049</td><td class="pos">0.739 ±0.011</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">A single split at n = 150 spans 0.152–0.547 across seeds on the weaker model. CV is 3–4× tighter and trains on 120 scenes per fold instead of 90.</p>
+</section>
+
+<!-- 7 -->
+<section>
+  <div class="shead"><div class="snum">ref</div><h2>Full layer tables</h2></div>
+  <div class="body">
+    <p>R² by layer and pool. <span class="mono">R</span> = ridge, single 60/40 split. <span class="mono">J</span> = Joseph et al. protocol, 5-fold CV mean, run on three pools.</p>
+    <p class="cap" style="margin-top:var(--s2)">Pools read <b>object · time-window</b>. <b>cube</b> = segmentation id 1, <b>slope</b> = id 2, <b>frame</b> = all tokens. <b>early</b> = first ~⅓ of the clip, <b>late</b> = the rest. There is no collision on this set — the windows are fixed cell indices, identical in all 150 scenes, aligned to no physical event.</p>
+  </div>
+  <div id="tables"></div>
+</section>
+
+<!-- 8 -->
+<section>
+  <div class="shead"><div class="snum">§8</div><h2>What is not established</h2></div>
+  <div class="body">
+    <ul>
+      <li><strong>Whether the model <em>uses</em> μ is undecidable here.</strong> You cannot separate "computes μ" from "computes a and θ, and the probe divides" — not with more data, a bigger encoder, or a better probe.</li>
+      <li><strong>The steering result passes its protocol but was measured on the flat floor</strong>, so it is an acceleration-steering result; re-derivation was never established.</li>
+      <li><strong>Everything is within-distribution</strong>, on Kubric renders far outside these models' training data.</li>
+      <li><strong>Two mid-size encoders only.</strong> Joseph et al. find smaller VideoMAE variants fail to show reliable emergence at all.</li>
+      <li><strong>μ remains an exact function of the trajectory</strong> in every design tried. Escaping that needs a target not determined by the observable trajectory — a different project, not a fix to this one.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p>Sources — <code>CLAUDE.md</code> §32, §35, §35a–c · <code>scripts/transfer_geometry.py</code> · <code>scripts/joseph_intphys_probe.py</code> · <code>docs/artifacts/joseph_incline_*.json</code>, <code>incline_attentive_*.json</code>, <code>incline_mu_cv_null.json</code>. Joseph et al., <em>Interpreting Physics in Video World Models</em>, arXiv 2602.07050.</p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+const D={
+ videomae:{n:12,pools:["cube · early","cube · all","slope · all","frame · early","frame · late","frame · all"],
+  mu:{R:[[-0.00,0.01,0.02,0.05,0.06,0.06,0.07,0.37,0.42,0.32,0.27,0.36,0.33],[-0.02,-0.00,0.05,0.07,0.10,0.10,0.05,0.28,0.12,0.26,0.17,0.33,0.25],[-0.26,-0.26,-0.05,-0.04,-0.01,0.04,0.04,0.06,0.09,0.03,0.04,0.02,0.02],[-0.06,-0.05,-0.05,-0.04,-0.03,-0.00,0.00,0.07,0.09,0.07,0.03,0.14,0.05],[-0.32,-0.09,-0.05,-0.06,0.03,0.06,0.06,0.08,0.10,0.31,0.17,0.07,0.07],[-0.27,-0.17,-0.06,-0.08,-0.01,0.03,0.02,0.05,0.07,0.11,0.03,0.02,0.04]],
+       J:{0:[-0.14,-0.14,-0.18,-0.13,-0.01,0.05,0.23,0.46,0.51,0.45,0.36,0.42,0.37],3:[-0.14,-0.13,-0.06,-0.08,0.04,0.13,0.03,0.03,0.13,0.25,0.25,0.24,0.16],5:[-0.18,-0.13,-0.03,-0.11,-0.02,-0.03,-0.08,-0.01,0.05,0.07,-0.00,0.05,-0.01]}},
+  a:{R:[[0.34,0.43,0.48,0.57,0.59,0.64,0.71,0.81,0.83,0.80,0.78,0.77,0.75],[0.37,0.49,0.59,0.42,0.65,0.65,0.67,0.76,0.69,0.74,0.72,0.77,0.74],[0.56,0.55,0.56,0.56,0.57,0.65,0.59,0.66,0.60,0.68,0.66,0.65,0.59],[0.55,0.55,0.56,0.56,0.57,0.57,0.56,0.60,0.59,0.67,0.65,0.70,0.66],[0.53,0.54,0.56,0.62,0.65,0.65,0.66,0.67,0.68,0.77,0.71,0.67,0.67],[0.54,0.54,0.56,0.56,0.57,0.57,0.57,0.66,0.60,0.70,0.65,0.68,0.58]],
+      J:{0:[0.43,0.28,0.38,0.46,0.53,0.58,0.63,0.70,0.77,0.76,0.74,0.77,0.71],3:[0.40,0.44,0.44,0.44,0.53,0.53,0.48,0.54,0.63,0.62,0.64,0.62,0.59],5:[0.45,0.46,0.47,0.53,0.49,0.50,0.52,0.50,0.53,0.57,0.52,0.57,0.56]}},
+  th:{R:[[0.88,0.94,0.97,0.98,0.98,0.98,0.99,0.99,0.99,0.99,0.99,0.99,0.99],[0.90,0.97,0.98,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99],[1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00],[1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00],[1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00],[1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00,1.00]],
+      J:{0:[0.91,0.96,0.97,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.97,0.98,0.98],3:[0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99],5:[1.00,0.99,1.00,0.99,0.99,0.99,0.99,0.98,0.99,0.99,0.99,0.99,0.99]}}},
+ vjepa:{n:24,pools:["cube · early","cube · all","slope · all","frame · early","frame · all"],
+  mu:{R:[[0.01,0.08,0.06,0.06,0.04,0.04,0.04,0.04,0.05,0.06,-0.02,0.27,0.44,0.52,0.48,0.43,0.39,0.58,0.64,0.50,0.64,0.65,0.65,0.61,0.51],[0.03,0.14,0.12,0.14,0.11,-0.24,0.07,0.25,0.31,0.18,0.30,0.19,0.05,0.07,0.18,0.05,0.17,0.57,0.56,0.59,0.62,0.62,0.61,0.59,0.52],[-0.10,0.28,0.09,0.27,0.21,0.21,-0.28,0.34,0.38,0.38,0.37,0.12,0.19,0.33,0.36,0.44,0.54,0.54,0.65,0.65,0.65,0.57,0.58,0.64,0.60],[-0.07,0.28,0.21,-0.10,0.16,0.14,0.27,0.11,0.18,0.20,0.50,0.42,0.41,0.33,0.50,0.39,0.57,0.58,0.67,0.62,0.69,0.74,0.78,0.74,0.69],[-0.07,0.28,0.30,0.29,0.21,0.12,0.23,0.32,0.37,0.29,0.38,0.29,0.30,0.34,0.26,0.54,0.62,0.58,0.70,0.70,0.71,0.63,0.55,0.64,0.63]],
+       J:{0:[-0.14,0.02,0.02,-0.06,-0.09,-0.13,-0.07,0.04,-0.10,0.04,0.22,0.31,0.46,0.44,0.47,0.50,0.62,0.63,0.64,0.64,0.68,0.57,0.68,0.62,0.61],3:[-0.10,0.22,0.16,0.29,0.04,0.07,0.20,0.20,0.20,0.36,0.51,0.50,0.49,0.51,0.55,0.52,0.58,0.60,0.62,0.60,0.67,0.69,0.67,0.65,0.65],4:[-0.04,0.22,0.23,0.32,0.09,0.07,0.16,0.19,0.28,0.41,0.50,0.43,0.48,0.52,0.45,0.45,0.54,0.59,0.62,0.66,0.67,0.63,0.61,0.66,0.65]}},
+  a:{R:[[0.25,0.61,0.61,0.59,0.63,0.61,0.61,0.43,0.45,0.49,0.63,0.73,0.79,0.82,0.83,0.81,0.80,0.87,0.89,0.84,0.89,0.89,0.89,0.87,0.84],[0.47,0.70,0.69,0.47,0.53,0.54,0.66,0.73,0.74,0.71,0.73,0.70,0.63,0.66,0.70,0.68,0.71,0.84,0.84,0.85,0.86,0.86,0.87,0.87,0.85],[0.59,0.71,0.70,0.75,0.73,0.72,0.55,0.77,0.79,0.78,0.78,0.71,0.71,0.76,0.78,0.81,0.84,0.84,0.88,0.88,0.88,0.87,0.86,0.88,0.87],[0.60,0.71,0.69,0.63,0.59,0.72,0.76,0.71,0.72,0.73,0.83,0.81,0.79,0.76,0.82,0.79,0.85,0.85,0.89,0.87,0.90,0.92,0.93,0.92,0.90],[0.59,0.71,0.75,0.76,0.73,0.70,0.73,0.77,0.79,0.80,0.78,0.76,0.76,0.76,0.75,0.84,0.87,0.85,0.89,0.90,0.90,0.88,0.86,0.89,0.88]],
+      J:{0:[0.25,0.53,0.56,0.51,0.48,0.51,0.52,0.53,0.52,0.59,0.61,0.67,0.77,0.77,0.78,0.78,0.81,0.85,0.85,0.87,0.86,0.85,0.87,0.87,0.85],3:[0.49,0.64,0.65,0.63,0.58,0.59,0.65,0.62,0.67,0.70,0.75,0.79,0.80,0.78,0.78,0.76,0.83,0.83,0.82,0.83,0.84,0.84,0.85,0.83,0.84],4:[0.50,0.63,0.64,0.68,0.60,0.63,0.67,0.64,0.70,0.73,0.73,0.71,0.76,0.78,0.76,0.76,0.80,0.82,0.83,0.85,0.85,0.84,0.84,0.83,0.84]}},
+  th:{R:[[0.74,0.99,0.98,0.98,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99],[0.88,1.00,0.99,0.99,0.99,0.99,0.99,0.99,1.00,0.99,0.99,1.00,0.99,0.99,0.99,1.00,1.00,1.00,1.00,0.99,0.99,1.00,1.00,1.00,0.99],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+      J:{0:[0.75,0.97,0.97,0.98,0.98,0.99,0.98,0.97,0.98,0.97,0.97,0.97,0.97,0.97,0.98,0.98,0.98,0.98,0.98,0.98,0.97,0.97,0.98,0.98,0.98],3:[0.99,0.99,0.99,0.99,0.99,0.99,0.98,0.99,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.99],4:[1.00,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.98,0.99,0.99,0.98,0.98,0.99,0.99]}}}
+};
+
+/* ---- depth curves ---- */
+function chart(el,d){
+  const W=460,H=260,L=38,R=12,T=14,B=30,n=d.mu.R[0].length;
+  const x=i=>L+i*(W-L-R)/(n-1), y=v=>T+(1-(v+0.2)/1.25)*(H-T-B);
+  const path=a=>a.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  const grid=[0,0.25,0.5,0.75,1].map(v=>
+    `<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--rule)" stroke-width="1"/>
+     <text x="${L-7}" y="${(y(v)+3.6).toFixed(1)}" text-anchor="end" fill="var(--muted)" font-size="9.5" font-family="IBM Plex Mono,monospace">${v.toFixed(2)}</text>`).join("");
+  const ticks=[0,Math.floor((n-1)/2),n-1].map(i=>
+    `<text x="${x(i).toFixed(1)}" y="${H-9}" text-anchor="middle" fill="var(--muted)" font-size="9.5" font-family="IBM Plex Mono,monospace">${i===0?"emb":"b"+(i-1)}</text>`).join("");
+  const series=[["th","var(--theta)"],["a","var(--acc)"],["mu","var(--mu)"]].map(([k,c])=>
+    `<path d="${path(d[k].R[0])}" fill="none" stroke="${c}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>`+
+    d[k].R[0].map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="1.9" fill="${c}"/>`).join("")).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img"
+     aria-label="R squared by layer for slope angle, acceleration and friction coefficient">
+    ${grid}
+    <line x1="${L}" x2="${W-R}" y1="${y(0.394).toFixed(1)}" y2="${y(0.394).toFixed(1)}" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 3"/>
+    ${series}${ticks}
+    <line x1="${L}" x2="${L}" y1="${T}" y2="${H-B}" stroke="var(--rule-strong)" stroke-width="1"/>
+  </svg>`;
+}
+chart(document.getElementById("c1"),D.videomae);
+chart(document.getElementById("c2"),D.vjepa);
+
+/* ---- reference tables ---- */
+const host=document.getElementById("tables");
+[["videomae","VideoMAE-base — 12 blocks, 768d"],["vjepa","V-JEPA2-ViT-L — 24 blocks, 1024d"]].forEach(([key,title])=>{
+  const d=D[key], n=d.mu.R[0].length;
+  const head="<tr><th></th><th>pool</th>"+Array.from({length:n},(_,i)=>`<th>${i===0?"emb":i-1}</th>`).join("")+"<th>best</th></tr>";
+  let html=`<h3 style="margin-top:var(--s4);margin-bottom:var(--s2)">${title}</h3>`;
+  [["mu","μ — friction coefficient"],["a","a — acceleration"],["th","θ — slope angle"]].forEach(([k,label])=>{
+    let rows="";
+    d.pools.forEach((p,pi)=>{
+      const r=d[k].R[pi], best=Math.max(...r);
+      rows+=`<tr><td class="mono dim">R</td><td class="lbl">${p}</td>`+
+        r.map(v=>`<td class="${v>=best-1e-9?"hi":(v<0?"dim":"")}">${v.toFixed(2)}</td>`).join("")+
+        `<td class="hi">${best.toFixed(3)}</td></tr>`;
+      if(d[k].J && d[k].J[pi]){
+        const j=d[k].J[pi], jb=Math.max(...j);
+        rows+=`<tr><td class="mono" style="color:var(--accent)">J</td><td class="lbl">${p}</td>`+
+          j.map(v=>`<td class="${v>=jb-1e-9?"hi":(v<0?"dim":"")}">${v.toFixed(2)}</td>`).join("")+
+          `<td class="hi">${jb.toFixed(3)}</td></tr>`;
+      }
+    });
+    html+=`<p class="eyebrow" style="margin-top:var(--s3);margin-bottom:var(--s2)">${label}</p>
+      <div class="scroll"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+  });
+  host.insertAdjacentHTML("beforeend",html);
+});
+</script>

@@ -74,6 +74,13 @@ def parse_args(argv=None):
         help="override device (default: cuda:LOCAL_RANK)",
     )
     p.add_argument(
+        "--model", default=None,
+        help="override model.id from the config, e.g. 'vjepa2-vitl'. Encoders "
+             "capture in one forward pass instead of an inversion, so the "
+             "inversion block of the config is ignored for them. Send each model "
+             "to its own --output-dir",
+    )
+    p.add_argument(
         "--limit", type=int, default=None,
         help="run at most this many units on this rank (smoke tests)",
     )
@@ -93,11 +100,33 @@ def parse_args(argv=None):
         "--keep-going", action="store_true",
         help="continue past a failing unit instead of aborting the rank",
     )
+    p.add_argument(
+        "--sites", default=None,
+        help="capture mode: site pattern to tap, overriding the config (e.g. "
+             "'block.*.attn_heads'). Capture cost is set by the diffusion pass, "
+             "not the number of taps, so re-capturing at a different site costs "
+             "a full run either way — send it to a separate --output-dir.",
+    )
     # Probe-mode overrides. Probing is cheap and re-reads captures, so asking a
     # different question should not need a second config file.
     p.add_argument(
+        "--patch-sites", default=None,
+        help="capture mode, encoders only: also store RAW per-token activations "
+             "for these sites, for patch-preserving attentive probes. Expensive "
+             "(2.4-12.6 MB per site per scene), so pass a strided subset of "
+             "layers, e.g. 'block.0.resid_post,block.4.resid_post'",
+    )
+    p.add_argument(
         "--targets", default=None,
         help="probe mode: comma-separated label targets, overriding the config",
+    )
+    p.add_argument(
+        "--pools", default=None,
+        help="probe mode: comma-separated pooled regions, overriding the config. "
+             "A '+'-joined spec concatenates pools along the FEATURE axis, e.g. "
+             "'A.pre+A.post+B.pre+B.post' hands the probe all four object-local "
+             "velocity pools side by side — a relation between two objects cannot "
+             "survive a mean over both of them.",
     )
     p.add_argument(
         "--where", default=None,
@@ -137,10 +166,19 @@ def parse_where(spec: str | None) -> dict:
 
 
 def scene_dirs(dataset_dir: Path) -> list[Path]:
-    """Complete scenes, in a stable order."""
+    """Complete scenes, in a stable order.
+
+    Discovery is by CONTENT, not by name: any directory holding both `_COMPLETE`
+    and `labels.json` is a scene. The older sets all name their scenes
+    `scene_00000`, but `conservation_set_v1` names each clip for its cell and twin
+    (`elastic_mixed_violating_seed2`) because the name has to identify which of the
+    2x2 cells a clip belongs to and which seed it is the twin of. A `scene_*` glob
+    silently returned zero scenes for it, which reads as an empty dataset rather
+    than as a naming mismatch.
+    """
     return sorted(
-        d for d in dataset_dir.glob("scene_*")
-        if (d / "_COMPLETE").exists() and (d / "labels.json").exists()
+        d for d in dataset_dir.iterdir()
+        if d.is_dir() and (d / "_COMPLETE").exists() and (d / "labels.json").exists()
     )
 
 
@@ -185,12 +223,32 @@ def run_capture(cfg, args, info) -> int:
         runner.close()
         return 0
 
+    if args.sites:
+        cfg.sites = args.sites
     inv = cfg.inversion
-    info.log(
-        f"inverting with {inv.num_steps} {inv.solver} steps, capturing at "
-        f"{inv.num_captures if inv.capture_steps is None else len(inv.capture_steps)} "
-        f"point(s), sites={cfg.sites!r}"
-    )
+
+    # An encoder has no trajectory to invert: capture is one forward pass, and
+    # the control baseline is its own patch embedding rather than a VAE latent.
+    from physics_interp.models.encoders import EncoderAdapter  # noqa: E402
+
+    is_encoder = isinstance(runner.adapter, EncoderAdapter)
+    if is_encoder:
+        sites = cfg.sites
+        sites = [sites] if isinstance(sites, str) else list(sites)
+        if "embed.out" not in sites:
+            sites.append("embed.out")
+        patch_sites = ([s.strip() for s in args.patch_sites.split(",")]
+                       if args.patch_sites else None)
+        info.log(f"encoding in one forward pass, sites={sites!r}"
+                 + (f", storing raw patches for {patch_sites}" if patch_sites else ""))
+    else:
+        patch_sites = None
+        sites = cfg.sites
+        info.log(
+            f"inverting with {inv.num_steps} {inv.solver} steps, capturing at "
+            f"{inv.num_captures if inv.capture_steps is None else len(inv.capture_steps)} "
+            f"point(s), sites={sites!r}"
+        )
 
     failures: list[tuple[str, str]] = []
     out_root.mkdir(parents=True, exist_ok=True)
@@ -198,9 +256,13 @@ def run_capture(cfg, args, info) -> int:
         for i, scene in enumerate(todo, 1):
             info.log(f"[{i}/{len(todo)}] {scene.name}")
             try:
-                rec = runner.capture_scene(scene, inversion=inv, sites=cfg.sites)
+                rec = (runner.encode_scene(scene, sites=sites, patch_sites=patch_sites)
+                       if is_encoder
+                       else runner.capture_scene(scene, inversion=inv, sites=sites))
                 payload = {f"act.{k}": v for k, v in rec["activations"].items()}
-                meta = {k: v for k, v in rec.items() if k != "activations"}
+                payload.update({f"patch.{k}": v for k, v in rec.get("patches", {}).items()})
+                meta = {k: v for k, v in rec.items()
+                        if k not in ("activations", "patches")}
                 # Labels are large; keep the whole thing so probing can ask a
                 # new question later without re-inverting anything.
                 payload["meta"] = np.frombuffer(
@@ -226,7 +288,7 @@ def run_capture(cfg, args, info) -> int:
 
 def load_captures(out_root: Path):
     """Read every captured scene into stacked arrays + aligned labels."""
-    paths = sorted(out_root.glob("scene_*.npz"))
+    paths = sorted(out_root.glob("*.npz"))   # capture names each file after its scene dir
     if not paths:
         raise FileNotFoundError(f"no captures in {out_root}; run --mode capture first")
 
@@ -257,6 +319,8 @@ def run_probe(cfg, args) -> int:
     pool_names = metas[0]["pools"]
 
     targets = args.targets.split(",") if args.targets else cfg.probe.targets
+    pools = ([p.strip() for p in args.pools.split(",")] if args.pools
+             else cfg.probe.pools)
     where = parse_where(args.where) if args.where else (cfg.probe.where or None)
 
     print(
@@ -270,7 +334,7 @@ def run_probe(cfg, args) -> int:
         activations,
         labels,
         targets=[t.strip() for t in targets],
-        pools=cfg.probe.pools,
+        pools=pools,
         pool_names=pool_names,
         alphas=cfg.probe.alphas,
         train_fraction=cfg.probe.train_fraction,
@@ -283,8 +347,10 @@ def run_probe(cfg, args) -> int:
     dest = Path(cfg.output_dir) / cfg.name / f"probes{suffix}.json"
     write_json(
         {
-            "config": {"probe": cfg.probe.__dict__, "inversion": cfg.inversion.__dict__},
+            "config": {"probe": {**cfg.probe.__dict__, "pools": pools},
+                       "inversion": cfg.inversion.__dict__},
             "targets": targets,
+            "pools": pools,
             "where": where,
             "num_scenes": len(labels),
             "noise_levels": metas[0]["noise_levels"],
@@ -296,6 +362,40 @@ def run_probe(cfg, args) -> int:
     _print_summary(rows, metas[0])
     print(f"\nfull grid ({len(rows)} fits) -> {dest}", flush=True)
     return 0
+
+
+# Sites that are baselines rather than model internals, and so are excluded from
+# the argmax and reported separately. `vae.latent` is the diffusion pipeline's raw
+# autoencoder latent; `embed.out` is an encoder's patch embedding before any
+# block. Both answer "was this already in the pixels", which is the question a
+# positive result has to survive.
+CONTROL_SITES = ("vae.latent", "embed.out")
+
+
+def _best_and_null(group, score_key, shuf_key):
+    """Winning cell, its selection-matched permutation null, and a p-value.
+
+    `best` is an argmax over the whole (site x step) grid on held-out data, so
+    the control beside it has to be the argmax of that *same* grid on permuted
+    labels. Reporting the winning cell's own shuffled score instead — one draw
+    rather than the max of ~279 — understates the null by the entire winner's
+    curse, which is how a chance-level plausibility result printed shuf=0.42
+    against acc=0.68 while the grid-max null was really 0.63.
+
+    `p_perm` is the fraction of shuffled cells reaching the winner's score. It
+    is a lower bound on the true p-value: the cells are one permutation draw
+    each and are heavily correlated across neighbouring blocks and steps, so
+    the effective number of independent draws is well under the grid size.
+    """
+    real = [r for r in group if r["site"] not in CONTROL_SITES] or group
+    score = lambda r: np.nan_to_num(r.get(score_key, np.nan), nan=-9e9)
+    best = max(real, key=score)
+    shuf = np.array([np.nan_to_num(r.get(shuf_key, np.nan), nan=-9e9) for r in real])
+    null = float(shuf.max()) if shuf.size else float("nan")
+    pval = float((shuf >= score(best)).mean()) if shuf.size else float("nan")
+    vae = max((r.get(score_key, float("nan")) for r in group
+               if r["site"] in CONTROL_SITES), default=float("nan"))
+    return best, null, pval, vae
 
 
 def _print_summary(rows, meta) -> None:
@@ -317,41 +417,40 @@ def _print_summary(rows, meta) -> None:
     binary = {t for (t, _), g in by_key.items() if "accuracy" in g[0]}
     if binary:
         print(f"\n{'target':<24} {'pool':<10} {'best site':<22} {'noise':>6} "
-              f"{'acc':>7} {'bal':>7} {'shuf':>7} {'VAE':>7}")
-        print("-" * 96)
+              f"{'acc':>7} {'bal':>7} {'shuf*':>7} {'p_perm':>7} {'VAE':>7}")
+        print("-" * 104)
         for (target, pool), group in sorted(by_key.items()):
             if target not in binary:
                 continue
-            real = [r for r in group if r["site"] != "vae.latent"]
-            best = max(real or group, key=lambda r: r.get("accuracy", 0.0))
-            vae = max((r.get("accuracy", float("nan")) for r in group
-                       if r["site"] == "vae.latent"), default=float("nan"))
+            best, null, pval, vae = _best_and_null(
+                group, "accuracy", "accuracy_shuffled")
             noise = levels[best["step_index"]] if best["step_index"] < len(levels) else 0.0
             print(f"{target:<24} {pool:<10} {best['site']:<22} {noise:>6.2f} "
                   f"{best['accuracy']:>7.3f} {best['balanced_accuracy']:>7.3f} "
-                  f"{best.get('accuracy_shuffled', float('nan')):>7.3f} {vae:>7.3f}")
+                  f"{null:>7.3f} {pval:>7.3f} {vae:>7.3f}")
         print("\nacc/bal are held-out accuracy and balanced accuracy; chance is 0.50.")
 
     continuous = [k for k in by_key if k[0] not in binary]
     if continuous:
         print(f"\n{'target':<24} {'pool':<10} {'best site':<22} {'noise':>6} "
-              f"{'R2':>7} {'shuf':>7} {'VAE':>7}")
-        print("-" * 96)
+              f"{'R2':>7} {'shuf*':>7} {'p_perm':>7} {'VAE':>7}")
+        print("-" * 104)
         for (target, pool) in sorted(continuous):
-            group = by_key[(target, pool)]
-            real = [r for r in group if r["site"] != "vae.latent"]
-            best = max(real or group, key=lambda r: np.nan_to_num(r["r2"], nan=-9e9))
-            vae_r2 = max((r["r2"] for r in group if r["site"] == "vae.latent"),
-                         default=float("nan"))
+            best, null, pval, vae_r2 = _best_and_null(
+                by_key[(target, pool)], "r2", "r2_shuffled")
             noise = levels[best["step_index"]] if best["step_index"] < len(levels) else 0.0
             print(f"{target:<24} {pool:<10} {best['site']:<22} {noise:>6.2f} "
-                  f"{best['r2']:>7.3f} {best.get('r2_shuffled', float('nan')):>7.3f} "
-                  f"{vae_r2:>7.3f}")
+                  f"{best['r2']:>7.3f} {null:>7.3f} {pval:>7.3f} {vae_r2:>7.3f}")
 
     print(
-        "\n'shuf' is the same pipeline on permuted labels; 'VAE' is the raw "
-        "autoencoder latent, which carries no\nphysical objective. A block only "
-        "tells you something if it clears both."
+        "\n'shuf*' is the permutation control selected the SAME way as the winner: the max over the\n"
+        "whole (site x step) grid on shuffled labels, not the winning cell's own shuffled score.\n"
+        "'best site' is an argmax on held-out data, so it carries a winner's curse that only a\n"
+        "grid-max null accounts for — read the margin as best minus shuf*, never best minus 0.5/0.\n"
+        "'p_perm' is the share of shuffled cells reaching the winner, and is a LOWER bound: the\n"
+        "cells are one draw each and correlated, so effective independent draws << grid size.\n"
+        "'VAE' is the raw autoencoder latent, which carries no physical objective. A block only\n"
+        "tells you something if it clears shuf* and VAE both."
     )
 
 
@@ -435,6 +534,9 @@ def main(argv=None) -> int:
     cfg = load_config(args.config)
     if args.output_dir:
         cfg.output_dir = args.output_dir
+    if args.model:
+        cfg.model.id = args.model
+        cfg.model.repo = None      # let the adapter pick its own default repo
     if args.no_resume:
         cfg.resume = False
 

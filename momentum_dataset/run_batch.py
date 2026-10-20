@@ -48,15 +48,17 @@ def is_violation(index: int, violate_frac: float) -> bool:
 
 
 def run_one(index: int, root: Path, seed_offset: int, timeout: int, python: str,
-            no_render: bool = False, violate_frac: float = 0.0) -> dict:
+            no_render: bool = False, violate_frac: float = 0.0,
+            arm: str = "legacy", script: str = "generate_scene.py") -> dict:
   directory = scene_dir(root, index)
   seed = seed_offset + index
   started = time.time()
   violate = is_violation(index, violate_frac)
-  cmd = [python, str(HERE / "generate_scene.py"),
+  cmd = [python, str(HERE / script),
          "--seed", str(seed),
          "--output-dir", str(directory),
-         "--scene-id", directory.name]
+         "--scene-id", directory.name,
+         "--arm", arm]
   if no_render:
     cmd.append("--no-render")
   if violate:
@@ -94,6 +96,19 @@ def main():
                       help="fraction of scenes whose post-contact motion breaks "
                            "momentum conservation, interleaved. 0.5 gives the "
                            "balanced two-class set a plausibility probe needs")
+  parser.add_argument("--arm", type=str, default="legacy",
+                      help="appearance/density coupling passed to generate_scene: "
+                           "legacy (v1 probe_set), latent_mass, or visible_mass. "
+                           "Each arm belongs in its own --output-dir")
+  parser.add_argument("--script", type=str, default="generate_scene.py",
+                      choices=("generate_scene.py", "generate_friction_scene.py",
+                               "generate_slide_scene.py",
+                               "generate_collide_friction_scene.py",
+                               "generate_incline_scene.py"),
+                      help="which scene generator to batch. Both take the same "
+                           "--seed/--output-dir/--scene-id/--arm/--violate interface, "
+                           "so resume, seeding and the manifest work identically; "
+                           "their --arm vocabularies differ (see each script)")
   args = parser.parse_args()
 
   logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s: %(message)s")
@@ -111,7 +126,8 @@ def main():
   if todo:
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
       futures = [pool.submit(run_one, i, root, args.seed_offset, args.timeout,
-                             args.python, args.no_render, args.violate_frac)
+                             args.python, args.no_render, args.violate_frac,
+                             args.arm, args.script)
                  for i in todo]
       for n, future in enumerate(futures, start=1):
         result = future.result()
@@ -126,6 +142,9 @@ def main():
       "output_dir": str(root),
       "num_scenes": args.num_scenes,
       "seed_offset": args.seed_offset,
+      "arm": args.arm,
+      "script": args.script,
+      "violate_frac": args.violate_frac,
       "already_complete": len(done),
       "generated": len(results) - len(failures),
       "failed": failures,

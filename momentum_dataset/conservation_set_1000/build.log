@@ -1,0 +1,260 @@
+=== plan Tue Oct 20 07:34:44 UTC 2026
+2026-10-20 07:34:44.807615: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1792481684.823576  250642 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1792481684.828902  250642 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+W0000 00:00:1792481684.842723  250642 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1792481684.843068  250642 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1792481684.843444  250642 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1792481684.843622  250642 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2026-10-20 07:34:44.847565: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+pybullet build time: Jan 29 2025 23:17:20
+  probed 10/500 (rejected 0)
+  probed 20/500 (rejected 0)
+  probed 30/500 (rejected 0)
+  probed 40/500 (rejected 0)
+  probed 50/500 (rejected 0)
+  probed 60/500 (rejected 0)
+  probed 70/500 (rejected 0)
+  probed 80/500 (rejected 0)
+  probed 90/500 (rejected 0)
+  probed 100/500 (rejected 0)
+  probed 110/500 (rejected 0)
+  probed 120/500 (rejected 0)
+  probed 130/500 (rejected 0)
+  probed 140/500 (rejected 0)
+  probed 150/500 (rejected 0)
+  probed 160/500 (rejected 0)
+  probed 170/500 (rejected 0)
+  probed 180/500 (rejected 0)
+  probed 190/500 (rejected 0)
+  probed 200/500 (rejected 0)
+  probed 210/500 (rejected 0)
+  probed 220/500 (rejected 0)
+  probed 230/500 (rejected 0)
+  probed 240/500 (rejected 0)
+  probed 250/500 (rejected 0)
+  probed 260/500 (rejected 0)
+  probed 270/500 (rejected 0)
+  probed 280/500 (rejected 0)
+  probed 290/500 (rejected 0)
+  probed 300/500 (rejected 0)
+  probed 310/500 (rejected 0)
+  probed 320/500 (rejected 0)
+  probed 330/500 (rejected 0)
+  probed 340/500 (rejected 0)
+  probed 350/500 (rejected 0)
+  probed 360/500 (rejected 0)
+  probed 370/500 (rejected 0)
+  probed 380/500 (rejected 0)
+  probed 390/500 (rejected 0)
+  probed 400/500 (rejected 0)
+  probed 410/500 (rejected 0)
+  probed 420/500 (rejected 0)
+  probed 430/500 (rejected 0)
+  probed 440/500 (rejected 0)
+  probed 450/500 (rejected 0)
+  probed 460/500 (rejected 0)
+  probed 470/500 (rejected 0)
+  probed 480/500 (rejected 0)
+  probed 490/500 (rejected 0)
+  probed 500/500 (rejected 0)
+Traceback (most recent call last):
+  File "/workspace/meta/physics_interp_video_diffusion/momentum_dataset/plan_conservation_set.py", line 237, in <module>
+    main()
+  File "/workspace/meta/physics_interp_video_diffusion/momentum_dataset/plan_conservation_set.py", line 201, in main
+    got = choose_permutation(cell, rng)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physics_interp_video_diffusion/momentum_dataset/plan_conservation_set.py", line 134, in choose_permutation
+    raise RuntimeError(f"{len(thin)} scenes have no admissible donor in this cell")
+RuntimeError: 1 scenes have no admissible donor in this cell
+=== finished Tue Oct 20 07:35:22 UTC 2026 exit 0
+=== render Tue Oct 20 07:37:36 UTC 2026
+1000 clips, 0 already done, 1000 to render
+  [1/1000] ok  elastic_mixed_honest_seed2                              124s   eta  2063 min
+  [2/1000] ok  elastic_mixed_violating_seed2                           123s   eta  1030 min
+  [3/1000] ok  elastic_mixed_honest_seed5                              124s   eta   686 min
+  [4/1000] ok  elastic_mixed_violating_seed5                           124s   eta   515 min
+  [5/1000] ok  elastic_mixed_honest_seed9                              124s   eta   412 min
+  [6/1000] ok  elastic_mixed_violating_seed9                           123s   eta   343 min
+  [7/1000] ok  elastic_mixed_honest_seed10                             123s   eta   583 min
+  [8/1000] ok  elastic_mixed_violating_seed10                          121s   eta   509 min
+  [9/1000] ok  elastic_mixed_honest_seed13                             121s   eta   452 min
+  [10/1000] ok  elastic_mixed_violating_seed13                          120s   eta   407 min
+  [11/1000] ok  elastic_mixed_honest_seed14                             121s   eta   369 min
+  [12/1000] ok  elastic_mixed_violating_seed14                          120s   eta   338 min
+  [13/1000] ok  elastic_mixed_honest_seed16                             123s   eta   465 min
+  [14/1000] ok  elastic_mixed_violating_seed16                          119s   eta   431 min
+  [15/1000] ok  elastic_mixed_honest_seed17                             122s   eta   405 min
+  [16/1000] ok  elastic_mixed_violating_seed17                          124s   eta   380 min
+  [17/1000] ok  elastic_mixed_honest_seed19                             123s   eta   358 min
+  [18/1000] ok  elastic_mixed_violating_seed19                          124s   eta   339 min
+  [19/1000] ok  elastic_mixed_honest_seed22                             122s   eta   421 min
+  [20/1000] ok  elastic_mixed_violating_seed22                          122s   eta   400 min
+  [21/1000] ok  elastic_mixed_honest_seed26                             120s   eta   381 min
+  [22/1000] ok  elastic_mixed_violating_seed26                          119s   eta   364 min
+  [23/1000] ok  elastic_mixed_honest_seed28                             121s   eta   350 min
+  [24/1000] ok  elastic_mixed_violating_seed28                          122s   eta   337 min
+  [25/1000] ok  elastic_mixed_honest_seed31                             121s   eta   397 min
+  [26/1000] ok  elastic_mixed_violating_seed31                          122s   eta   382 min
+  [27/1000] ok  elastic_mixed_honest_seed36                             120s   eta   368 min
+  [28/1000] ok  elastic_mixed_violating_seed36                          119s   eta   354 min
+  [29/1000] ok  elastic_mixed_honest_seed41                             118s   eta   343 min
+  [30/1000] ok  elastic_mixed_violating_seed41                          118s   eta   332 min
+  [31/1000] ok  elastic_mixed_honest_seed48                             122s   eta   382 min
+  [32/1000] ok  elastic_mixed_violating_seed48                          121s   eta   370 min
+  [33/1000] ok  elastic_mixed_honest_seed51                             119s   eta   358 min
+  [34/1000] ok  elastic_mixed_violating_seed51                          120s   eta   348 min
+  [35/1000] ok  elastic_mixed_honest_seed59                             120s   eta   338 min
+  [36/1000] ok  elastic_mixed_violating_seed59                          119s   eta   329 min
+  [37/1000] ok  elastic_mixed_honest_seed63                             123s   eta   372 min
+  [38/1000] ok  elastic_mixed_violating_seed63                          123s   eta   362 min
+  [39/1000] ok  elastic_mixed_honest_seed64                             121s   eta   352 min
+  [40/1000] ok  elastic_mixed_violating_seed64                          121s   eta   343 min
+  [41/1000] ok  elastic_mixed_honest_seed66                             121s   eta   334 min
+  [42/1000] ok  elastic_mixed_violating_seed66                          119s   eta   326 min
+  [43/1000] ok  elastic_mixed_honest_seed67                             121s   eta   363 min
+  [44/1000] ok  elastic_mixed_violating_seed67                          121s   eta   355 min
+  [45/1000] ok  elastic_mixed_honest_seed69                             119s   eta   347 min
+  [46/1000] ok  elastic_mixed_violating_seed69                          118s   eta   339 min
+  [47/1000] ok  elastic_mixed_honest_seed71                             118s   eta   331 min
+  [48/1000] ok  elastic_mixed_violating_seed71                          118s   eta   324 min
+  [49/1000] ok  elastic_mixed_honest_seed72                             121s   eta   357 min
+  [50/1000] ok  elastic_mixed_violating_seed72                          122s   eta   349 min
+  [51/1000] ok  elastic_mixed_honest_seed78                             122s   eta   343 min
+  [52/1000] ok  elastic_mixed_violating_seed78                          121s   eta   336 min
+  [53/1000] ok  elastic_mixed_honest_seed79                             120s   eta   329 min
+  [54/1000] ok  elastic_mixed_violating_seed79                          121s   eta   323 min
+  [55/1000] ok  elastic_mixed_honest_seed80                             120s   eta   350 min
+  [56/1000] ok  elastic_mixed_violating_seed80                          122s   eta   344 min
+  [57/1000] ok  elastic_mixed_honest_seed86                             121s   eta   338 min
+  [58/1000] ok  elastic_mixed_violating_seed86                          120s   eta   332 min
+  [59/1000] ok  elastic_mixed_honest_seed88                             122s   eta   327 min
+  [60/1000] ok  elastic_mixed_violating_seed88                          122s   eta   321 min
+  [61/1000] ok  elastic_mixed_honest_seed90                             124s   eta   346 min
+  [62/1000] ok  elastic_mixed_violating_seed90                          125s   eta   341 min
+  [63/1000] ok  elastic_mixed_honest_seed92                             120s   eta   335 min
+  [64/1000] ok  elastic_mixed_violating_seed92                          122s   eta   329 min
+  [65/1000] ok  elastic_mixed_honest_seed93                             120s   eta   324 min
+  [66/1000] ok  elastic_mixed_violating_seed93                          121s   eta   319 min
+  [67/1000] ok  elastic_mixed_honest_seed94                             122s   eta   341 min
+  [68/1000] ok  elastic_mixed_violating_seed94                          122s   eta   336 min
+  [69/1000] ok  elastic_mixed_honest_seed95                             119s   eta   331 min
+  [70/1000] ok  elastic_mixed_violating_seed95                          118s   eta   326 min
+  [71/1000] ok  elastic_mixed_honest_seed101                            120s   eta   321 min
+  [72/1000] ok  elastic_mixed_violating_seed101                         122s   eta   317 min
+  [73/1000] ok  elastic_mixed_honest_seed102                            130s   eta   338 min
+  [74/1000] ok  elastic_mixed_violating_seed102                         130s   eta   334 min
+  [75/1000] ok  elastic_mixed_honest_seed105                            126s   eta   329 min
+  [76/1000] ok  elastic_mixed_violating_seed105                         126s   eta   324 min
+  [77/1000] ok  elastic_mixed_honest_seed107                            124s   eta   320 min
+  [78/1000] ok  elastic_mixed_violating_seed107                         123s   eta   315 min
+  [79/1000] ok  elastic_mixed_honest_seed111                            122s   eta   334 min
+  [80/1000] ok  elastic_mixed_violating_seed111                         122s   eta   330 min
+  [81/1000] ok  elastic_mixed_honest_seed113                            120s   eta   325 min
+  [82/1000] ok  elastic_mixed_violating_seed113                         120s   eta   321 min
+  [83/1000] ok  elastic_mixed_honest_seed114                            120s   eta   317 min
+  [84/1000] ok  elastic_mixed_violating_seed114                         119s   eta   313 min
+  [85/1000] ok  elastic_mixed_honest_seed116                            125s   eta   331 min
+  [86/1000] ok  elastic_mixed_violating_seed116                         126s   eta   327 min
+  [87/1000] ok  elastic_mixed_honest_seed121                            120s   eta   323 min
+  [88/1000] ok  elastic_mixed_violating_seed121                         121s   eta   319 min
+  [89/1000] ok  elastic_mixed_honest_seed122                            121s   eta   315 min
+  [90/1000] ok  elastic_mixed_violating_seed122                         121s   eta   311 min
+  [91/1000] ok  elastic_mixed_honest_seed125                            124s   eta   328 min
+  [92/1000] ok  elastic_mixed_violating_seed125                         122s   eta   324 min
+  [93/1000] ok  elastic_mixed_honest_seed126                            121s   eta   320 min
+  [94/1000] ok  elastic_mixed_violating_seed126                         119s   eta   316 min
+  [95/1000] ok  elastic_mixed_honest_seed129                            119s   eta   313 min
+  [96/1000] ok  elastic_mixed_violating_seed129                         120s   eta   309 min
+  [97/1000] ok  elastic_mixed_honest_seed130                            124s   eta   324 min
+  [98/1000] ok  elastic_mixed_violating_seed130                         124s   eta   321 min
+  [99/1000] ok  elastic_mixed_honest_seed135                            123s   eta   317 min
+  [100/1000] ok  elastic_mixed_violating_seed135                         122s   eta   314 min
+  [101/1000] ok  elastic_mixed_honest_seed140                            122s   eta   310 min
+  [102/1000] ok  elastic_mixed_violating_seed140                         123s   eta   307 min
+  [103/1000] ok  elastic_mixed_honest_seed141                            126s   eta   322 min
+  [104/1000] ok  elastic_mixed_violating_seed141                         126s   eta   319 min
+  [105/1000] ok  elastic_mixed_honest_seed142                            123s   eta   315 min
+  [106/1000] ok  elastic_mixed_violating_seed142                         124s   eta   312 min
+  [107/1000] ok  elastic_mixed_honest_seed145                            124s   eta   309 min
+  [108/1000] ok  elastic_mixed_violating_seed145                         122s   eta   306 min
+  [109/1000] ok  elastic_mixed_honest_seed152                            125s   eta   319 min
+  [110/1000] ok  elastic_mixed_violating_seed152                         124s   eta   316 min
+  [111/1000] ok  elastic_mixed_honest_seed154                            122s   eta   313 min
+  [112/1000] ok  elastic_mixed_violating_seed154                         122s   eta   310 min
+  [113/1000] ok  elastic_mixed_honest_seed161                            122s   eta   307 min
+  [114/1000] ok  elastic_mixed_violating_seed161                         120s   eta   304 min
+  [115/1000] ok  elastic_mixed_honest_seed163                            123s   eta   316 min
+  [116/1000] ok  elastic_mixed_violating_seed163                         122s   eta   313 min
+  [117/1000] ok  elastic_mixed_honest_seed164                            121s   eta   310 min
+  [118/1000] ok  elastic_mixed_violating_seed164                         122s   eta   307 min
+  [119/1000] ok  elastic_mixed_honest_seed165                            121s   eta   304 min
+  [120/1000] ok  elastic_mixed_violating_seed165                         119s   eta   302 min
+  [121/1000] ok  elastic_mixed_honest_seed167                            126s   eta   314 min
+  [122/1000] ok  elastic_mixed_violating_seed167                         127s   eta   311 min
+  [123/1000] ok  elastic_mixed_honest_seed168                            124s   eta   308 min
+  [124/1000] ok  elastic_mixed_violating_seed168                         124s   eta   306 min
+  [125/1000] ok  elastic_mixed_honest_seed170                            126s   eta   303 min
+  [126/1000] ok  elastic_mixed_violating_seed170                         125s   eta   300 min
+  [127/1000] ok  elastic_mixed_honest_seed172                            123s   eta   311 min
+  [128/1000] ok  elastic_mixed_violating_seed172                         122s   eta   308 min
+  [129/1000] ok  elastic_mixed_honest_seed174                            121s   eta   306 min
+  [130/1000] ok  elastic_mixed_violating_seed174                         120s   eta   303 min
+  [131/1000] ok  elastic_mixed_honest_seed178                            119s   eta   300 min
+  [132/1000] ok  elastic_mixed_violating_seed178                         119s   eta   298 min
+  [133/1000] ok  elastic_mixed_honest_seed182                            122s   eta   309 min
+  [134/1000] ok  elastic_mixed_violating_seed182                         123s   eta   306 min
+  [135/1000] ok  elastic_mixed_honest_seed185                            120s   eta   303 min
+  [136/1000] ok  elastic_mixed_violating_seed185                         121s   eta   301 min
+  [137/1000] ok  elastic_mixed_honest_seed186                            121s   eta   298 min
+  [138/1000] ok  elastic_mixed_violating_seed186                         121s   eta   296 min
+  [139/1000] ok  elastic_mixed_honest_seed191                            128s   eta   306 min
+  [140/1000] ok  elastic_mixed_violating_seed191                         126s   eta   304 min
+  [141/1000] ok  elastic_mixed_honest_seed194                            126s   eta   301 min
+  [142/1000] ok  elastic_mixed_violating_seed194                         125s   eta   299 min
+  [143/1000] ok  elastic_mixed_honest_seed204                            125s   eta   297 min
+  [144/1000] ok  elastic_mixed_violating_seed204                         125s   eta   294 min
+  [145/1000] ok  elastic_mixed_honest_seed205                            126s   eta   304 min
+  [146/1000] ok  elastic_mixed_violating_seed205                         127s   eta   302 min
+  [147/1000] ok  elastic_mixed_honest_seed206                            121s   eta   300 min
+  [148/1000] ok  elastic_mixed_violating_seed206                         123s   eta   297 min
+  [149/1000] ok  elastic_mixed_honest_seed207                            124s   eta   295 min
+  [150/1000] ok  elastic_mixed_violating_seed207                         124s   eta   293 min
+  [151/1000] ok  elastic_mixed_honest_seed208                            127s   eta   302 min
+  [152/1000] ok  elastic_mixed_violating_seed208                         125s   eta   300 min
+  [153/1000] ok  elastic_mixed_honest_seed215                            121s   eta   297 min
+  [154/1000] ok  elastic_mixed_violating_seed215                         122s   eta   295 min
+  [155/1000] ok  elastic_mixed_honest_seed216                            122s   eta   293 min
+  [156/1000] ok  elastic_mixed_violating_seed216                         122s   eta   290 min
+  [157/1000] ok  elastic_mixed_honest_seed217                            125s   eta   299 min
+  [158/1000] ok  elastic_mixed_violating_seed217                         124s   eta   297 min
+  [159/1000] ok  elastic_mixed_honest_seed218                            121s   eta   295 min
+  [160/1000] ok  elastic_mixed_violating_seed218                         121s   eta   293 min
+  [161/1000] ok  elastic_mixed_honest_seed224                            122s   eta   291 min
+  [162/1000] ok  elastic_mixed_violating_seed224                         121s   eta   288 min
+  [163/1000] ok  elastic_mixed_honest_seed227                            120s   eta   296 min
+  [164/1000] ok  elastic_mixed_violating_seed227                         122s   eta   295 min
+  [165/1000] ok  elastic_mixed_honest_seed228                            121s   eta   292 min
+  [166/1000] ok  elastic_mixed_violating_seed228                         121s   eta   290 min
+  [167/1000] ok  elastic_mixed_honest_seed231                            120s   eta   288 min
+  [168/1000] ok  elastic_mixed_violating_seed231                         122s   eta   286 min
+  [169/1000] ok  elastic_mixed_honest_seed236                            156s   eta   297 min
+  [170/1000] ok  elastic_mixed_violating_seed236                         151s   eta   295 min
+  [171/1000] ok  elastic_mixed_honest_seed237                            147s   eta   292 min
+  [172/1000] ok  elastic_mixed_violating_seed237                         147s   eta   290 min
+  [173/1000] ok  elastic_mixed_honest_seed238                            148s   eta   288 min
+  [174/1000] ok  elastic_mixed_violating_seed238                         148s   eta   286 min
+  [175/1000] ok  elastic_mixed_honest_seed240                            125s   eta   294 min
+  [176/1000] ok  elastic_mixed_violating_seed240                         127s   eta   292 min
+  [177/1000] ok  elastic_mixed_honest_seed241                            126s   eta   290 min
+  [178/1000] ok  elastic_mixed_violating_seed241                         126s   eta   288 min
+  [179/1000] ok  elastic_mixed_honest_seed242                            127s   eta   286 min
+  [180/1000] ok  elastic_mixed_violating_seed242                         125s   eta   285 min
+  [181/1000] ok  elastic_mixed_honest_seed245                            139s   eta   293 min
+  [182/1000] ok  elastic_mixed_violating_seed245                         138s   eta   291 min
+  [183/1000] ok  elastic_mixed_honest_seed246                            135s   eta   289 min
+  [184/1000] ok  elastic_mixed_violating_seed246                         135s   eta   287 min
+  [185/1000] ok  elastic_mixed_honest_seed247                            137s   eta   285 min
+  [186/1000] ok  elastic_mixed_violating_seed247                         136s   eta   283 min

@@ -1,0 +1,96 @@
+{
+ "ceilings": {
+  "exact Delta-p vector (2d)": 0.5333333333333334,
+  "exact |Delta-p| (1d)": 1.0,
+  "exact Delta-p + quadratic (5d)": 0.8933333333333333,
+  "exact visible ingredients (6d)": 0.48977777777777776
+ },
+ "outputs_v4_videomae-base": {
+  "momentum_conserved (the target)": {
+   "auc": 0.6035555555555555,
+   "site": "block.5.resid_post"
+  },
+  "b_moving (visible)": {
+   "auc": 0.9757894736842104,
+   "site": "block.5.resid_post"
+  },
+  "radius_A > median (visible)": {
+   "auc": 0.8657777777777778,
+   "site": "block.9.resid_post"
+  },
+  "mass_A > median (visible)": {
+   "auc": 0.8506666666666666,
+   "site": "block.3.resid_post"
+  },
+  "learning_curve": {
+   "momentum_conserved (the target)": {
+    "40": 0.6375,
+    "70": 0.5142857142857143,
+    "100": 0.61,
+    "150": 0.5955555555555555
+   },
+   "b_moving (visible)": {
+    "40": 0.6125,
+    "70": 0.889795918367347,
+    "100": 0.9299999999999999,
+    "150": 0.9375757575757575
+   },
+   "radius_A > median (visible)": {
+    "40": 0.7625,
+    "70": 0.7959183673469387,
+    "100": 0.89,
+    "150": 0.8222222222222222
+   },
+   "mass_A > median (visible)": {
+    "40": 0.6875,
+    "70": 0.8,
+    "100": 0.8300000000000001,
+    "150": 0.8248888888888889
+   }
+  }
+ },
+ "outputs_v4_vjepa2-vitl": {
+  "momentum_conserved (the target)": {
+   "auc": 0.6728888888888889,
+   "site": "block.18.resid_post"
+  },
+  "b_moving (visible)": {
+   "auc": 0.9990909090909093,
+   "site": "block.14.resid_post"
+  },
+  "radius_A > median (visible)": {
+   "auc": 0.8408888888888889,
+   "site": "block.9.resid_post"
+  },
+  "mass_A > median (visible)": {
+   "auc": 0.8284444444444446,
+   "site": "block.15.resid_post"
+  },
+  "learning_curve": {
+   "momentum_conserved (the target)": {
+    "40": 0.6125,
+    "70": 0.5836734693877551,
+    "100": 0.596,
+    "150": 0.6506666666666667
+   },
+   "b_moving (visible)": {
+    "40": 0.9375,
+    "70": 1.0,
+    "100": 0.994,
+    "150": 0.9973333333333333
+   },
+   "radius_A > median (visible)": {
+    "40": 0.925,
+    "70": 0.8204081632653061,
+    "100": 0.86,
+    "150": 0.8435555555555556
+   },
+   "mass_A > median (visible)": {
+    "40": 0.7,
+    "70": 0.7918367346938776,
+    "100": 0.7420000000000001,
+    "150": 0.7928888888888889
+   }
+  }
+ }
+}

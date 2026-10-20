@@ -288,6 +288,42 @@ sampling — so samples stay at 64.
 
 ---
 
+## The sliding-friction scenario (`generate_friction_scene.py`)
+
+A second scenario lives in this directory, sharing this one's camera, resolution,
+frame count, renderer settings, output layout and batch runner. Two balls coast
+across a **frictionless** approach region and cross onto **per-lane friction
+patches** on frame 20, decelerating at `a = mu*g` from there — so mu is a property
+of the FLOOR, and the entry frame plays the part the collision frame plays here.
+
+```bash
+KUBRIC_USE_GPU=1 python3 run_batch.py --num-scenes 300 \
+    --output-dir friction_set_v1 --script generate_friction_scene.py \
+    --arm latent_friction --workers 5
+python3 validate_friction.py --dataset-dir friction_set_v1
+```
+
+Arms mirror this dataset's `latent_mass` / `visible_mass`: `latent_friction`
+paints every floor tile one albedo so the patches are invisible, `visible_friction`
+ramps a patch's albedo with its mu. Deceleration is mass-independent (`a = mu*g`
+for any mass), so radius and mass are free controls rather than confounds.
+
+Four physics facts that took measurement to establish, all documented at length in
+`../CLAUDE.md` §24:
+
+* kubric's `useMaximalCoordinates=True` and a frozen inertia tensor together
+  produce **NaN velocities reported as a ball coasting forever** — hence
+  `install_sliding_sphere_adder()`, which rebuilds spheres in minimal coordinates.
+* a sphere with lateral friction **rolls**, decaying to exactly `5/7` of its entry
+  speed and then coasting; rotation is frozen so it slides at `mu*g` instead.
+* the inertia override must be applied **after** `scene += ball`, because kubric's
+  mass observer recomputes the tensor from the shape.
+* gravity is 2.0, not 9.81 — this world is not metric, and at 9.81 an ordinary mu
+  stops a ball in three frames.
+
+Its `labels.json` carries a `collision` block whose `actual_frame` is the friction
+entry, so every downstream tool that splits pre/post on that key works unchanged.
+
 ## Output layout
 
 ```

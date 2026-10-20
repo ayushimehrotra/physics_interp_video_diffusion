@@ -17,3 +17,16 @@ __pycache__/
 momentum_dataset/pilot/*
 !momentum_dataset/pilot/_validation/
 momentum_dataset/*/scene_*/
+
+# Superseded experiments, archived 2026-09-21. See old/MANIFEST.txt. Nothing deleted.
+old/
+
+# Captured activations: large and reproducible from a capture run.
+outputs_*/
+
+# Claude Code worktrees and local settings
+.claude/worktrees/
+
+# Rendered clips in plan-driven sets (named <cell>_seed<N>, not scene_*); keep plan/build log
+momentum_dataset/*/*_seed*/
+momentum_dataset/*/*.npz

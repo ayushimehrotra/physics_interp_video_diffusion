@@ -1,0 +1,156 @@
+<title>CLAUDE.md Section Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#eaeef2; --surface:#fff; --surface-2:#f4f7f9; --line:#d5dce3; --line-soft:#e5eaef;
+    --text:#111820; --text-2:#3a4652; --muted:#65737f;
+    --live:#1f7a4d; --live-bg:rgba(31,122,77,.10);
+    --rev:#9a6210; --rev-bg:rgba(154,98,16,.11);
+    --sup:#8a4bb5; --sup-bg:rgba(138,75,181,.11);
+    --stale:#b03a3a; --stale-bg:rgba(176,58,58,.10);
+    --ref:#5a6875; --ref-bg:rgba(90,104,117,.10);
+    --accent:#12607a;
+  }
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+    --bg:#0b1015; --surface:#131a21; --surface-2:#182028; --line:#25313b; --line-soft:#1d262f;
+    --text:#dfe6ec; --text-2:#bbc7d2; --muted:#8899a6;
+    --live:#5cc78d; --live-bg:rgba(92,199,141,.13);
+    --rev:#e0a34f; --rev-bg:rgba(224,163,79,.13);
+    --sup:#c497e8; --sup-bg:rgba(196,151,232,.13);
+    --stale:#f0808b; --stale-bg:rgba(240,128,139,.13);
+    --ref:#8fa0ad; --ref-bg:rgba(143,160,173,.13);
+    --accent:#5bb6d0;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0b1015; --surface:#131a21; --surface-2:#182028; --line:#25313b; --line-soft:#1d262f;
+    --text:#dfe6ec; --text-2:#bbc7d2; --muted:#8899a6;
+    --live:#5cc78d; --live-bg:rgba(92,199,141,.13);
+    --rev:#e0a34f; --rev-bg:rgba(224,163,79,.13);
+    --sup:#c497e8; --sup-bg:rgba(196,151,232,.13);
+    --stale:#f0808b; --stale-bg:rgba(240,128,139,.13);
+    --ref:#8fa0ad; --ref-bg:rgba(143,160,173,.13);
+    --accent:#5bb6d0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px 90px}
+  h1{font-family:"IBM Plex Mono",monospace;font-size:clamp(1.5rem,4vw,2.2rem);font-weight:600;
+     letter-spacing:-.02em;margin:0;text-wrap:balance}
+  h2{font-family:"IBM Plex Sans",sans-serif;font-size:.94rem;font-weight:700;letter-spacing:.02em;margin:0}
+  p{margin:0}
+  header.top{border-bottom:1px solid var(--line);background:var(--surface-2)}
+  header.top .wrap{padding-top:44px;padding-bottom:28px}
+  .kicker{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .lede{color:var(--text-2);max-width:62ch;margin-top:14px}
+  .stats{display:flex;flex-wrap:wrap;gap:26px;margin-top:24px}
+  .stat b{display:block;font-family:"IBM Plex Mono",monospace;font-size:1.5rem;font-weight:600;
+    font-variant-numeric:tabular-nums;line-height:1.1}
+  .stat span{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .filters{position:sticky;top:0;z-index:10;background:var(--bg);
+    border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:6px}
+  .filters .wrap{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:0}
+  .fbtn{font-family:"IBM Plex Mono",monospace;font-size:.74rem;letter-spacing:.03em;
+    border:1px solid var(--line);background:var(--surface);color:var(--text-2);
+    border-radius:999px;padding:.34em .85em;cursor:pointer}
+  .fbtn[aria-pressed="true"]{background:var(--text);color:var(--surface);border-color:var(--text)}
+  .fbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .grp{margin-top:34px}
+  .grph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .grpn{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--muted);
+    font-variant-numeric:tabular-nums}
+  ul.rows{list-style:none;margin:0;padding:0}
+  .row{display:grid;grid-template-columns:52px 1fr 168px;gap:14px;align-items:start;
+    padding:13px 0;border-bottom:1px solid var(--line-soft)}
+  .row[hidden]{display:none}
+  .rid{font-family:"IBM Plex Mono",monospace;font-size:.86rem;font-weight:600;color:var(--accent)}
+  .rid.dash{color:var(--muted);font-weight:400}
+  .title{font-weight:600;line-height:1.32}
+  .sum{color:var(--text-2);font-size:.885rem;margin-top:3px}
+  .cut{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:.75rem;
+    color:var(--stale);background:var(--stale-bg);border-radius:4px;padding:.25em .55em;display:inline-block}
+  .meta{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.05em;
+    border-radius:999px;padding:.2em .6em;white-space:nowrap}
+  .chip.live{color:var(--live);background:var(--live-bg)}
+  .chip.revised{color:var(--rev);background:var(--rev-bg)}
+  .chip.superseded{color:var(--sup);background:var(--sup-bg)}
+  .chip.stale{color:var(--stale);background:var(--stale-bg)}
+  .chip.reference{color:var(--ref);background:var(--ref-bg)}
+  .lines{display:flex;align-items:center;gap:7px;width:150px;justify-content:flex-end}
+  .lines b{font-family:"IBM Plex Mono",monospace;font-size:.76rem;font-weight:500;
+    font-variant-numeric:tabular-nums;color:var(--muted);min-width:30px;text-align:right}
+  .bar{height:5px;background:var(--accent);opacity:.5;border-radius:2px;min-width:2px;max-width:105px}
+  .legend{margin-top:30px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+  .legend dl{margin:10px 0 0;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;align-items:baseline}
+  .legend dt{margin:0}
+  .legend dd{margin:0;color:var(--text-2);font-size:.885rem}
+  @media (max-width:680px){
+    .row{grid-template-columns:40px 1fr;gap:10px}
+    .meta{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start}
+    .lines{width:auto;justify-content:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">physics_interp_video_diffusion · CLAUDE.md · 2026-08-20</div>
+    <h1>CLAUDE.md Section Index</h1>
+    <p class="lede">Every section in the handoff file, what it says in one line, and whether it still holds. Statuses come from the file's own supersession notices — not from a judgement about whether the work was good.</p>
+    <div class="stats">
+      <div class="stat"><b>{{TOTAL}}</b><span>lines</span></div>
+      <div class="stat"><b>{{NSEC}}</b><span>sections</span></div>
+      <div class="stat"><b>{{CUTN}}</b><span>cut candidates</span></div>
+      <div class="stat"><b>{{CUTL}}</b><span>lines they hold ({{CUTPCT}}%)</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="filters">
+  <div class="wrap">
+    <button class="fbtn" data-f="all" aria-pressed="true" type="button">all {{NSEC}}</button>
+    <button class="fbtn" data-f="live" aria-pressed="false" type="button">live {{LIVE}}</button>
+    <button class="fbtn" data-f="revised" aria-pressed="false" type="button">revised {{REV}}</button>
+    <button class="fbtn" data-f="superseded" aria-pressed="false" type="button">superseded {{SUP}}</button>
+    <button class="fbtn" data-f="stale" aria-pressed="false" type="button">stale {{STALE}}</button>
+    <button class="fbtn" data-f="reference" aria-pressed="false" type="button">reference {{REF}}</button>
+    <button class="fbtn" data-f="cut" aria-pressed="false" type="button">✂ cut candidates</button>
+  </div>
+</div>
+
+<main class="wrap">
+  {{ROWS}}
+
+  <div class="legend">
+    <h2>What the statuses mean</h2>
+    <dl>
+      <dt><span class="chip live">live</span></dt><dd>Current and load-bearing. Cutting it loses a result or a rule.</dd>
+      <dt><span class="chip revised">revised</span></dt><dd>Still cited, but a later section changes what it means. Keep, with its warning banner.</dd>
+      <dt><span class="chip superseded">superseded</span></dt><dd>A later section replaces it outright. Safe to reduce to a pointer.</dd>
+      <dt><span class="chip stale">stale</span></dt><dd>Describes something that no longer exists on disk.</dd>
+      <dt><span class="chip reference">reference</span></dt><dd>How-to, environment, or reproduction detail rather than a finding.</dd>
+    </dl>
+  </div>
+</main>
+
+<script>
+  const rows = [...document.querySelectorAll('.row')];
+  const btns = [...document.querySelectorAll('.fbtn')];
+  btns.forEach(b => b.addEventListener('click', () => {
+    const f = b.dataset.f;
+    btns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    rows.forEach(r => {
+      const isCut = !!r.querySelector('.cut');
+      r.hidden = !(f === 'all' || (f === 'cut' ? isCut : r.dataset.status === f));
+    });
+    document.querySelectorAll('.grp').forEach(g => {
+      g.hidden = ![...g.querySelectorAll('.row')].some(r => !r.hidden);
+    });
+  }));
+</script>

@@ -1,0 +1,646 @@
+<title>Object-Agnostic Factor Codes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,400;0,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --surface:#F5F6F4; --raised:#FFFFFF; --ink:#161A18; --ink-2:#3D4744; --muted:#5C6663;
+  --rule:#DCE0DD; --rule-2:#C6CCC8;
+  --signal:#0F7A72; --signal-soft:#0F7A7222; --amber:#96551F; --amber-soft:#96551F1F;
+  --slate:#4A5C6B;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface:#101413; --raised:#161B19; --ink:#DDE3E0; --ink-2:#B3BDB9; --muted:#8E9A96;
+    --rule:#252C2A; --rule-2:#333C39;
+    --signal:#45BDB2; --signal-soft:#45BDB226; --amber:#D9944F; --amber-soft:#D9944F22;
+    --slate:#8FA3B2;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface:#101413; --raised:#161B19; --ink:#DDE3E0; --ink-2:#B3BDB9; --muted:#8E9A96;
+  --rule:#252C2A; --rule-2:#333C39;
+  --signal:#45BDB2; --signal-soft:#45BDB226; --amber:#D9944F; --amber-soft:#D9944F22;
+  --slate:#8FA3B2;
+}
+*{box-sizing:border-box}
+body{background:var(--surface);color:var(--ink);font-family:var(--sans);
+     font-size:16.5px;line-height:1.62;margin:0;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:0 28px 120px}
+p,li{color:var(--ink-2);max-width:68ch}
+strong{color:var(--ink);font-weight:600}
+a{color:var(--signal)}
+code,.m{font-family:var(--mono);font-size:.88em;font-variant-ligatures:none}
+code{background:var(--signal-soft);padding:.1em .34em;border-radius:3px;color:var(--ink)}
+
+/* ---- masthead ---- */
+header{padding:76px 0 0}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.kicker span{white-space:nowrap}
+.kicker span+span::before{content:"/";margin-right:14px;color:var(--rule-2)}
+h1{font-family:var(--serif);font-weight:300;font-size:clamp(38px,6.4vw,62px);line-height:1.04;
+   letter-spacing:-.018em;margin:22px 0 0;text-wrap:balance;color:var(--ink)}
+h1 em{font-style:italic;color:var(--signal)}
+.standfirst{font-family:var(--serif);font-size:21px;line-height:1.52;color:var(--ink-2);
+            margin:24px 0 0;max-width:60ch}
+.rule{height:1px;background:var(--rule);margin:44px 0 0;border:0}
+
+/* ---- headline result strip ---- */
+.result{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;
+        background:var(--rule);border:1px solid var(--rule);margin:40px 0 0}
+.result div{background:var(--surface);padding:18px 20px 20px}
+.result .n{font-family:var(--mono);font-size:29px;font-weight:500;color:var(--signal);
+           font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.result .n.neg{color:var(--amber)}
+.result .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+           color:var(--muted);margin-top:9px;line-height:1.5}
+
+/* ---- sections ---- */
+section{margin-top:66px;scroll-margin-top:24px}
+h2{font-family:var(--serif);font-weight:400;font-size:31px;line-height:1.2;letter-spacing:-.012em;
+   margin:0 0 6px;text-wrap:balance;color:var(--ink)}
+h3{font-family:var(--sans);font-weight:600;font-size:15px;letter-spacing:.005em;
+   margin:38px 0 10px;color:var(--ink)}
+.exp{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--signal);margin:0 0 12px;display:block}
+.q{font-family:var(--serif);font-style:italic;font-size:19px;color:var(--muted);
+   margin:0 0 20px;max-width:58ch}
+
+/* ---- verdict ---- */
+.verdict{border-left:2px solid var(--signal);background:var(--signal-soft);
+         padding:16px 20px;margin:26px 0 0}
+.verdict p{margin:0;color:var(--ink);max-width:62ch}
+.verdict.warn{border-left-color:var(--amber);background:var(--amber-soft)}
+
+/* ---- tables ---- */
+.scroll{overflow-x:auto;margin:24px 0 0;border-top:1px solid var(--rule-2);
+        border-bottom:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 12px;white-space:nowrap;border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+   color:var(--muted);font-weight:400;padding-top:12px;padding-bottom:10px}
+th:first-child,td:first-child{text-align:left;font-family:var(--mono);font-size:12.5px;
+   color:var(--ink);white-space:nowrap}
+td{font-family:var(--mono);color:var(--ink-2)}
+td.hi{color:var(--signal);font-weight:500}
+td.lo{color:var(--amber)}
+tr.rule-top td{border-top:1px solid var(--rule-2)}
+caption{caption-side:bottom;text-align:left;font-size:12.5px;color:var(--muted);
+        padding:12px 0 0;line-height:1.55}
+
+/* ---- charts ---- */
+figure{margin:28px 0 0}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart .grid line{stroke:var(--rule);stroke-width:1}
+.chart .zero{stroke:var(--rule-2);stroke-width:1.5}
+.chart .tick{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+.chart .axtitle{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;
+                text-transform:uppercase;fill:var(--muted)}
+.chart .rowlab{font-family:var(--mono);font-size:12px;fill:var(--muted)}
+.chart .rowlab.hi{fill:var(--ink)}
+.chart .span{stroke:var(--rule-2);stroke-width:1.5}
+.chart .capn{stroke:var(--amber);stroke-width:2}
+.chart .capc{stroke:var(--slate);stroke-width:2}
+.chart .dot{fill:var(--signal)}
+.chart .val{font-family:var(--mono);font-size:12px;fill:var(--ink);font-variant-numeric:tabular-nums}
+.chart .line{fill:none;stroke:var(--signal);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .line.s-b,.chart .dot.s-b,.chart .lbl.s-b{stroke:var(--amber);fill:none}
+.chart .dot.s-b{fill:var(--amber);stroke:none}
+.chart .lbl.s-b{fill:var(--amber);stroke:none}
+.chart .line.s-c{stroke:var(--slate)}
+.chart .dot.s-c{fill:var(--slate)}
+.chart .lbl.s-c{fill:var(--slate)}
+.chart .lbl{font-family:var(--mono);font-size:11.5px;fill:var(--signal)}
+.chart .band{fill:var(--signal-soft)}
+.chart .note{font-family:var(--sans);font-size:11.5px;fill:var(--muted)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.55;max-width:70ch}
+.legend{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;
+        letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.legend i{display:inline-block;width:11px;height:11px;margin-right:7px;vertical-align:-1px;border-radius:2px}
+.legend .k1{background:var(--signal)}
+.legend .k2{background:var(--amber)}
+.legend .k3{background:var(--slate)}
+
+/* ---- misc ---- */
+ul{padding-left:20px}
+li{margin:7px 0}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+      border:1px solid var(--rule-2);color:var(--muted);padding:3px 8px;border-radius:2px;
+      display:inline-block;margin-bottom:14px}
+pre{font-family:var(--mono);font-size:12.5px;background:var(--raised);border:1px solid var(--rule);
+    padding:15px 17px;overflow-x:auto;line-height:1.62;color:var(--ink-2);margin:20px 0 0}
+footer{margin-top:80px;padding-top:26px;border-top:1px solid var(--rule);
+       font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.75}
+@media (prefers-reduced-motion:no-preference){
+  section,header>*{animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="kicker"><span>probe_set v1</span><span>75 conserving scenes</span>
+    <span>VideoMAE-base &amp; V-JEPA2-ViT-L</span><span>2026-08-23</span></div>
+  <h1>One code per factor,<br><em>blind to which object it is</em></h1>
+  <p class="standfirst">A velocity readout fit on ball&nbsp;A — never shown ball&nbsp;B, not its
+  tokens and not its labels — reads ball&nbsp;B's velocity better than a probe trained on
+  B does. Six experiments that survived an audit against the prior work, what each one
+  had to rule out, and where the collision questions go next.</p>
+  <hr class="rule">
+  <div class="result">
+    <div><div class="n">1.00</div><div class="k">align, v<sub>A</sub> vs v<sub>B</sub><br>subspaces identical</div></div>
+    <div><div class="n">0.943</div><div class="k">A&rarr;B transfer<br>own probe: 0.920</div></div>
+    <div><div class="n neg">&minus;0.395</div><div class="k">locality control<br>fails, as it must</div></div>
+    <div><div class="n">0.920</div><div class="k">per-token transfer<br>no pooling at all</div></div>
+  </div>
+</header>
+
+<section>
+  <h2>What was measured, and on what</h2>
+  <p>The 75 momentum-<strong>conserving</strong> scenes of <code>probe_set</code> v1 — the
+  <code>legacy</code> arm, where mass is visible. Violating scenes are excluded because their
+  aftermath was overwritten after the simulation, so post-contact kinematics there are not what
+  the physics produced. Nothing here reads the conserved/violated label, so §38's leak is
+  irrelevant.</p>
+  <p>The question is not <em>is a factor decodable</em> — that was settled long ago — but how the
+  factors are <strong>arranged relative to each other</strong>. Ten factors: each ball's velocity,
+  speed and direction, and each ball's mass and radius.</p>
+
+  <h3>The label geometry is unusually clean, which is what makes this measurable</h3>
+  <p>Across the 75 scenes every correlation between a kinematic and an appearance factor is under
+  |0.31|. No subspace result below is driven by correlated labels. Two facts do constrain the
+  design, and both are handled explicitly:</p>
+  <ul>
+    <li><strong>24 of the 75 scenes have ball B at rest</strong>, so <code>velocity_B</code> has a
+    point mass at the origin and direction is undefined there — §34a's concentric pathology in
+    miniature. Every result was re-run on the 51 moving-B scenes.</li>
+    <li><strong>Direction is 87% linearly predictable from velocity</strong> (measured, not
+    assumed). Speed is 2%. So <em>speed vs direction</em> is a clean comparison and
+    <em>velocity vs direction</em> is mostly label algebra.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="exp">Experiment 0 &middot; the gate</span>
+  <h2>The label-algebra audit</h2>
+  <p class="q">Which of these comparisons is a measurement at all, and which is arithmetic?</p>
+  <p>Ridge is linear in <span class="m">Y</span>, so if factor <em>g</em> is an exact linear function
+  of factor <em>f</em>, then their weight vectors are related by a fixed matrix <strong>for any
+  model, including a random one</strong>. That is §34b, and it silently voided three earlier
+  results in this project. So the audit runs first, on labels only — no activations, no model.</p>
+  <div class="scroll"><table>
+    <caption>OLS R² of predicting the row factor from the column factor, 75 scenes. A value near 1
+    means any geometric comparison between the pair is vacuous.</caption>
+    <thead><tr><th>pair</th><th>R²</th><th>verdict</th></tr></thead>
+    <tbody>
+      <tr><td>direction &larr; velocity</td><td>0.868</td><td style="text-align:left" class="lo">partly forced — read with care</td></tr>
+      <tr><td>speed &larr; velocity</td><td>0.024</td><td style="text-align:left" class="hi">free</td></tr>
+      <tr><td>speed &harr; direction</td><td>0.003&ndash;0.016</td><td style="text-align:left" class="hi">free both ways</td></tr>
+      <tr><td>v<sub>B</sub> &larr; v<sub>A</sub></td><td>0.034</td><td style="text-align:left" class="hi">free</td></tr>
+      <tr><td>mass &larr; radius</td><td>0.169&ndash;0.247</td><td style="text-align:left" class="hi">free</td></tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><p>The two comparisons this dataset can genuinely make —
+  <strong>speed vs direction</strong> and <strong>object A vs object B</strong> — are exactly the two
+  the findings rest on. That is luck, but it is checked luck.</p></div>
+</section>
+
+<section>
+  <span class="exp">The instrument</span>
+  <h2>A raw principal angle is worthless</h2>
+  <p class="q">What does "the subspaces are 75° apart" actually mean?</p>
+  <p>Three things corrupt an angle between two fitted weight subspaces, and each needs its own
+  bracket. This is the transferable part of the work.</p>
+  <ul>
+    <li><strong>Ceiling.</strong> The <em>same</em> factor fit twice on different scenes does not
+    give the same subspace — measured here at overlap 0.33&ndash;0.58, i.e. 40&ndash;55°. Nothing can
+    beat that, so the unit is the ceiling, <strong>not 0°</strong>.</li>
+    <li><strong>Null.</strong> Ridge on meaningless labels does <em>not</em> return a random
+    direction; it loads on the activation's dominant variance directions, which is where real
+    factors also load. So the null is a <strong>shuffled-label fit</strong> (0.005&ndash;0.017), not a
+    random subspace (0.0006).</li>
+    <li><strong>Shared noise.</strong> Fitting two factors on the <em>same</em> scenes lets one noise
+    realisation push both weight vectors the same way. Every cross-factor number here is fit on
+    <strong>disjoint halves</strong> of the scenes, which removes that channel and matches the
+    ceiling's sample size at once.</li>
+  </ul>
+  <p>Reported as <code>align = (overlap &minus; null) / (ceiling &minus; null)</code>: 0 means as
+  unrelated as the estimator allows, 1 means the same subspace measured twice. The ridge penalty is
+  <strong>pinned</strong> — §30b showed every INLP "sawtooth" in this project was per-round alpha
+  selection — and the headline is unchanged from alpha 1 to 10,000.</p>
+</section>
+
+<section>
+  <span class="exp">Experiment 1 &middot; geometry</span>
+  <h2>Same factor, different object — the same directions</h2>
+  <p class="q">Does ball A's velocity live where ball B's velocity lives?</p>
+  <figure>
+    <svg viewBox="0 0 700 380" role="img" aria-label="Subspace overlap for nine factor pairs, each bracketed by its shuffled-label null and its split-half ceiling" class="chart">
+<g class="grid">
+<line x1="200.0" y1="26" x2="200.0" y2="354"/>
+<text class="tick" x="200.0" y="18" text-anchor="middle">0.0</text>
+<line x1="284.7" y1="26" x2="284.7" y2="354"/>
+<text class="tick" x="284.7" y="18" text-anchor="middle">0.1</text>
+<line x1="369.5" y1="26" x2="369.5" y2="354"/>
+<text class="tick" x="369.5" y="18" text-anchor="middle">0.2</text>
+<line x1="454.2" y1="26" x2="454.2" y2="354"/>
+<text class="tick" x="454.2" y="18" text-anchor="middle">0.3</text>
+<line x1="538.9" y1="26" x2="538.9" y2="354"/>
+<text class="tick" x="538.9" y="18" text-anchor="middle">0.4</text>
+<line x1="623.6" y1="26" x2="623.6" y2="354"/>
+<text class="tick" x="623.6" y="18" text-anchor="middle">0.5</text>
+</g>
+<text class="axtitle" x="200" y="374">subspace overlap  (0 = unrelated, 1 = identical)</text>
+<text class="rowlab hi" x="186" y="44" text-anchor="end">velocity_A | velocity_B</text>
+<line class="span" x1="210.2" y1="40" x2="608.4" y2="40"/>
+<line class="capn" x1="210.2" y1="34" x2="210.2" y2="46"/>
+<line class="capc" x1="608.4" y1="33" x2="608.4" y2="47"/>
+<circle class="dot" cx="610.1" cy="40" r="5.5"/>
+<text class="val" x="664.0" y="44" text-anchor="end">+1.00</text>
+<text class="rowlab hi" x="186" y="78" text-anchor="end">radius_A | radius_B</text>
+<line class="span" x1="205.9" y1="74" x2="599.9" y2="74"/>
+<line class="capn" x1="205.9" y1="68" x2="205.9" y2="80"/>
+<line class="capc" x1="599.9" y1="67" x2="599.9" y2="81"/>
+<circle class="dot" cx="588.1" cy="74" r="5.5"/>
+<text class="val" x="664.0" y="78" text-anchor="end">+0.97</text>
+<text class="rowlab hi" x="186" y="112" text-anchor="end">heading_A | heading_B</text>
+<line class="span" x1="210.2" y1="108" x2="565.2" y2="108"/>
+<line class="capn" x1="210.2" y1="102" x2="210.2" y2="114"/>
+<line class="capc" x1="565.2" y1="101" x2="565.2" y2="115"/>
+<circle class="dot" cx="560.1" cy="108" r="5.5"/>
+<text class="val" x="664.0" y="112" text-anchor="end">+0.99</text>
+<text class="rowlab hi" x="186" y="146" text-anchor="end">speed_A | speed_B</text>
+<line class="span" x1="205.9" y1="142" x2="529.6" y2="142"/>
+<line class="capn" x1="205.9" y1="136" x2="205.9" y2="148"/>
+<line class="capc" x1="529.6" y1="135" x2="529.6" y2="149"/>
+<circle class="dot" cx="494.9" cy="142" r="5.5"/>
+<text class="val" x="664.0" y="146" text-anchor="end">+0.89</text>
+<text class="rowlab hi" x="186" y="180" text-anchor="end">mass_A | mass_B</text>
+<line class="span" x1="204.2" y1="176" x2="484.7" y2="176"/>
+<line class="capn" x1="204.2" y1="170" x2="204.2" y2="182"/>
+<line class="capc" x1="484.7" y1="169" x2="484.7" y2="183"/>
+<circle class="dot" cx="481.3" cy="176" r="5.5"/>
+<text class="val" x="664.0" y="180" text-anchor="end">+0.99</text>
+<text class="rowlab" x="186" y="214" text-anchor="end">mass_A | radius_A</text>
+<line class="span" x1="205.9" y1="210" x2="519.4" y2="210"/>
+<line class="capn" x1="205.9" y1="204" x2="205.9" y2="216"/>
+<line class="capc" x1="519.4" y1="203" x2="519.4" y2="217"/>
+<circle class="dot" cx="360.1" cy="210" r="5.5"/>
+<text class="val" x="664.0" y="214" text-anchor="end">+0.49</text>
+<text class="rowlab" x="186" y="248" text-anchor="end">speed_A | heading_A</text>
+<line class="span" x1="211.0" y1="244" x2="518.6" y2="244"/>
+<line class="capn" x1="211.0" y1="238" x2="211.0" y2="250"/>
+<line class="capc" x1="518.6" y1="237" x2="518.6" y2="251"/>
+<circle class="dot" cx="207.6" cy="244" r="5.5"/>
+<text class="val" x="664.0" y="248" text-anchor="end">-0.01</text>
+<text class="rowlab" x="186" y="282" text-anchor="end">velocity_A | mass_A</text>
+<line class="span" x1="211.0" y1="278" x2="521.1" y2="278"/>
+<line class="capn" x1="211.0" y1="272" x2="211.0" y2="284"/>
+<line class="capc" x1="521.1" y1="271" x2="521.1" y2="285"/>
+<circle class="dot" cx="204.2" cy="278" r="5.5"/>
+<text class="val" x="664.0" y="282" text-anchor="end">-0.02</text>
+<text class="rowlab" x="186" y="316" text-anchor="end">velocity_A | radius_A</text>
+<line class="span" x1="211.9" y1="312" x2="613.5" y2="312"/>
+<line class="capn" x1="211.9" y1="306" x2="211.9" y2="318"/>
+<line class="capc" x1="613.5" y1="305" x2="613.5" y2="319"/>
+<circle class="dot" cx="204.2" cy="312" r="5.5"/>
+<text class="val" x="664.0" y="316" text-anchor="end">-0.02</text>
+</svg>
+    <div class="legend"><span><i class="k2"></i>shuffled-label null</span>
+      <span><i class="k1"></i>measured overlap</span>
+      <span><i class="k3"></i>split-half ceiling</span>
+      <span>right column = align</span></div>
+    <figcaption>VideoMAE-base, block 6, 40 disjoint-half repeats. The top five rows are
+    same-factor/different-object pairs; every one lands on its own ceiling. The bottom three are
+    different-factor pairs; every one lands on its null. V-JEPA2 at block 8 gives the same
+    ordering.</figcaption>
+  </figure>
+  <p>The two pools involved are <strong>not the same vector</strong>: <code>A.pre</code> and
+  <code>B.pre</code> share only <strong>0.066 centred cosine</strong> across scenes. And the effect is
+  flat across four orders of magnitude of ridge penalty. Pool similarity and regularisation are both
+  ruled out — but geometry alone cannot rule out coincidence in a 768-dimensional space.</p>
+</section>
+
+<section>
+  <span class="exp">Experiment 2 &middot; the decisive test</span>
+  <h2>Transfer: a probe that has never seen ball B</h2>
+  <p class="q">If the subspaces really coincide, the readout should just work on the other object.</p>
+  <p>Fit the readout on object A only — A's pool, A's label — then apply it, weights and intercept
+  untouched, to B's pool and score against B's label.</p>
+  <div class="scroll"><table>
+    <caption>Held-out R², mean over 24 splits. <strong>swapped</strong> is A's readout on B's tokens
+    scored against A's <em>own</em> label — the control that makes this a claim about a
+    <em>local</em> code rather than a global feature. It must fail, and does.</caption>
+    <thead><tr><th>role</th><th>A&rarr;B</th><th>B&rarr;A</th><th>own B</th><th>own A</th><th>swapped</th><th>shuffled</th></tr></thead>
+    <tbody>
+      <tr><td>velocity</td><td class="hi">0.943</td><td>0.943</td><td>0.920</td><td>0.946</td><td class="lo">&minus;0.395</td><td class="lo">&minus;0.707</td></tr>
+      <tr><td>direction</td><td class="hi">0.898</td><td>0.924</td><td>0.910</td><td>0.931</td><td class="lo">&minus;0.522</td><td class="lo">&minus;0.633</td></tr>
+      <tr><td>radius</td><td class="hi">0.875</td><td>0.891</td><td>0.891</td><td>0.897</td><td class="lo">&minus;0.439</td><td class="lo">&minus;0.514</td></tr>
+      <tr><td>mass</td><td>0.795</td><td>0.811</td><td>0.853</td><td>0.797</td><td class="lo">&minus;0.544</td><td class="lo">&minus;0.449</td></tr>
+      <tr><td>speed</td><td>0.774</td><td>0.832</td><td>0.906</td><td>0.826</td><td class="lo">&minus;0.972</td><td class="lo">&minus;0.618</td></tr>
+      <tr class="rule-top"><td>velocity, V-JEPA2</td><td class="hi">0.930</td><td>0.911</td><td>0.894</td><td>0.937</td><td class="lo">&minus;0.368</td><td class="lo">&minus;0.928</td></tr>
+      <tr><td>direction, V-JEPA2</td><td class="hi">0.935</td><td>0.960</td><td>0.929</td><td>0.965</td><td class="lo">&minus;0.430</td><td class="lo">&minus;0.873</td></tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><p><strong>A probe that has never seen object B reads object B's velocity as
+  well as a probe trained on B</strong> — 0.943 against 0.920. Only <em>speed</em> transfers below
+  its own ceiling, and speed is also the only role whose align falls under 0.9. Speed is the least
+  object-invariant factor in the representation.</p></div>
+</section>
+
+<section>
+  <span class="exp">Experiment 3 &middot; single tokens</span>
+  <h2>It holds without any pooling at all</h2>
+  <p class="q">Is this a property of pooled vectors, or of the tokens themselves?</p>
+  <p>§34g captured raw per-token activations — 1568 tokens × 768 dims — and they had never been
+  analysed. One readout, fit on <strong>individual tokens belonging to ball A</strong>, labelled with
+  that scene's v<sub>A</sub>, applied token by token to held-out scenes:</p>
+  <div class="scroll"><table>
+    <caption>VideoMAE-base <code>patch.block.5</code> (1568 tokens &times; 768) and V-JEPA2-ViT-L <code>patch.block.7</code> (6144 &times; 1024), 75 conserving scenes.</caption>
+    <thead><tr><th>scored on</th><th>R²</th></tr></thead>
+    <tbody>
+      <tr><td>A's own tokens vs v<sub>A</sub> &nbsp;<span style="color:var(--muted)">(ceiling)</span></td><td>0.941</td></tr>
+      <tr><td>B's tokens vs v<sub>B</sub></td><td class="hi">0.920</td></tr>
+      <tr><td>B's tokens vs v<sub>A</sub> &nbsp;<span style="color:var(--muted)">(control)</span></td><td class="lo">&minus;0.545</td></tr>
+      <tr><td>A's tokens, shuffled-label fit</td><td class="lo">&minus;0.442</td></tr>
+      <tr class="rule-top"><td>A's own tokens, V-JEPA2 <span style="color:var(--muted)">(ceiling)</span></td><td>0.891</td></tr>
+      <tr><td>B's tokens vs v<sub>B</sub>, V-JEPA2</td><td class="hi">0.854</td></tr>
+      <tr><td>B's tokens vs v<sub>A</sub>, V-JEPA2 <span style="color:var(--muted)">(control)</span></td><td class="lo">&minus;0.525</td></tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><p>A single local readout reports <strong>whichever object sits under the
+  token</strong>. There is one code per factor and it is object-agnostic; object identity is carried
+  by <em>which tokens you read</em>, not by which directions. This is a different claim from §18's
+  "objects are separately addressable" — and both are true.</p></div>
+</section>
+
+
+
+<section>
+  <span class="exp">Experiment 4 &middot; the reconciliation</span>
+  <h2>Inside one pool, the two objects are orthogonal</h2>
+  <p class="q">If the code is shared, why did §18 find the objects separable?</p>
+  <p>Read <em>both</em> velocities from the <em>same</em> pool and they are orthogonal — align
+  &minus;0.03 in <code>A.pre</code>, &minus;0.00 in <code>B.pre</code>, on both encoders. §18b's ~75°
+  on v3, sharper here. The picture that fits everything: the <strong>own-object</strong> velocity is
+  written in the canonical shared code, while the <strong>other object's</strong> velocity also
+  reaches these tokens (0.44–0.53) but through a different, orthogonal channel.</p>
+  <p>And the two channels have different geometry:</p>
+  <div class="scroll"><table>
+    <caption>Ablation in pool <code>A.pre</code>, VideoMAE. The control removes the same
+    <em>number</em> of dimensions at random — which is what separates "removed the right directions"
+    from "removed capacity".</caption>
+    <thead><tr><th>removed</th><th>R² v<sub>A</sub></th><th>R² v<sub>B</sub></th><th>R² radius<sub>A</sub></th></tr></thead>
+    <tbody>
+      <tr><td>nothing</td><td>0.948</td><td>0.452</td><td>0.845</td></tr>
+      <tr><td>v<sub>A</sub> subspace, 12d</td><td class="lo">0.911</td><td>0.472</td><td>0.852</td></tr>
+      <tr><td>v<sub>B</sub> subspace, 12d</td><td>0.948</td><td class="lo">0.242</td><td>0.839</td></tr>
+      <tr><td>random, 12d</td><td>0.948</td><td>0.455</td><td>0.845</td></tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><p>A clean double dissociation, and an asymmetry worth keeping: the
+  <strong>own-object code is redundant</strong> and barely moves when its own directions are stripped
+  (0.948 → 0.911), while the <strong>other-object code is fragile</strong> and nearly halves
+  (0.452 → 0.242). §18b's "velocity survives 12 INLP rounds" is a property of the own-object channel
+  specifically.</p></div>
+</section>
+
+<section>
+  <span class="exp">Experiment 5 &middot; pooling</span>
+  <h2>A frame-wide pool computes a sum</h2>
+  <p class="q">What does mean-pooling over both objects actually return?</p>
+  <div class="scroll"><table>
+    <caption>Held-out R², mean over 20 splits, pinned alpha.</caption>
+    <thead><tr><th>pool</th><th>v<sub>A</sub></th><th>v<sub>B</sub></th><th>v<sub>A</sub> + v<sub>B</sub></th><th>v<sub>A</sub> &minus; v<sub>B</sub></th><th>momentum</th></tr></thead>
+    <tbody>
+      <tr><td>A.pre</td><td>0.946</td><td>0.413</td><td>0.741</td><td>0.739</td><td>0.419</td></tr>
+      <tr><td>B.pre</td><td>0.619</td><td>0.920</td><td>0.744</td><td>0.728</td><td>0.419</td></tr>
+      <tr><td>all.pre</td><td>0.389</td><td>0.152</td><td class="hi">0.878</td><td class="lo">&minus;0.353</td><td>0.649</td></tr>
+      <tr class="rule-top"><td>all.pre, V-JEPA2</td><td>0.450</td><td>0.069</td><td class="hi">0.869</td><td class="lo">&minus;0.336</td><td>0.488</td></tr>
+    </tbody>
+  </table></div>
+  <p>The frame-wide pool carries the <strong>sum</strong> better than either object-local pool does,
+  and the <strong>difference not at all</strong>. Applying the A-fitted velocity readout to
+  <code>all.pre</code> and regressing its output on the two true velocities gives near-equal weights
+  on both objects — an unweighted average.</p>
+  <div class="verdict"><p>§16 read this as "frame-wide pools lose the objects". They do not lose
+  them — they <strong>superpose</strong> them. A mean over tokens of an object-agnostic per-token
+  code <em>is</em> a sum over whatever objects are in the pool, and a sum cannot be un-mixed. It also
+  explains why frame-wide pools win on momentum (0.649 vs 0.419): momentum is a sum.</p></div>
+</section>
+
+
+
+
+
+<section>
+  <span class="exp">Experiment 6 &middot; the variance basis</span>
+  <h2>Concentration is not redundancy</h2>
+  <p class="q">A claim that fell to its own control, for the same reason as Experiment 7's.</p>
+  <p>I measured the energy of each factor's <em>ridge weight vector</em> in each principal component,
+  found ~0% in the top two against 46&ndash;65% of the activation variance, and concluded PCA
+  truncation would destroy the physics. <strong>That measured the estimator, not the model.</strong></p>
+  <p>In the PC basis, ridge weights are
+  <code>W = &Sigma; [s/(s²+&alpha;)] &middot; corr(Y, PC) &middot; PC</code>. The shrinkage factor
+  <strong>peaks at s = &radic;&alpha; and decays as 1/s</strong> — so a ridge probe puts little weight
+  on leading components however much label information they carry.</p>
+  <p>The estimator-free test: regress the label on each PC's scores alone, out-of-fold OLS, no ridge.</p>
+  <div class="scroll"><table>
+    <caption>Best single principal component per factor, and the fraction of the ridge direction's
+    energy sitting there.</caption>
+    <thead><tr><th>factor</th><th>best PC</th><th>its R²</th><th>variance held</th><th>ridge energy there</th></tr></thead>
+    <tbody>
+      <tr><td>VideoMAE velocity</td><td class="hi">PC1</td><td class="hi">+0.543</td><td>29.1%</td><td class="lo">0.04</td></tr>
+      <tr><td>direction</td><td class="hi">PC1</td><td class="hi">+0.525</td><td>29.1%</td><td class="lo">0.03</td></tr>
+      <tr><td>mass</td><td>PC1</td><td>+0.291</td><td>23.2%</td><td class="lo">0.03</td></tr>
+      <tr><td>speed</td><td>PC5</td><td>+0.495</td><td class="hi">5.3%</td><td>0.00</td></tr>
+      <tr class="rule-top"><td>V-JEPA2 velocity</td><td class="hi">PC2</td><td class="hi">+0.554</td><td>11.0%</td><td class="lo">0.10</td></tr>
+      <tr><td>direction</td><td class="hi">PC2</td><td class="hi">+0.558</td><td>11.0%</td><td class="lo">0.18</td></tr>
+      <tr><td>mass</td><td>PC1</td><td>+0.358</td><td>59.1%</td><td class="lo">0.01</td></tr>
+      <tr><td>speed</td><td>PC4</td><td>+0.453</td><td class="hi">5.6%</td><td>0.00</td></tr>
+    </tbody>
+  </table></div>
+  <p>From the top-<em>k</em> PCs alone, velocity reaches <strong>0.94 by k=5</strong> and direction
+  0.90&ndash;0.97. <strong>PCA truncation to ten components preserves the physics</strong> — the
+  opposite of what I claimed.</p>
+  <h3>How few components suffice</h3>
+  <div class="scroll"><table>
+    <caption>SVD refit <strong>inside each fold</strong>, so no test scene touches the basis, against
+    a full 768-dimensional ridge probe on identical folds.</caption>
+    <thead><tr><th></th><th>top-1</th><th>top-2</th><th>top-3</th><th>top-5</th><th>top-10</th><th>top-20</th><th>full 768d</th></tr></thead>
+    <tbody>
+      <tr><td>VideoMAE velocity</td><td>0.522</td><td>0.486</td><td class="hi">0.913</td><td>0.936</td><td>0.943</td><td>0.943</td><td>0.956</td></tr>
+      <tr><td>direction</td><td>0.509</td><td>0.485</td><td class="hi">0.894</td><td>0.899</td><td>0.906</td><td>0.935</td><td>0.946</td></tr>
+      <tr><td>speed</td><td class="lo">&minus;0.031</td><td class="lo">&minus;0.053</td><td class="lo">&minus;0.019</td><td>0.397</td><td>0.645</td><td>0.821</td><td>0.887</td></tr>
+      <tr class="rule-top"><td>V-JEPA2 velocity</td><td class="lo">&minus;0.061</td><td>0.517</td><td class="hi">0.841</td><td>0.901</td><td>0.892</td><td>0.909</td><td>0.954</td></tr>
+      <tr><td>direction</td><td class="lo">&minus;0.059</td><td>0.536</td><td class="hi">0.897</td><td>0.966</td><td>0.969</td><td>0.971</td><td>0.968</td></tr>
+      <tr><td>speed</td><td class="lo">&minus;0.014</td><td class="lo">&minus;0.065</td><td class="lo">&minus;0.017</td><td>0.569</td><td>0.870</td><td>0.911</td><td>0.938</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Three components recover ~0.90 of velocity and direction</strong> against a 768-dimensional
+  ridge probe's 0.95. Speed reads zero from those same three.</p>
+
+  <h3>Which looks like it contradicts Experiment 8 — it doesn't</h3>
+  <p>INLP called direction <em>high</em>-dimensional and speed <em>low</em>. The PC basis says the
+  reverse. The check that reconciles them is whether INLP removal reaches the top PCs at all:</p>
+  <div class="scroll"><table>
+    <thead><tr><th>target</th><th>dims removed</th><th>ridge R²</th><th>top-3 PC R²</th><th>top-10 PC R²</th></tr></thead>
+    <tbody>
+      <tr><td>velocity</td><td>0</td><td>0.954</td><td class="hi">0.913</td><td>0.943</td></tr>
+      <tr><td></td><td>16</td><td>0.904</td><td class="lo">0.317</td><td>0.731</td></tr>
+      <tr><td></td><td>32</td><td>0.723</td><td class="lo">0.083</td><td>0.418</td></tr>
+      <tr class="rule-top"><td>speed</td><td>0</td><td>0.852</td><td class="lo">&minus;0.019</td><td>0.645</td></tr>
+      <tr><td></td><td>16</td><td class="lo">0.169</td><td>&minus;0.027</td><td>&minus;0.001</td></tr>
+    </tbody>
+  </table></div>
+  <p>Sixteen removals cost the ridge readout almost nothing (0.954 → 0.904) while collapsing the
+  top-3 readout (0.913 → 0.317). The two measurements name <strong>independent properties</strong>:
+  <em>concentration</em> — where the primary copy sits in the variance spectrum — and
+  <em>redundancy</em> — how many copies exist. <strong>Direction is both concentrated and redundant;
+  speed is neither.</strong> "How many dimensions does this variable need" has no single answer, and
+  this dataset gives opposite orderings in the two bases.</p>
+
+  <div class="verdict warn"><p><strong>What survives is worth more than the withdrawn claim.</strong>
+  First: <em>a probe's weight geometry is not a map of where information lives.</em> Ridge puts 4% of
+  its energy in a component that alone predicts the target at R² 0.54. This qualifies my own angle
+  results <em>and</em> Joseph et al.'s C.4 equally — both read geometry off probe weights — and it is
+  why the headline here rests on the <strong>functional</strong> transfer test, which involves no
+  weight geometry at all. Second, a real estimator-free dissociation: <strong>direction rides a
+  leading component (PC1/PC2, 11&ndash;29% of variance) while speed rides a low-variance one (PC4/PC5,
+  ~5%)</strong>, in both models.</p></div>
+</section>
+
+<section>
+  <span class="exp">Attribution</span>
+  <h2>What is actually new here</h2>
+  <p class="q">Checked against the paper text, not from memory. Most of this is replication.</p>
+  <div class="scroll"><table>
+    <caption>Against Joseph et al., <em>Interpreting Physics in Video World Models</em> (FAIR/Meta +
+    Mila, Feb 2026) — same simulator family, overlapping models.</caption>
+    <thead><tr><th>claim</th><th style="text-align:left">status</th></tr></thead>
+    <tbody>
+      <tr><td>direction high-dim, speed low-dim</td><td style="text-align:left"><strong>theirs</strong> — C.4 Table 3, 66–136 vs 21–29 dims. Ours replicates the ordering on a collision set</td></tr>
+      <tr><td>principal angles + projection overlap</td><td style="text-align:left"><strong>theirs</strong> — C.4, the same two formulae</td></tr>
+      <tr><td>polar decomposition of velocity</td><td style="text-align:left"><strong>theirs</strong> — §5.3</td></tr>
+      <tr><td>code delocalises, position-invariant</td><td style="text-align:left"><strong>theirs</strong> — Appendix C.5, including the train-one-half / test-other-half test. Ours quantifies it</td></tr>
+      <tr><td>per-object probes on multi-object video</td><td style="text-align:left"><strong>theirs</strong> — C.3, CLEVRER, but frame-wide mean-pooled</td></tr>
+      <tr class="rule-top"><td>cross-object transfer, two objects at once</td><td style="text-align:left" class="hi"><strong>NEW.</strong> Their generalisation test is one object, one label, region→region. The <em>swapped</em> control only exists when a second object is present to confuse the readout</td></tr>
+      <tr><td>what a frame-wide pool contains with two objects</td><td style="text-align:left" class="hi"><strong>NEW.</strong> They say pooling "survives"; they never decompose it. Bears on their own CLEVRER protocol</td></tr>
+      <tr><td>factor directions vs the variance spectrum</td><td style="text-align:left" class="hi"><strong>NEW.</strong> No PCA or eigen-analysis appears in their paper</td></tr>
+    </tbody>
+  </table></div>
+  <h3>And four experiments removed</h3>
+  <p>These were measured correctly and answered questions the prior work had already answered, so
+  they have been cut from the findings rather than kept as filler:</p>
+  <div class="scroll"><table>
+    <thead><tr><th>cut</th><th style="text-align:left">prior work</th></tr></thead>
+    <tbody>
+      <tr><td>spatial delocalisation of the code</td><td style="text-align:left">Joseph et al. C.5 — direction "broadly distributed across patches", generalises across frame regions</td></tr>
+      <tr><td>speed &perp; direction subspaces</td><td style="text-align:left">Joseph et al. §5.3 + C.4; cav.pdf cites physics/direction at 69&ndash;83°</td></tr>
+      <tr><td>INLP dimensionality</td><td style="text-align:left">Joseph et al. C.4 Table 3 (66&ndash;136 vs 21&ndash;29); cav.pdf Fig 2 runs the same decay</td></tr>
+      <tr><td>"direction is in the pixels"</td><td style="text-align:left"><strong>wrong, not redundant</strong> — it was the pooling mask, floor 0.320</td></tr>
+    </tbody>
+  </table></div>
+  <h3>One methodological disagreement, and it bears on their central negative</h3>
+  <p>Their subspace null is the <em>analytic</em> random-subspace expectation <code>k_A/d</code>, they
+  report no reliability ceiling, and both probes in a pair are fit on the same data. Measured here,
+  all three choices matter:</p>
+  <div class="scroll"><table>
+    <thead><tr><th>bracket</th><th>value</th></tr></thead>
+    <tbody>
+      <tr><td>random 2-d subspaces <span style="color:var(--muted)">(their baseline's form)</span></td><td>0.0006</td></tr>
+      <tr><td>shuffled-label fit</td><td class="hi">0.012 &nbsp;<span style="color:var(--muted)">~20× higher</span></td></tr>
+      <tr><td>split-half ceiling <span style="color:var(--muted)">(same factor, twice)</span></td><td class="hi">0.33–0.58</td></tr>
+    </tbody>
+  </table></div>
+  <p>C.4 concludes "no representational reuse" from a direction→IntPhys overlap of 0.129 against an
+  expected 0.133. With a ceiling near 0.5 rather than 1.0 that conclusion probably survives — but
+  <strong>without a ceiling the test cannot separate "no shared structure" from "too noisy to resolve
+  any"</strong>, and same-data fits bias toward agreement rather than away.</p>
+</section>
+
+<section>
+  <span class="exp">Next</span>
+  <h2>What to ask about the collision itself</h2>
+  <p class="q">Neither prior paper touches contact — both are single-object. Their own limitations say
+  so: "we do not isolate richer physical computations such as contact dynamics."</p>
+  <div class="verdict warn"><p><strong>The binding constraint.</strong> Every scene on disk collides,
+  at frame 20.033&ndash;20.067, sd 0.0166. So "did a collision occur" and "when" have <em>zero
+  variance</em> — detection and timing need a render. The collision's <em>consequences</em> do not,
+  and those come first.</p></div>
+  <div class="scroll"><table>
+    <caption>Ranked. Items 1&ndash;4 run on pixels or captures that already exist.</caption>
+    <thead><tr><th>#</th><th style="text-align:left">experiment</th><th>cost</th><th style="text-align:left">settles</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td style="text-align:left"><strong>Truncation curve.</strong> Re-encode each clip cut at frame k, probe post-collision velocity. Decodable before frame 20 → the model predicts; only after → it observes</td><td>~1 GPU-h</td><td style="text-align:left" class="hi">predicts vs observes — the only prediction test these checkpoints allow, and truncation removes the bidirectional-attention confound by construction</td></tr>
+      <tr><td>2</td><td style="text-align:left"><strong>Causal propagation.</strong> Patch A's pre-contact state, read B's <em>post</em>-contact velocity. Does it move as the law requires?</td><td>~3 min</td><td style="text-align:left" class="hi">whether the collision is COMPUTED, or two trajectories are merely tracked</td></tr>
+      <tr><td>3</td><td style="text-align:left"><strong>Per-token impulse map.</strong> Decode Δv per token over the 14×14×8 grid</td><td>minutes</td><td style="text-align:left">where the interaction sits — on the objects, or at the contact patch?</td></tr>
+      <tr><td>4</td><td style="text-align:left"><strong>Impulse transfer.</strong> Does the shared code extend to a <em>relational, antisymmetric</em> quantity, sign flip and all?</td><td>minutes</td><td style="text-align:left">whether Experiment 2's code covers interactions or only object properties</td></tr>
+      <tr class="rule-top"><td>5</td><td style="text-align:left"><strong>Contact vs near-miss, matched pairs.</strong> Same seed, impact parameter just above/below touching</td><td>~2 GPU-h</td><td style="text-align:left" class="hi">collision DETECTION — the headline question</td></tr>
+      <tr><td>6</td><td style="text-align:left"><strong>Variable contact time</strong> (12&ndash;36 instead of pinned at 20)</td><td>~2 GPU-h</td><td style="text-align:left">timing; unlocks time-to-contact, which has no variance anywhere on disk</td></tr>
+      <tr><td>7</td><td style="text-align:left">Matched-appearance arm</td><td>~2 GPU-h</td><td style="text-align:left">what carries identity when the code is object-agnostic and the balls cross</td></tr>
+      <tr><td>8</td><td style="text-align:left">Occluded collision</td><td>~3 GPU-h</td><td style="text-align:left">perceptual vs inferential collision code</td></tr>
+      <tr><td>9</td><td style="text-align:left">Attention routing at contact</td><td>~1 day code</td><td style="text-align:left">the mechanism; attention <em>weights</em> are not currently captured</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>One trap to design around in #5, and it is fatal if missed:</strong> after the near-miss
+  point the two members of a pair diverge in pixels, so a post-contact probe separates them on
+  geometry alone. Restrict the pre-contact probe to frames where the clips are pixel-identical, and
+  verify with a frame-by-frame difference curve — the same lesson that voided an earlier dataset here.</p>
+</section>
+
+<section>
+  <h2>Controls, and what would break this</h2>
+  <ul>
+    <li><strong>The 24 stationary-B scenes.</strong> Every result re-run on the 51 moving-B scenes
+    and holds — transfer A→B velocity <strong>0.956</strong> against own B <strong>0.940</strong>,
+    align 1.06 / 1.12, speed-vs-direction align &minus;0.01 to &minus;0.04.</li>
+    <li><strong>The pooling-mask leak (§20).</strong> Floors recomputed for the conserving 75:
+    velocity from <code>A.pre</code> sits on 0.312, direction on 0.320, and the frame-wide floors are
+    &minus;0.06 to &minus;0.11 as they must be. <strong>No conclusion here is an absolute R² claim</strong> —
+    transfer, ablation and angle results are all differences at fixed mask, which a mask cannot
+    manufacture.</li>
+    <li><strong>Sample size.</strong> n = 75, 45 train / 30 test. Every geometric number averages 40
+    disjoint-half repeats; the decodability grid is a single split and carries the usual winner's
+    curse.</li>
+    <li><strong>What would break the headline:</strong> a transfer test that <em>succeeds</em> in the
+    swapped condition. It fails at &minus;0.4 to &minus;1.1 everywhere, which is why the claim is
+    about a local shared code rather than a global feature.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Reproducing it</h2>
+  <p>CPU only — reads cached activations, no model load, minutes per stage.</p>
+  <pre>.venv/bin/python scripts/geometry_v1.py --model videomae-base --stage all
+.venv/bin/python scripts/geometry_v1.py --model vjepa2-vitl  --stage all
+.venv/bin/python scripts/geometry_v1.py --model videomae-base --moving-only \
+     --stage algebra,angles,transfer,polar
+
+# the decodability grid and its mask floors
+.venv/bin/python scripts/run_experiment.py configs/momentum_probe.yaml --mode probe \
+     --model videomae-base -o outputs_videomae-base \
+     --where momentum_conserved=true --tag geom_factors \
+     --targets velocity_A_pre,speed_A_pre,heading_A_pre,mass_A,radius_A,...</pre>
+  <p>Stages: <code>algebra</code> (the gate) · <code>angles</code> · <code>transfer</code> ·
+  <code>spatial</code> · <code>objects</code> · <code>polar</code> · <code>spectrum</code> ·
+  <code>dim</code>. Results land in
+  <code>outputs_&lt;model&gt;/momentum_probe/geometry_v1.json</code>.
+  <code>heading_A_pre</code>, <code>heading_B_pre</code>, <code>speed_A_post</code>,
+  <code>speed_B_post</code> and <code>b_moving</code> were added to <code>DERIVED</code>; no
+  re-capture was needed.</p>
+</section>
+
+<footer>
+  physics_interp_video_diffusion &middot; §39 &middot; 2026-08-23<br>
+  probe_set v1, 75 momentum-conserving scenes &middot; VideoMAE-base block 6, V-JEPA2-ViT-L block 8
+</footer>
+</div>

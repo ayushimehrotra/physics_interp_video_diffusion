@@ -1,0 +1,176 @@
+{
+ "pools": [
+  "A.pre+B.pre",
+  "A.pre+A.post+B.pre+B.post"
+ ],
+ "outputs_cons_videomae-base": {
+  "controls": {
+   "velocity_A_pre": 0.9701887727487359,
+   "log mass_A": 0.9654720625096724,
+   "material_A (metal)": 0.990268784269759,
+   "momentum_delta (vector)": -0.40399316647380235
+  },
+  "cells": {
+   "elastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.36666666666666664,
+     "null_mean": 0.5121666666666667,
+     "null_p95": 0.65,
+     "p": 0.98
+    },
+    "norm": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.5136666666666667,
+     "null_p95": 0.6166666666666667,
+     "p": 0.79
+    }
+   },
+   "inelastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.43333333333333335,
+     "null_mean": 0.5063333333333333,
+     "null_p95": 0.6333333333333333,
+     "p": 0.85
+    },
+    "norm": {
+     "paired_accuracy": 0.48333333333333334,
+     "null_mean": 0.4993333333333333,
+     "null_p95": 0.6174999999999999,
+     "p": 0.66
+    }
+   },
+   "elastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.4,
+     "null_mean": 0.5086666666666666,
+     "null_p95": 0.7333333333333333,
+     "p": 0.87
+    },
+    "norm": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.49866666666666665,
+     "null_p95": 0.7333333333333333,
+     "p": 0.66
+    }
+   },
+   "inelastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.6,
+     "null_mean": 0.4706666666666666,
+     "null_p95": 0.7333333333333333,
+     "p": 0.28
+    },
+    "norm": {
+     "paired_accuracy": 0.6666666666666666,
+     "null_mean": 0.502,
+     "null_p95": 0.7333333333333333,
+     "p": 0.11
+    }
+   },
+   "ALL": {
+    "n_pairs": 150,
+    "direct": {
+     "paired_accuracy": 0.4266666666666667,
+     "null_mean": 0.5043333333333334,
+     "null_p95": 0.5736666666666667,
+     "p": 0.98
+    },
+    "norm": {
+     "paired_accuracy": 0.54,
+     "null_mean": 0.502,
+     "null_p95": 0.567,
+     "p": 0.18
+    }
+   }
+  }
+ },
+ "outputs_cons_vjepa2-vitl": {
+  "controls": {
+   "velocity_A_pre": 0.9596923910617209,
+   "log mass_A": 0.9804168799545637,
+   "material_A (metal)": 0.9958043269078313,
+   "momentum_delta (vector)": -0.30408117479247965
+  },
+  "cells": {
+   "elastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.45,
+     "null_mean": 0.5125,
+     "null_p95": 0.6508333333333333,
+     "p": 0.83
+    },
+    "norm": {
+     "paired_accuracy": 0.5333333333333333,
+     "null_mean": 0.49883333333333335,
+     "null_p95": 0.6166666666666667,
+     "p": 0.31
+    }
+   },
+   "inelastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.36666666666666664,
+     "null_mean": 0.49099999999999994,
+     "null_p95": 0.6008333333333332,
+     "p": 0.97
+    },
+    "norm": {
+     "paired_accuracy": 0.5166666666666667,
+     "null_mean": 0.49916666666666665,
+     "null_p95": 0.5841666666666666,
+     "p": 0.41
+    }
+   },
+   "elastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.26666666666666666,
+     "null_mean": 0.4853333333333334,
+     "null_p95": 0.6699999999999998,
+     "p": 0.96
+    },
+    "norm": {
+     "paired_accuracy": 0.5333333333333333,
+     "null_mean": 0.4953333333333333,
+     "null_p95": 0.7333333333333333,
+     "p": 0.45
+    }
+   },
+   "inelastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.8,
+     "null_mean": 0.502,
+     "null_p95": 0.7333333333333333,
+     "p": 0.01
+    },
+    "norm": {
+     "paired_accuracy": 0.6,
+     "null_mean": 0.49866666666666665,
+     "null_p95": 0.7333333333333333,
+     "p": 0.34
+    }
+   },
+   "ALL": {
+    "n_pairs": 150,
+    "direct": {
+     "paired_accuracy": 0.41333333333333333,
+     "null_mean": 0.5065333333333334,
+     "null_p95": 0.5806666666666666,
+     "p": 0.98
+    },
+    "norm": {
+     "paired_accuracy": 0.6,
+     "null_mean": 0.5023333333333333,
+     "null_p95": 0.5733333333333334,
+     "p": 0.02
+    }
+   }
+  }
+ }
+}

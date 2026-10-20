@@ -87,6 +87,63 @@ MATERIALS = {
     },
 }
 
+# ---- dataset v2: making mass a genuine latent variable -------------------------
+#
+# In the v1 sampler mass is not latent. Density takes two values rendered as
+# unmistakable materials and radius is directly visible, so
+# m = rho * (4/3) * pi * r^3 is fully determined by appearance — measured on the
+# 150-scene set, mass_A decodes at R2 0.934 and radius_A at 0.975. That makes the
+# interesting question unfalsifiable: a probe can reach momentum by reading size
+# and colour and never touch the collision at all.
+#
+# The v2 arms separate the Blender material from the Bullet density, which were
+# always independent parameters:
+#
+#   latent_mass    both spheres render identically whatever their densities, so
+#                  the mass ratio is recoverable ONLY from the collision, via
+#                  m_A * dv_A = -m_B * dv_B. A probe that reads it has used
+#                  conservation; there is no other route to it.
+#   visible_mass   albedo ramps continuously with density, so the ratio is
+#                  readable off a single frame. The positive control: same
+#                  physics, same geometry, mass merely visible.
+#
+# The arms differ in exactly one thing — whether density is in the pixels — so
+# the contrast isolates it. Radii are equal WITHIN a scene in both arms, which is
+# what makes the mass ratio purely a density ratio and removes size as a cue.
+# Radius still varies across scenes, so it stays usable as an appearance control.
+ARMS = ("legacy", "latent_mass", "visible_mass")
+
+V2_DENSITY_RANGE = (0.2, 20.0)     # 100x span: the widest ratio this can realise
+V2_MAX_MASS_RATIO = 100.0          # with equal radii, mass ratio IS density ratio
+
+# Albedo ramp for the visible_mass arm, and the single albedo latent_mass gives
+# both spheres (the ramp's midpoint, so the arms sit as close in mean appearance
+# as a visible cue permits).
+#
+# The ceiling matters beyond aesthetics: video.py separates spheres from the flat
+# grey background with one luma threshold (SPHERE_LUMA_MAX 0.58 against a
+# background at 0.659), so a sphere rendering brighter than that is invisible to
+# the tracker. Rendered luma is not a simple function of albedo here — v1's metal
+# reads 0.48 from albedo 0.72 while rubber reads 0.46 from a mean albedo of 0.33
+# — so this range was *checked by rendering the extremes*, not predicted.
+#
+# The first attempt at (0.08, 0.60) failed that check: albedo 0.60 rendered at
+# luma 0.673, brighter than the background itself, and detect_spheres lost the
+# sphere and locked onto its shadow (reporting radii of 22.5 and 13.8 px for two
+# spheres equal by construction). Measured on this surface, rendered luma
+# ~= 0.238 + 0.726 * albedo.
+#
+# Re-measured at the ceiling below: albedo 0.36 -> luma mean 0.542, and 0.08 ->
+# 0.296, with both spheres detected. The 4.5x albedo span is an unmistakable cue,
+# and being monotone in density it is what a linear probe should find easiest.
+# One residue worth knowing: at 0.36 the specular p95 reaches 0.647, so the
+# tracker erodes the bright sphere's blob and stops over-reading its radius the
+# way it does for a dark one. Probing never touches the tracker, but it means
+# tracker radius carries a small density-dependent bias in the visible_mass arm.
+V2_ALBEDO_RANGE = (0.08, 0.36)
+V2_NEUTRAL_ALBEDO = 0.22
+V2_SURFACE = {"metallic": 0.0, "roughness": 0.6, "specular": 0.4, "ior": 1.45}
+
 RESTITUTION_RANGE = (0.05, 1.0)  # pair coefficient, continuous; see restitution note
 
 # World units / second. The floor is set by legibility, not by physics: at the
@@ -156,6 +213,13 @@ CONTROL_MOMENTUM_RANGE = (0.80, 1.25)
 # the balls touch.
 VIOLATION_SCALE_RANGE = (0.35, 0.75)   # |dp| / |p_pre| injected, either sign
 
+# Cap on the impulse asymmetry `delta` in apply_violation. At delta = 1 ball A's
+# velocity change vanishes; beyond it the change reverses, which turns the
+# antiparallel pair parallel and reintroduces exactly the geometric giveaway this
+# mechanism exists to remove. Scenes needing more than this to hit their target
+# |dp| simply realise a smaller violation, which labels.json records honestly.
+MAX_VIOLATION_ASYMMETRY = 0.9
+
 # Frame-0 sanity margins, in world units.
 MIN_SURFACE_GAP_AT_START = 0.15   # surface-to-surface clearance between the spheres
 FRAME_MARGIN = 0.10               # keep silhouettes this far inside the image border
@@ -194,7 +258,106 @@ def _speed_for(momentum: float, mass: float) -> float | None:
   return speed if SPEED_RANGE[0] <= speed <= SPEED_RANGE[1] else None
 
 
-def sample_params(rng: np.random.Generator, violate: bool = False) -> tuple[dict | None, str]:
+def albedo_for_density(density: float) -> float:
+  """Albedo encoding density for the visible_mass arm, log-linear in density.
+
+  Log-linear rather than linear because density itself is sampled log-uniformly:
+  a linear ramp would put almost every scene in the dark end of the range and
+  make the cue useless over most of the dataset.
+  """
+  lo, hi = V2_DENSITY_RANGE
+  frac = (np.log(density) - np.log(lo)) / (np.log(hi) - np.log(lo))
+  a_lo, a_hi = V2_ALBEDO_RANGE
+  return float(a_lo + frac * (a_hi - a_lo))
+
+
+def appearance_for(arm: str, density: float) -> dict:
+  """Resolved Blender surface for one sphere under one arm.
+
+  Appearance is resolved here, at sampling time, rather than looked up from
+  MATERIALS at build time. That is the whole point of v2: the renderer must be
+  able to draw two spheres identically while Bullet gives them different masses,
+  which is impossible while the material *is* the density record.
+  """
+  if arm == "latent_mass":
+    albedo = V2_NEUTRAL_ALBEDO
+  elif arm == "visible_mass":
+    albedo = albedo_for_density(density)
+  else:
+    raise ValueError(f"arm {arm!r} does not use a derived appearance")
+  return {"color": (albedo, albedo, albedo), **V2_SURFACE}
+
+
+def _sample_bodies(rng: np.random.Generator, arm: str,
+                   material_pair: str = "random") -> dict:
+  """Radii, densities and resolved appearances for the two spheres, per arm.
+
+  Split out of :func:`sample_params` so the legacy arm's RNG call order survives
+  verbatim. Scene ``i`` is a pure function of seed ``seed_offset + i`` and
+  ``probe_set/`` is regenerated from seeds rather than backed up, so one extra
+  draw on this path silently changes all 150 v1 scenes.
+  """
+  if arm == "legacy":
+    mat_a = str(rng.choice(list(MATERIALS)))
+    mat_b = str(rng.choice(list(MATERIALS)))
+    # The two materials are drawn INDEPENDENTLY, so half the scenes get a matched
+    # pair and their mass ratio is carried by radius alone. That is fine when the
+    # question is "is mass decodable" -- it is not fine when the question is
+    # "does the readout compare visible mass against the deflection split", where
+    # a matched pair means the only mass cue is r^3 on two similar spheres.
+    # `material_pair` forces the composition. Both draws still happen so the RNG
+    # stream, and therefore every other parameter, is untouched.
+    if material_pair == "mixed":
+      mat_b = next(m for m in MATERIALS if m != mat_a)
+    elif material_pair == "same":
+      mat_b = mat_a
+    r_a = float(rng.uniform(*RADIUS_RANGE))
+    r_b = float(rng.uniform(*RADIUS_RANGE))
+    rho_a, rho_b = MATERIALS[mat_a]["density"], MATERIALS[mat_b]["density"]
+    keys = ("color", "metallic", "roughness", "specular", "ior")
+    app_a = {k: MATERIALS[mat_a][k] for k in keys}
+    app_b = {k: MATERIALS[mat_b][k] for k in keys}
+  else:
+    # Sample the RATIO first and let the absolute scale absorb what is left --
+    # the same discipline the momentum draw below uses, and for the same reason:
+    # the ratio is the quantity under test, so it is the one that has to come out
+    # wide, log-uniform and appearance-independent. Drawing the two densities
+    # independently would instead make the ratio triangular in log and pile most
+    # scenes near 1:1, where the collision barely discriminates between them.
+    log_max = np.log(V2_MAX_MASS_RATIO)
+    log_ratio = float(rng.uniform(-log_max, log_max))
+    half = 0.5 * abs(log_ratio)
+    lo_g = np.log(V2_DENSITY_RANGE[0]) + half
+    hi_g = np.log(V2_DENSITY_RANGE[1]) - half
+    # The feasible band for the geometric mean collapses to a point at the
+    # extreme ratio, by construction: V2_DENSITY_RANGE spans exactly
+    # V2_MAX_MASS_RATIO, so the endpoints are reachable and nothing is rejected.
+    log_rho_g = float(rng.uniform(lo_g, hi_g)) if hi_g > lo_g else 0.5 * (lo_g + hi_g)
+    rho_a = float(np.exp(log_rho_g + 0.5 * log_ratio))
+    rho_b = float(np.exp(log_rho_g - 0.5 * log_ratio))
+    # Equal within the scene. This is what makes the mass ratio a pure density
+    # ratio, so no size cue can shortcut the collision.
+    r_a = r_b = float(rng.uniform(*RADIUS_RANGE))
+    mat_a = mat_b = "neutral" if arm == "latent_mass" else "graded"
+    app_a, app_b = appearance_for(arm, rho_a), appearance_for(arm, rho_b)
+
+  return {
+      "radius_a": r_a, "radius_b": r_b,
+      "material_a": mat_a, "material_b": mat_b,
+      "density_a": float(rho_a), "density_b": float(rho_b),
+      "appearance_a": app_a, "appearance_b": app_b,
+  }
+
+
+def _pin(drawn: float, override: float | None) -> float:
+  """Return the override if there is one, but only after the draw has happened."""
+  return float(drawn) if override is None else float(override)
+
+
+def sample_params(rng: np.random.Generator, violate: bool = False,
+                  arm: str = "legacy",
+                  restitution: float | None = None,
+                  material_pair: str = "random") -> tuple[dict | None, str]:
   """Draw one candidate parameter set.
 
   Momentum is sampled *before* speed and speed is derived as ``p / m``. Drawing
@@ -203,15 +366,22 @@ def sample_params(rng: np.random.Generator, violate: bool = False) -> tuple[dict
   momentum and mass 0.97-correlated. Sampling the target quantity first and letting
   the free factor absorb it is what puts them on separate axes.
 
+  ``arm`` selects the appearance/density coupling; see :data:`ARMS`. The two v2
+  arms widen the mass range from 32x to 100x, which narrows the mass band that
+  can realise the matched-momentum stratum's fixed momentum band at a legal
+  speed. Those draws are rejected before any physics runs, so the cost is
+  negligible and the effect is benign: the stratum simply concentrates on the
+  masses that band was always about.
+
   Returns ``(params, reason)``; ``params`` is None when the draw is infeasible, and
   the reason is recorded so the rejection log says which constraint bit.
   """
-  mat_a = str(rng.choice(list(MATERIALS)))
-  mat_b = str(rng.choice(list(MATERIALS)))
-  r_a = float(rng.uniform(*RADIUS_RANGE))
-  r_b = float(rng.uniform(*RADIUS_RANGE))
-  m_a = sphere_mass(r_a, MATERIALS[mat_a]["density"])
-  m_b = sphere_mass(r_b, MATERIALS[mat_b]["density"])
+  if arm not in ARMS:
+    raise ValueError(f"unknown arm {arm!r}; expected one of {ARMS}")
+
+  bodies = _sample_bodies(rng, arm, material_pair)
+  m_a = sphere_mass(bodies["radius_a"], bodies["density_a"])
+  m_b = sphere_mass(bodies["radius_b"], bodies["density_b"])
 
   control = bool(rng.uniform() < CONTROL_STRATUM_FRAC)
   if control:
@@ -241,12 +411,8 @@ def sample_params(rng: np.random.Generator, violate: bool = False) -> tuple[dict
   jitter_theta = rng.uniform(0, 2 * np.pi)
 
   params = {
-      "radius_a": r_a,
-      "radius_b": r_b,
-      "material_a": mat_a,
-      "material_b": mat_b,
-      "density_a": MATERIALS[mat_a]["density"],
-      "density_b": MATERIALS[mat_b]["density"],
+      **bodies,
+      "arm": arm,
       "speed_a": float(speed_a),
       "speed_b": float(speed_b),
       "direction_a_rad": float(rng.uniform(0, 2 * np.pi)),
@@ -256,7 +422,14 @@ def sample_params(rng: np.random.Generator, violate: bool = False) -> tuple[dict
       "stratum": "matched_momentum" if control else "wide",
       "impact_parameter_frac": float(rng.uniform(0, IMPACT_PARAM_MAX_FRAC)),
       "impact_parameter_sign": int(rng.choice([-1, 1])),
-      "restitution": float(rng.uniform(*RESTITUTION_RANGE)),
+      # `restitution` pins e instead of sampling it. The 2x2 elastic/inelastic
+      # design needs e to be a controlled FACTOR, not a nuisance draw, and the
+      # e-preserving violation (`apply_violation_ratio`) leaves it untouched, so
+      # the twin of a pinned scene carries the same e exactly. The draw happens
+      # either way and is then discarded: skipping it would shift every later
+      # draw in the stream, so the SAME seed at two different e values would stop
+      # sharing its geometry -- which is the whole point of pinning it.
+      "restitution": _pin(float(rng.uniform(*RESTITUTION_RANGE)), restitution),
       "contact_offset": [float(jitter_r * np.cos(jitter_theta)),
                          float(jitter_r * np.sin(jitter_theta))],
       "violates_momentum": bool(violate),
@@ -360,7 +533,8 @@ def derive_masses(p: dict) -> dict:
 
 
 def apply_violation(p, geo, masses, spheres, animation, contact_frame):
-  """Overwrite post-contact motion so momentum is *not* conserved.
+  """Overwrite post-contact motion so momentum is *not* conserved, while keeping
+  the two velocity changes exactly ANTIPARALLEL.
 
   Bullet cannot produce this: it conserves momentum by construction, which is
   precisely why every scene in the original pilot had an identical answer to "is
@@ -368,11 +542,38 @@ def apply_violation(p, geo, masses, spheres, animation, contact_frame):
   simulated honestly and then the outgoing velocities are edited and the spheres
   re-keyframed to fly along the edited ones.
 
-  The kick is applied as equal-and-*same*-direction impulses rather than
-  equal-and-opposite, which is what breaks the sum while leaving each ball's
-  motion individually unremarkable — no ball stops dead or reverses implausibly,
-  so the class difference is in the relationship between the two trajectories
-  rather than in either one alone.
+  Antiparallelism is the whole point of this version, and the previous one got it
+  wrong. That version added the *same* velocity kick to both balls. It broke the
+  momentum sum, but it also broke the geometry: in a frictionless collision the
+  impulse is along the contact normal, so ``dv_A`` and ``dv_B`` are exactly
+  opposed, and adding a common vector tilts them. Measured on the 300-scene set,
+  ``cos(dv_A, dv_B)`` ran -1.000000 for every conserving scene against -0.997 to
+  +0.994 for violating ones — so thresholding that single number separated the
+  classes at **balanced accuracy 1.000**. A probe could "detect violations" by
+  pure geometry, with no notion of mass or momentum anywhere. That is not the
+  question we are asking.
+
+  Here the two impulses stay along the same normal and only their *magnitudes*
+  are made unequal::
+
+      dv_A' = (1 - delta) * dv_A          dv_B' = (1 + delta) * dv_B
+
+  Both remain scalar multiples of the original antiparallel pair, so
+  ``cos(dv_A', dv_B') = -1`` exactly, while
+
+      m_A dv_A' + m_B dv_B' = (delta_beta - delta_alpha) * J = 2 * delta * J
+
+  is non-zero. The perturbation is split symmetrically so neither trajectory is
+  individually odd — one ball rebounds slightly too weakly, the other slightly
+  too strongly.
+
+  The consequence worth understanding: with this mechanism a violation is
+  **undetectable from kinematics alone**. Any antiparallel pair of deflections is
+  consistent with momentum conservation under *some* mass ratio, namely
+  ``m_A/m_B = |dv_B|/|dv_A|``. So the class becomes identifiable only to an
+  observer that knows the masses independently of the collision. That is exactly
+  the property the old mechanism lacked, and it is what makes "does the model use
+  conservation" a real question rather than a geometry check.
 
   Returns the edited post-contact velocities keyed by tag.
   """
@@ -380,21 +581,28 @@ def apply_violation(p, geo, masses, spheres, animation, contact_frame):
   # the last frame before it, so the trajectory deviates exactly at the collision
   # rather than a frame later — the aftermath is wrong, the approach is not.
   first_moving = int(np.ceil(contact_frame))
-  theta = p["violation_direction_rad"]
-  direction = np.array([np.cos(theta), np.sin(theta), 0.0])
 
-  p_pre = (masses["mass_a"] * np.array(animation[spheres["a"]]["velocity"][PRE_FRAME])
-           + masses["mass_b"] * np.array(animation[spheres["b"]]["velocity"][PRE_FRAME]))
-  delta_p = p["violation_scale"] * float(np.linalg.norm(p_pre)) * direction
+  vel_pre = {t: np.array(animation[spheres[t]]["velocity"][PRE_FRAME], dtype=np.float64)
+             for t in ("a", "b")}
+  vel_post = {t: np.array(animation[spheres[t]]["velocity"][POST_FRAME], dtype=np.float64)
+              for t in ("a", "b")}
+  dv = {t: vel_post[t] - vel_pre[t] for t in ("a", "b")}
 
-  edited = {}
-  for tag in ("a", "b"):
-    mass = masses[f"mass_{tag}"]
-    vel = np.array(animation[spheres[tag]]["velocity"][POST_FRAME], dtype=np.float64)
-    # Split the injected momentum in proportion to mass, so both balls take the
-    # same velocity change and neither trajectory looks individually absurd.
-    edited[tag] = vel + delta_p / (masses["mass_a"] + masses["mass_b"])
-    del mass
+  p_pre = masses["mass_a"] * vel_pre["a"] + masses["mass_b"] * vel_pre["b"]
+  impulse = masses["mass_b"] * float(np.linalg.norm(dv["b"]))   # |J|, same for both
+
+  # Choose the asymmetry that realises the requested |dp| / |p_pre|, then clamp.
+  # delta must stay below 1 or ball A's deflection reverses sign, which is both
+  # visually absurd and would flip the antiparallel pair to parallel.
+  target = abs(p["violation_scale"]) * float(np.linalg.norm(p_pre))
+  delta = target / (2.0 * impulse) if impulse > 1e-12 else 0.0
+  delta = float(np.clip(delta, 0.0, MAX_VIOLATION_ASYMMETRY))
+  delta *= float(np.sign(p["violation_scale"]) or 1.0)
+
+  edited = {
+      "a": vel_pre["a"] + (1.0 - delta) * dv["a"],
+      "b": vel_pre["b"] + (1.0 + delta) * dv["b"],
+  }
 
   for tag in ("a", "b"):
     sphere = spheres[tag]
@@ -409,6 +617,178 @@ def apply_violation(p, geo, masses, spheres, animation, contact_frame):
 
   return edited
 
+
+def apply_violation_ratio(p, geo, masses, spheres, animation, contact_frame,
+                          implied_ratio: float):
+  """Break momentum conservation while leaving EVERY mass-free observable alone.
+
+  The two deflections in a frictionless collision are antiparallel and their
+  magnitudes sum to a quantity fixed by the restitution law::
+
+      a = |dv_A|,  b = |dv_B|,   a + b = (1 + e) * u_n        <- invariant
+      b / a = m_A / m_B                                       <- conservation
+
+  So the *sum* is set by the restitution and the *split* is set by the masses.
+  This edit keeps the sum and moves the split, which is the only degree of
+  freedom that conservation constrains:
+
+      a' = S / (1 + rho'),   b' = S * rho' / (1 + rho'),   S = a + b
+
+  where ``implied_ratio`` is rho', the mass ratio the aftermath now *implies*.
+  Consequences, all exact rather than approximate:
+
+  * ``cos(dv_A', dv_B') = -1`` -- both deflections are positive rescalings, so the
+    antiparallel geometry that §38a's `cos` leak exploited is untouched.
+  * realised restitution is unchanged, because it depends only on ``a + b`` --
+    this is the leak §38b opened, and it is closed by construction rather than
+    by clamping.
+  * the relative velocity is bit-identical to the honest twin, so separation
+    rate, closest approach and contact geometry cannot distinguish the classes.
+  * the edit is a COMMON drift ``Delta-p / M`` added to both balls, so no
+    per-object trajectory looks individually odd.
+
+  **Draw ``implied_ratio`` from the mass ratios of OTHER scenes** (a derangement
+  across the set). A permutation preserves the multiset exactly, so the
+  distribution of the implied ratio is identical in the two classes and no
+  kinematics-only readout can separate them -- measured at AUC 0.500 per scalar
+  and 0.498 for a joint 18-feature classifier under grouped CV. The violating
+  clip is then a physically perfect collision *for the wrong pair of masses*,
+  and only a readout that converts appearance into mass can tell.
+
+  Returns the edited post-contact velocities keyed by tag.
+  """
+  first_moving = int(np.ceil(contact_frame))
+
+  vel_pre = {t: np.array(animation[spheres[t]]["velocity"][PRE_FRAME], dtype=np.float64)
+             for t in ("a", "b")}
+  vel_post = {t: np.array(animation[spheres[t]]["velocity"][POST_FRAME], dtype=np.float64)
+              for t in ("a", "b")}
+  dv = {t: vel_post[t] - vel_pre[t] for t in ("a", "b")}
+  a = float(np.linalg.norm(dv["a"]))
+  b = float(np.linalg.norm(dv["b"]))
+  total = a + b
+  if a < 1e-12 or b < 1e-12:
+    raise RuntimeError(f"degenerate deflections a={a:.3e} b={b:.3e}; cannot rescale")
+
+  rho = float(implied_ratio)
+  a_new = total / (1.0 + rho)
+  b_new = total * rho / (1.0 + rho)
+  edited = {
+      "a": vel_pre["a"] + (a_new / a) * dv["a"],
+      "b": vel_pre["b"] + (b_new / b) * dv["b"],
+  }
+
+  for tag in ("a", "b"):
+    sphere = spheres[tag]
+    anchor = np.array(animation[sphere]["position"][first_moving - 1], dtype=np.float64)
+    for frame in range(first_moving, NUM_FRAMES):
+      dt = (frame - (first_moving - 1)) / FRAME_RATE
+      pos = anchor + edited[tag] * dt
+      sphere.position = tuple(pos)
+      sphere.keyframe_insert("position", frame)
+      animation[sphere]["position"][frame] = pos
+      animation[sphere]["velocity"][frame] = edited[tag]
+
+  return edited
+
+
+def apply_energy_edit(p, geo, masses, spheres, animation, contact_frame,
+                      e_target: float):
+  """Change the collision's ENERGY while leaving momentum EXACTLY conserved.
+
+  THE MISSING CELL. `conservation_set_v1` crosses momentum against energy and one
+  box comes out empty: of its 300 clips, **zero** conserve momentum while creating
+  kinetic energy. Every one of its 57 energy-creating clips also breaks momentum,
+  because that is how they were made -- the violation edit targets momentum and
+  disturbs energy only as a side effect. So surprise on those clips cannot be
+  attributed to the invented energy rather than to the missing momentum.
+
+  And the honest half does not fill the gap either: losing kinetic energy is LEGAL
+  physics. An inelastic collision converts it to heat and deformation and violates
+  nothing. Testing whether a model holds energy conservation as a LAW needs clips
+  that are impossible, which means energy CREATED -- `e > 1`, which no physics
+  engine will produce and which therefore has to be edited into existence.
+
+  THE EDIT, and it is the exact complement of `apply_violation_ratio`. Write the
+  two deflections as magnitudes along the contact normal::
+
+      a + b = (1 + e) * |u_n|     <- the SUM is set by the restitution
+      b / a = m_A / m_B           <- the SPLIT is set by conservation
+
+  `apply_violation_ratio` holds the sum and moves the split: momentum breaks, the
+  realised restitution survives. This holds the SPLIT and moves the SUM, which is
+  the orthogonal degree of freedom:
+
+      dv_A' = lambda * dv_A,   dv_B' = lambda * dv_B,   lambda = (1+e_target)/(1+e_sim)
+
+  A COMMON rescaling, so `m_A dv_A' + m_B dv_B' = lambda * 0 = 0` and momentum is
+  conserved to the simulator's own precision -- not approximately, identically. The
+  sum becomes `(1 + e_target) |u_n|`, so the realised restitution becomes exactly
+  `e_target`, and the energy moves by `dKE = (1/2) mu (e_target^2 - 1) u_n^2`, which
+  is POSITIVE for `e_target > 1`: energy from nothing, with the momentum books
+  balanced.
+
+  WHY THIS MAKES A CONTROLLED PAIR. Render each seed at `e_target = k` and at
+  `e_target = 1/k`. Both sit the same distance from elastic in log space; one
+  separates the balls `k` times too fast and the other `k` times too slow, so both
+  are equally unusual as kinematics. Exactly one of them is impossible. A model that
+  is more surprised by `k` than by `1/k` holds an energy prior; one that is equally
+  surprised by both is detecting novelty, not physics.
+
+  Returns the edited post-contact velocities keyed by tag.
+  """
+  first_moving = int(np.ceil(contact_frame))
+
+  vel_pre = {t: np.array(animation[spheres[t]]["velocity"][PRE_FRAME], dtype=np.float64)
+             for t in ("a", "b")}
+  vel_post = {t: np.array(animation[spheres[t]]["velocity"][POST_FRAME], dtype=np.float64)
+              for t in ("a", "b")}
+  dv = {t: vel_post[t] - vel_pre[t] for t in ("a", "b")}
+
+  # THE NORMAL COMES FROM THE DEFLECTION, not from `geo`. The collision is
+  # frictionless, so the impulse -- and therefore `dv_A` -- lies along the contact
+  # normal by construction, exactly. `contact_normal_analytic` is a geometric
+  # reconstruction that agrees only to the accuracy of the contact-frame estimate,
+  # and using it put the realised energy change up to 3.6% off the closed form
+  # `dKE = 1/2 mu (e^2 - 1) u_n^2` while the restitution still looked exact --
+  # because the same wrong normal was on both sides of that check. Deriving the
+  # normal from `dv_A` removes the free parameter and makes the two agree.
+  na = float(np.linalg.norm(dv["a"]))
+  if na < 1e-12:
+    raise RuntimeError(f"degenerate deflection |dv_A|={na:.3e}; cannot recover the normal")
+  n_hat = dv["a"] / na
+  u_pre = float(np.dot(vel_pre["a"] - vel_pre["b"], n_hat))
+  u_post = float(np.dot(vel_post["a"] - vel_post["b"], n_hat))
+  if abs(u_pre) < 1e-9:
+    raise RuntimeError(f"degenerate approach speed u_pre={u_pre:.3e}; cannot set e")
+  e_sim = abs(u_post) / abs(u_pre)
+
+  lam = (1.0 + float(e_target)) / (1.0 + e_sim)
+  edited = {t: vel_pre[t] + lam * dv[t] for t in ("a", "b")}
+
+  p["energy_edit"] = {
+      "applied": True,
+      "e_target": float(e_target),
+      "e_simulated": float(e_sim),
+      "lambda": float(lam),
+      # sign convention is irrelevant to the ratio, but record the raw scalars so a
+      # validator can recompute e without trusting this function
+      "u_normal_pre": u_pre,
+      "u_normal_post_simulated": u_post,
+  }
+
+  for tag in ("a", "b"):
+    sphere = spheres[tag]
+    anchor = np.array(animation[sphere]["position"][first_moving - 1], dtype=np.float64)
+    for frame in range(first_moving, NUM_FRAMES):
+      dt = (frame - (first_moving - 1)) / FRAME_RATE
+      pos = anchor + edited[tag] * dt
+      sphere.position = tuple(pos)
+      sphere.keyframe_insert("position", frame)
+      animation[sphere]["position"][frame] = pos
+      animation[sphere]["velocity"][frame] = edited[tag]
+
+  return edited
 
 # --------------------------------------------------------------------------------------
 # Scene construction and simulation
@@ -532,7 +912,10 @@ def build_and_simulate(p: dict, geo: dict, masses: dict, scratch_dir: str, rende
 
   spheres = {}
   for tag, seg_key in (("a", "A"), ("b", "B")):
-    spec = MATERIALS[p[f"material_{tag}"]]
+    # Resolved at sampling time, not looked up from MATERIALS: under the v2 arms
+    # two spheres can share an appearance while carrying different densities,
+    # which is impossible while the material *is* the density record.
+    spec = p[f"appearance_{tag}"]
     sphere = kb.Sphere(
         name=f"sphere_{tag}",
         scale=p[f"radius_{tag}"],
@@ -695,6 +1078,40 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
   rel_post = float(np.dot(post["a"] - post["b"], n_hat))
   restitution_measured = float(abs(rel_post) / abs(rel_pre)) if abs(rel_pre) > 1e-9 else None
 
+  # ---- how identifiable is the mass ratio in this scene? ----------------------
+  #
+  # Under the v2 latent_mass arm the ratio is recoverable only from the collision,
+  # through m_A*dv_A = -m_B*dv_B. That inverts to a ratio of the two velocity
+  # changes, so the estimate is only as good as the SMALLER of them — and the
+  # smaller one belongs to the heavier ball, shrinking as 1/(1+kappa) in the mass
+  # ratio. At 100:1 the heavy ball deflects by roughly 2% of the relative
+  # velocity.
+  #
+  # That is a fact about the physics, not about the model: past some ratio the
+  # aftermath stops carrying the answer at this resolution, and a probe would
+  # fail for information-theoretic reasons that say nothing about the
+  # representation. Recording it per scene means the probe results can be
+  # stratified by identifiability, rather than that confound being discovered
+  # after the fact — which is the same mistake the v1 momentum/mass confound was.
+  px_per_world = RESOLUTION[0] / (2.0 * half_extents()[0])
+  post_start = int(round(measurements["contact_frame"])) + 3
+  post_span_frames = max(NUM_FRAMES - 1 - post_start, 0)
+  dv = {tag: float(np.linalg.norm(post[tag] - pre[tag])) for tag in ("a", "b")}
+  identifiability = {
+      "delta_v_A": dv["a"],
+      "delta_v_B": dv["b"],
+      "delta_v_A_px_per_frame": dv["a"] * px_per_world / FRAME_RATE,
+      "delta_v_B_px_per_frame": dv["b"] * px_per_world / FRAME_RATE,
+      # The binding constraint: the ratio needs BOTH deflections, so the weaker
+      # one sets the precision. Compare against the tracker's ~0.1 px centroid
+      # noise floor — this is how far the ball departs from its undeflected path
+      # over the window a velocity fit actually sees.
+      "min_delta_displacement_px": (
+          min(dv["a"], dv["b"]) * px_per_world * post_span_frames / FRAME_RATE),
+      "post_window_frames": post_span_frames,
+      "px_per_world": float(px_per_world),
+  }
+
   return {
       "schema_version": 1,
       "scene_id": scene_id,
@@ -709,14 +1126,18 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
                 "density": p["density_a"], "volume": masses["volume_a"],
                 "mass": masses["mass_a"], "friction": 0.0,
                 "restitution_object": float(np.sqrt(p["restitution"])),
-                "segmentation_id": SEG_ID["A"], "color_rgb": MATERIALS[p["material_a"]]["color"]},
+                "segmentation_id": SEG_ID["A"],
+                "color_rgb": list(p["appearance_a"]["color"])},
           "B": {"radius": p["radius_b"], "material": p["material_b"],
                 "density": p["density_b"], "volume": masses["volume_b"],
                 "mass": masses["mass_b"], "friction": 0.0,
                 "restitution_object": float(np.sqrt(p["restitution"])),
-                "segmentation_id": SEG_ID["B"], "color_rgb": MATERIALS[p["material_b"]]["color"]},
+                "segmentation_id": SEG_ID["B"],
+                "color_rgb": list(p["appearance_b"]["color"])},
       },
+      "arm": p.get("arm", "legacy"),
       "mass_ratio": masses["mass_ratio"],
+      "identifiability": identifiability,
       "restitution": p["restitution"],
       # Probe-facing scene labels, hoisted to the top level so a probe target is a
       # short path rather than a reach into sampled_parameters.
@@ -724,6 +1145,16 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
       "b_moving": p["b_moving"],
       "violates_momentum": p["violates_momentum"],
       "momentum_conserved": (not p["violates_momentum"]),
+      # The energy axis, recorded separately from the momentum axis so the 2x2 can be
+      # selected on without re-deriving anything. `energy_created` is the impossible
+      # class: kinetic energy appears from nowhere while the momentum books balance.
+      "energy_edit": p.get("energy_edit"),
+      "restitution_realised": (float(p["energy_edit"]["e_target"])
+                               if p.get("energy_edit") else p["restitution"]),
+      "energy_created": bool(p.get("energy_edit")
+                             and p["energy_edit"]["e_target"] > 1.0),
+      "energy_conserved": bool(p.get("energy_edit") is None
+                               or p["energy_edit"]["e_target"] == 1.0),
       "collision": {
           "target_frame": TARGET_CONTACT_FRAME,
           "actual_frame": measurements["contact_frame"],
@@ -777,6 +1208,11 @@ def build_labels(p, geo, masses, scene, spheres, camera, animation, pair_events,
           "radius_range": list(RADIUS_RANGE),
           "restitution_range": list(RESTITUTION_RANGE),
           "speed_range": list(SPEED_RANGE), "materials": MATERIALS,
+          "arm": p.get("arm", "legacy"),
+          "density_range": list(V2_DENSITY_RANGE),
+          "max_mass_ratio": V2_MAX_MASS_RATIO,
+          "albedo_range": list(V2_ALBEDO_RANGE),
+          "neutral_albedo": V2_NEUTRAL_ALBEDO,
           "b_moving_prob": B_MOVING_PROB,
           "contact_jitter_radius": CONTACT_JITTER_RADIUS,
           "control_stratum_frac": CONTROL_STRATUM_FRAC,
@@ -829,8 +1265,11 @@ def write_mp4(path: Path, rgb, frames_dir: Path):
   """
   import imageio.v3 as iio
   try:
+    # -movflags +faststart puts the moov atom BEFORE mdat. Without it the index sits
+    # at the end of the file, and any player that cannot seek — a browser handed the
+    # clip as a data: URI, for one — refuses to play it at all. Costs nothing here.
     iio.imwrite(path, rgb, fps=FRAME_RATE, codec="libx264", pixelformat="yuv420p",
-                output_params=["-crf", "17"], plugin="FFMPEG")
+                output_params=["-crf", "17", "-movflags", "+faststart"], plugin="FFMPEG")
     return
   except Exception as exc:  # pylint: disable=broad-except
     logger.warning("imageio FFMPEG plugin unavailable (%s); falling back to system ffmpeg", exc)
@@ -844,14 +1283,18 @@ def write_mp4(path: Path, rgb, frames_dir: Path):
   subprocess.run(
       [ffmpeg, "-y", "-loglevel", "error", "-framerate", str(FRAME_RATE),
        "-i", str(frames_dir / "frame_%04d.png"), "-c:v", "libx264", "-crf", "17",
-       "-pix_fmt", "yuv420p", str(path)],
+       "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(path)],
       check=True)
 
 
 # --------------------------------------------------------------------------------------
 
 def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
-             violate: bool = False) -> dict:
+             violate: bool = False, arm: str = "legacy",
+             restitution: float | None = None,
+             implied_ratio: float | None = None,
+             energy_restitution: float | None = None,
+             material_pair: str = "random") -> dict:
   import kubric as kb
   import pybullet as pb
 
@@ -863,7 +1306,9 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
     # --- Pass 1: search for a parameter set that passes every check, physics only.
     for attempt in range(MAX_ATTEMPTS):
       rng = np.random.default_rng([seed, attempt])
-      p, reason = sample_params(rng, violate=violate)
+      p, reason = sample_params(rng, violate=violate, arm=arm,
+                                restitution=restitution,
+                                material_pair=material_pair)
       if p is None:
         rejections.append({"attempt": attempt, "reason": reason})
         continue
@@ -908,8 +1353,23 @@ def generate(seed: int, out_dir: Path, scene_id: str, render: bool = True,
     # violating scene is a *correct* collision with an edited aftermath rather than
     # a scene that failed physics for some unrelated reason.
     if p["violates_momentum"]:
-      apply_violation(p, geo, masses, spheres, animation,
-                      measurements["contact_frame"])
+      if implied_ratio is not None:
+        p["violation_implied_ratio"] = float(implied_ratio)
+        apply_violation_ratio(p, geo, masses, spheres, animation,
+                              measurements["contact_frame"], implied_ratio)
+      else:
+        apply_violation(p, geo, masses, spheres, animation,
+                        measurements["contact_frame"])
+
+    # The ENERGY edit is mutually exclusive with the momentum edits by design: the
+    # whole point of this cell is that momentum stays conserved, so combining them
+    # would reintroduce exactly the confound it exists to remove.
+    if energy_restitution is not None:
+      if p["violates_momentum"]:
+        raise ValueError("--energy-restitution conserves momentum by construction; "
+                         "combining it with --violate defeats its purpose")
+      apply_energy_edit(p, geo, masses, spheres, animation,
+                        measurements["contact_frame"], energy_restitution)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     seg_stats = None
@@ -949,6 +1409,34 @@ def main():
   parser.add_argument("--violate", action="store_true",
                       help="break momentum conservation after contact, for the "
                            "implausible class of a plausibility probe")
+  parser.add_argument("--arm", type=str, default="legacy", choices=ARMS,
+                      help="appearance/density coupling. 'legacy' reproduces the "
+                           "v1 probe_set exactly. 'latent_mass' renders both "
+                           "spheres identically so the mass ratio is recoverable "
+                           "only from the collision; 'visible_mass' ramps albedo "
+                           "with density so it is readable off a single frame")
+  parser.add_argument("--material-pair", type=str, default="random",
+                      choices=("random", "mixed", "same"),
+                      help="'random' draws each sphere's material independently "
+                           "(half the scenes end up matched). 'mixed' forces one "
+                           "metal and one rubber, so the mass ratio always carries "
+                           "a 4x density factor on top of r^3. 'same' is the "
+                           "size-only control")
+  parser.add_argument("--restitution", type=float, default=None,
+                      help="pin the pair restitution instead of sampling it. "
+                           "The elastic/inelastic factor of the 2x2 design")
+  parser.add_argument("--implied-ratio", type=float, default=None,
+                      help="use the e-preserving violation: rescale the two "
+                           "deflections so the aftermath implies THIS mass ratio "
+                           "(m_A/m_B) instead of the true one. Draw it from another "
+                           "scene's ratio so the implied-ratio distribution matches "
+                           "the honest class. Requires --violate")
+  parser.add_argument("--energy-restitution", type=float, default=None,
+                      help="rescale BOTH deflections by (1+e)/(1+e_sim) so the "
+                           "realised restitution becomes this value while momentum "
+                           "stays exactly conserved. e>1 creates kinetic energy from "
+                           "nothing -- the impossible class no physics engine will "
+                           "produce. Mutually exclusive with --violate")
   parser.add_argument("--logging-level", type=str, default="INFO")
   args = parser.parse_args()
 
@@ -959,7 +1447,11 @@ def main():
   scene_id = args.scene_id or out_dir.name
   try:
     labels = generate(args.seed, out_dir, scene_id, render=not args.no_render,
-                      violate=args.violate)
+                      violate=args.violate, arm=args.arm,
+                      restitution=args.restitution,
+                      implied_ratio=args.implied_ratio,
+                      energy_restitution=args.energy_restitution,
+                      material_pair=args.material_pair)
   except Exception:  # pylint: disable=broad-except
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "_FAILED").write_text(traceback.format_exc())

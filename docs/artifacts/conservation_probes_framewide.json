@@ -1,0 +1,176 @@
+{
+ "pools": [
+  "all.pre",
+  "all.all"
+ ],
+ "outputs_cons_videomae-base": {
+  "controls": {
+   "velocity_A_pre": 0.44128032504597803,
+   "log mass_A": 0.12216172159644811,
+   "material_A (metal)": 0.04012645724225894,
+   "momentum_delta (vector)": 0.4264522230414899
+  },
+  "cells": {
+   "elastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.4896666666666667,
+     "null_p95": 0.5924999999999999,
+     "p": 0.7
+    },
+    "norm": {
+     "paired_accuracy": 0.5833333333333334,
+     "null_mean": 0.49833333333333335,
+     "null_p95": 0.5924999999999999,
+     "p": 0.08
+    }
+   },
+   "inelastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.48333333333333334,
+     "null_mean": 0.4916666666666667,
+     "null_p95": 0.6166666666666667,
+     "p": 0.58
+    },
+    "norm": {
+     "paired_accuracy": 0.7666666666666667,
+     "null_mean": 0.4993333333333333,
+     "null_p95": 0.6,
+     "p": 0.0
+    }
+   },
+   "elastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.4906666666666667,
+     "null_p95": 0.6666666666666666,
+     "p": 0.66
+    },
+    "norm": {
+     "paired_accuracy": 0.8,
+     "null_mean": 0.5146666666666666,
+     "null_p95": 0.7033333333333331,
+     "p": 0.02
+    }
+   },
+   "inelastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.4,
+     "null_mean": 0.48400000000000015,
+     "null_p95": 0.7033333333333331,
+     "p": 0.78
+    },
+    "norm": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.5053333333333332,
+     "null_p95": 0.6666666666666666,
+     "p": 0.76
+    }
+   },
+   "ALL": {
+    "n_pairs": 150,
+    "direct": {
+     "paired_accuracy": 0.5133333333333333,
+     "null_mean": 0.5034666666666666,
+     "null_p95": 0.5636666666666666,
+     "p": 0.44
+    },
+    "norm": {
+     "paired_accuracy": 0.7333333333333333,
+     "null_mean": 0.5037333333333334,
+     "null_p95": 0.5703333333333334,
+     "p": 0.0
+    }
+   }
+  }
+ },
+ "outputs_cons_vjepa2-vitl": {
+  "controls": {
+   "velocity_A_pre": 0.470051880395458,
+   "log mass_A": 0.07757240405546029,
+   "material_A (metal)": -0.0013553408702060565,
+   "momentum_delta (vector)": 0.03180849424196741
+  },
+  "cells": {
+   "elastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.43333333333333335,
+     "null_mean": 0.5046666666666667,
+     "null_p95": 0.6258333333333332,
+     "p": 0.82
+    },
+    "norm": {
+     "paired_accuracy": 0.6,
+     "null_mean": 0.5036666666666667,
+     "null_p95": 0.6183333333333332,
+     "p": 0.1
+    }
+   },
+   "inelastic_mixed": {
+    "n_pairs": 60,
+    "direct": {
+     "paired_accuracy": 0.5333333333333333,
+     "null_mean": 0.5153333333333333,
+     "null_p95": 0.6333333333333333,
+     "p": 0.38
+    },
+    "norm": {
+     "paired_accuracy": 0.45,
+     "null_mean": 0.49733333333333335,
+     "null_p95": 0.6091666666666666,
+     "p": 0.78
+    }
+   },
+   "elastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.26666666666666666,
+     "null_mean": 0.504,
+     "null_p95": 0.7333333333333333,
+     "p": 0.98
+    },
+    "norm": {
+     "paired_accuracy": 0.6666666666666666,
+     "null_mean": 0.5293333333333333,
+     "null_p95": 0.7333333333333333,
+     "p": 0.2
+    }
+   },
+   "inelastic_same": {
+    "n_pairs": 15,
+    "direct": {
+     "paired_accuracy": 0.26666666666666666,
+     "null_mean": 0.45066666666666655,
+     "null_p95": 0.7333333333333333,
+     "p": 0.96
+    },
+    "norm": {
+     "paired_accuracy": 0.4666666666666667,
+     "null_mean": 0.4786666666666667,
+     "null_p95": 0.7333333333333333,
+     "p": 0.58
+    }
+   },
+   "ALL": {
+    "n_pairs": 150,
+    "direct": {
+     "paired_accuracy": 0.5333333333333333,
+     "null_mean": 0.49653333333333344,
+     "null_p95": 0.5533333333333333,
+     "p": 0.18
+    },
+    "norm": {
+     "paired_accuracy": 0.66,
+     "null_mean": 0.49920000000000003,
+     "null_p95": 0.5509999999999999,
+     "p": 0.0
+    }
+   }
+  }
+ }
+}

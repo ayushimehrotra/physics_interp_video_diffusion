@@ -172,6 +172,22 @@ class CogVideoXAdapter(ModelAdapter):
             # ff sees [text, video] concatenated — note the ordering.
             add(SiteSpec(f"block.{i}.ff_out", f"{path}.ff", "output", None, joint, True, i))
 
+            # --- per-head attention output (pre-projection) ---------------- #
+            # The *input* to to_out[0], which is the only place head identity
+            # still exists: the processor reshapes to
+            # ``[batch, seq, heads * head_dim]`` and then to_out[0] mixes the
+            # heads together, so anything tapped at ``attn_out`` has already
+            # lost them. Here head ``j`` is exactly the slice
+            # ``[64*j : 64*(j+1)]`` of the 1920 features (30 heads x 64).
+            #
+            # This is the site inference-time-intervention work targets, and
+            # the reason is that heads specialise: a single direction spread
+            # over all 1920 features puts most of its norm in heads that do not
+            # carry the variable, which buys damage rather than control. Note
+            # the ordering is [text, video] like ff_out, not video-first.
+            add(SiteSpec(f"block.{i}.attn_heads", f"{path}.attn1.to_out.0",
+                         "input", 0, joint, True, i))
+
         # --- embedding and head ------------------------------------------- #
         # patch_embed returns text and video concatenated; the transformer
         # splits them immediately afterwards.

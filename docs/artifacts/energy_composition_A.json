@@ -1,0 +1,52 @@
+{
+ "test_A": {
+  "VideoMAE": {
+   "speed": {
+    "cell": "block.9.resid_post/A.pre",
+    "source_cv_r2": 0.9577817820493183,
+    "rho": 0.24429745274095171,
+    "p": 0.0,
+    "null_p95": 0.10572880359256247
+   },
+   "pixels": {
+    "cell": "block.3.resid_post/all.pre",
+    "source_cv_r2": 0.9960338145718243,
+    "rho": 0.6307771934878625,
+    "p": 0.0,
+    "null_p95": 0.1128707912022971
+   },
+   "ke": {
+    "cell": "block.11.resid_post/all.pre",
+    "source_cv_r2": 0.9711016079325373,
+    "rho": 0.021665490711084485,
+    "p": 0.725,
+    "null_p95": 0.11949265259027964
+   },
+   "composed_rho": 0.2907262979931018
+  },
+  "V-JEPA2": {
+   "speed": {
+    "cell": "block.16.resid_post/all.pre",
+    "source_cv_r2": 0.9523295431996608,
+    "rho": 0.4279238868340698,
+    "p": 0.0,
+    "null_p95": 0.11661035030370474
+   },
+   "pixels": {
+    "cell": "embed.out/all.pre",
+    "source_cv_r2": 0.9980375316520522,
+    "rho": 0.585407372508323,
+    "p": 0.0,
+    "null_p95": 0.11031181978809337
+   },
+   "ke": {
+    "cell": "block.20.resid_post/all.pre",
+    "source_cv_r2": 0.9502265940229622,
+    "rho": 0.27457651605247146,
+    "p": 0.0,
+    "null_p95": 0.11855924888449158
+   },
+   "composed_rho": 0.3242340395366687
+  }
+ }
+}

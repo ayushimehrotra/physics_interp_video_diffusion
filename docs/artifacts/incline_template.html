@@ -1,0 +1,720 @@
+<title>The Incline Set</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+<style>
+  :root{
+    --bg:#e9edf1; --surface:#ffffff; --surface-2:#f3f6f8; --inset:#eaeff3;
+    --line:#d2dae2; --line-soft:#e3e9ee;
+    --text:#131a22; --text-2:#33404d; --muted:#5c6b7a;
+    --mu:#0d7c73; --mu-soft:rgba(13,124,115,.12);
+    --acc:#b0602a; --acc-soft:rgba(176,96,42,.12);
+    --ok:#2c7a51; --ok-soft:rgba(44,122,81,.12);
+    --hi:#b5324a; --hi-soft:rgba(181,50,74,.10);
+    --ramp-lo:#a8d8d2; --ramp-hi:#0a544e;
+    --dot:#5c6b7a;
+    --shadow:0 1px 2px rgba(16,26,36,.06), 0 8px 24px -16px rgba(16,26,36,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0c1117; --surface:#141c25; --surface-2:#19222c; --inset:#0f161e;
+      --line:#26323f; --line-soft:#1d2833;
+      --text:#dee6ee; --text-2:#bcc8d4; --muted:#8b9dae;
+      --mu:#4fcec1; --mu-soft:rgba(79,206,193,.14);
+      --acc:#e39a58; --acc-soft:rgba(227,154,88,.14);
+      --ok:#5fc389; --ok-soft:rgba(95,195,137,.14);
+      --hi:#f0798f; --hi-soft:rgba(240,121,143,.12);
+      --ramp-lo:#2a6d66; --ramp-hi:#86ece0;
+      --dot:#8b9dae;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0c1117; --surface:#141c25; --surface-2:#19222c; --inset:#0f161e;
+    --line:#26323f; --line-soft:#1d2833;
+    --text:#dee6ee; --text-2:#bcc8d4; --muted:#8b9dae;
+    --mu:#4fcec1; --mu-soft:rgba(79,206,193,.14);
+    --acc:#e39a58; --acc-soft:rgba(227,154,88,.14);
+    --ok:#5fc389; --ok-soft:rgba(95,195,137,.14);
+    --hi:#f0798f; --hi-soft:rgba(240,121,143,.12);
+    --ramp-lo:#2a6d66; --ramp-hi:#86ece0;
+    --dot:#8b9dae;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:0 28px 96px}
+  .prose{max-width:70ch}
+  h1,h2,h3{font-family:"Source Serif 4",Georgia,serif; text-wrap:balance; margin:0}
+  h1{font-size:clamp(2.5rem,6vw,4.1rem); font-weight:700; line-height:1.02; letter-spacing:-.02em}
+  h2{font-size:clamp(1.5rem,3vw,2rem); font-weight:600; letter-spacing:-.012em; line-height:1.15}
+  h3{font-size:1.06rem; font-weight:600; letter-spacing:-.005em}
+  p{margin:0}
+  a{color:var(--mu)}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  code{font-size:.86em; background:var(--inset); border:1px solid var(--line-soft); border-radius:4px; padding:.08em .34em}
+  .num{font-variant-numeric:tabular-nums}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  }
+  .mu{color:var(--mu); font-weight:600}
+  .ac{color:var(--acc); font-weight:600}
+
+  /* ---- header ---- */
+  header{
+    border-bottom:1px solid var(--line);
+    background:
+      linear-gradient(to bottom, var(--surface-2), var(--bg)),
+      repeating-linear-gradient(115deg, var(--line-soft) 0 1px, transparent 1px 26px);
+    background-blend-mode:normal;
+  }
+  header .wrap{padding-top:56px; padding-bottom:36px}
+  .lede{
+    font-family:"Source Serif 4",Georgia,serif; font-size:clamp(1.12rem,2.2vw,1.42rem);
+    line-height:1.45; color:var(--text-2); max-width:44ch; margin-top:18px;
+  }
+  .status{display:flex; flex-wrap:wrap; gap:8px; margin-top:26px; align-items:center}
+  .chip{
+    font-family:"IBM Plex Mono",monospace; font-size:.74rem; letter-spacing:.04em;
+    border:1px solid var(--line); border-radius:999px; padding:.3em .8em;
+    background:var(--surface); color:var(--text-2);
+  }
+  .chip.pass{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 40%, var(--line)); background:var(--ok-soft)}
+  .chip.flag{color:var(--hi); border-color:color-mix(in srgb, var(--hi) 45%, var(--line)); background:var(--hi-soft)}
+  .chip.hold{color:var(--acc); border-color:color-mix(in srgb, var(--acc) 40%, var(--line)); background:var(--acc-soft)}
+
+  .spec{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:8px; overflow:hidden; margin-top:32px;
+  }
+  .spec div{background:var(--surface); padding:12px 14px}
+  .spec dt{font-family:"IBM Plex Mono",monospace; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 3px}
+  .spec dd{margin:0; font-family:"IBM Plex Mono",monospace; font-size:.94rem; font-weight:500;
+    font-variant-numeric:tabular-nums}
+
+  /* ---- sections ---- */
+  section{padding-top:64px}
+  .shead{display:flex; flex-direction:column; gap:10px; margin-bottom:22px}
+  .shead .rule{height:1px; background:var(--line); margin-top:4px}
+  .body-copy{display:flex; flex-direction:column; gap:16px; color:var(--text-2)}
+  .body-copy strong{color:var(--text)}
+
+  .eq{
+    font-family:"IBM Plex Mono",monospace; font-size:.95rem; background:var(--inset);
+    border:1px solid var(--line-soft); border-left:3px solid var(--mu);
+    border-radius:0 6px 6px 0; padding:14px 16px; overflow-x:auto; color:var(--text);
+  }
+  .eq .cmt{color:var(--muted)}
+
+  .callout{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:18px 20px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow);
+  }
+  .callout.warn{border-left:3px solid var(--hi)}
+
+  /* ---- the pair ---- */
+  .pair{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:20px; box-shadow:var(--shadow);
+  }
+  .pair-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px}
+  .clip{display:flex; flex-direction:column; gap:10px}
+  .clip video{width:100%; display:block; border-radius:6px; background:#000; border:1px solid var(--line)}
+  .clip-tag{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+  .clip-tag .id{font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted)}
+  .readout{
+    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px;
+    background:var(--line-soft); border:1px solid var(--line-soft); border-radius:6px; overflow:hidden;
+  }
+  .readout div{background:var(--surface-2); padding:8px 10px}
+  .readout .k{font-family:"IBM Plex Mono",monospace; font-size:.64rem; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--muted)}
+  .readout .v{font-family:"IBM Plex Mono",monospace; font-size:.92rem; font-variant-numeric:tabular-nums}
+  .readout .v.mu{color:var(--mu)} .readout .v.ac{color:var(--acc)}
+  .controls{display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap}
+  button{
+    font-family:"IBM Plex Mono",monospace; font-size:.8rem; letter-spacing:.04em;
+    background:var(--text); color:var(--surface); border:1px solid var(--text);
+    border-radius:6px; padding:.55em 1.1em; cursor:pointer;
+  }
+  button:hover{opacity:.88}
+  button:focus-visible{outline:2px solid var(--mu); outline-offset:2px}
+  .hint{font-size:.82rem; color:var(--muted)}
+
+  /* ---- clip grid ---- */
+  .grid4{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:12px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow);
+  }
+  .card video{width:100%; display:block; border-radius:5px; background:#000}
+  .kv{display:flex; gap:14px; flex-wrap:wrap; font-family:"IBM Plex Mono",monospace;
+    font-size:.78rem; font-variant-numeric:tabular-nums; color:var(--text-2)}
+
+  /* ---- plots ---- */
+  .plots{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px}
+  .plot{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:14px 14px 10px; position:relative; box-shadow:var(--shadow);
+  }
+  .plot h3{font-family:"IBM Plex Sans",sans-serif; font-size:.86rem; font-weight:600; letter-spacing:.01em}
+  .plot .sub{font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--muted); margin-top:2px}
+  .plot svg{width:100%; height:auto; display:block; margin-top:6px; overflow:visible}
+  .tip{
+    position:absolute; pointer-events:none; opacity:0; transition:opacity .12s;
+    background:var(--text); color:var(--surface); font-family:"IBM Plex Mono",monospace;
+    font-size:.7rem; padding:6px 8px; border-radius:5px; white-space:pre; z-index:5;
+    transform:translate(-50%,-125%);
+  }
+  .plot.wide{grid-column:1 / -1}
+  .ramp{display:flex; align-items:center; gap:8px; margin-top:8px;
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:var(--muted)}
+  .ramp .bar{height:8px; width:90px; border-radius:2px;
+    background:linear-gradient(90deg,var(--ramp-lo),var(--ramp-hi)); border:1px solid var(--line)}
+
+  /* ---- table ---- */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; min-width:640px}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  thead th{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); font-weight:500;
+    background:var(--surface-2); border-bottom:1px solid var(--line);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.check{font-weight:600; white-space:nowrap}
+  td.mono{font-family:"IBM Plex Mono",monospace; font-size:.82rem; font-variant-numeric:tabular-nums}
+  .pass{color:var(--ok)}
+  .bar-note{color:var(--muted); font-size:.82rem}
+
+  ul.plain{margin:0; padding-left:1.15em; display:flex; flex-direction:column; gap:9px; color:var(--text-2)}
+  ul.plain li::marker{color:var(--muted)}
+
+  footer{margin-top:80px; border-top:1px solid var(--line); padding-top:24px;
+    font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--muted);
+    display:flex; flex-direction:column; gap:6px}
+
+  @media (prefers-reduced-motion: reduce){*{transition:none !important; animation:none !important}}
+  @media (max-width:560px){
+    .readout{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .wrap{padding-left:18px; padding-right:18px}
+  }
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">momentum_dataset / incline_set_v2 &nbsp;·&nbsp; rendered 2026-08-21</div>
+    <h1>The Incline Set</h1>
+    <p class="lede">150 scenes built to do one thing: make sliding friction <span class="mu">μ</span> something other than a second name for <span class="ac">acceleration</span>.</p>
+    <div class="status">
+      <span class="chip pass">150 / 150 complete</span>
+      <span class="chip pass">all 8 validator checks green</span>
+      <span class="chip">corr(μ, a) = −0.645</span>
+      <span class="chip pass">mask leak 0.988 → 0.066</span>
+      <span class="chip hold">not yet probed</span>
+    </div>
+    <dl class="spec">
+      <div><dt>scenes</dt><dd>150</dd></div>
+      <div><dt>μ range</dt><dd>0.151 – 0.399</dd></div>
+      <div><dt>θ range</dt><dd>28.0 – 42.0°</dd></div>
+      <div><dt>gravity</dt><dd>0.45</dd></div>
+      <div><dt>clip</dt><dd>49 f @ 8 fps</dd></div>
+      <div><dt>resolution</dt><dd>720 × 480</dd></div>
+      <div><dt>launch speed</dt><dd>0 – 0.60</dd></div>
+      <div><dt>on disk</dt><dd>2.3 GB</dd></div>
+      <div><dt>render time</dt><dd>6 h 05 m</dd></div>
+    </dl>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">why it exists</div>
+      <h2>On a flat floor, μ and deceleration are the same number</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="prose body-copy">
+      <p>The earlier friction set (<code>slide_set_v2</code>) put a cube on a level floor, where <span class="mono">a = μg</span> with g fixed. Measured there: <span class="mono num">corr(μ, decel) = 0.99976</span>, and predicting μ from the deceleration <em>with no fitting at all</em> gives <span class="mono num">R² = 0.995</span>. No scene in that set can tell the two apart, so every result on it is a result about acceleration — which Joseph et al. already report as decodable from early layers.</p>
+      <p>Tilting the floor breaks the identity, because θ enters differently and is drawn independently of μ:</p>
+      <div class="eq">a = g·(sin θ − μ·cos θ)&nbsp;&nbsp;&nbsp;<span class="cmt">so</span>&nbsp;&nbsp;&nbsp;μ = (sin θ − a/g) / cos θ</div>
+      <p>θ is visible — it is the orientation of the slope in the image — so an observer has both terms it needs. But <strong>acceleration alone no longer answers the question.</strong> At <span class="mono num">corr(μ, a) = −0.677</span> over the rendered set, a linear readout of acceleration by itself tops out at <span class="mono num">R² = 0.459</span> on μ. Anything above that line is reading something other than how fast the cube speeds up.</p>
+      <p>It also makes the format claim from the momentum work falsifiable on the same variable. On the flat floor μ was a <em>linear functional</em> of the speed trace, and direct probing tied composition. Here μ is a <em>quotient</em>, so the claim predicts the direct probe should now fall short of composing a decoded <span class="ac">a</span> with a decoded θ. Same variable, different geometry, opposite prediction.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">the whole point, in two clips</div>
+      <h2>Same motion, 2.3× the friction</h2>
+      <div class="rule"></div>
+    </div>
+    <p class="prose body-copy" style="margin-bottom:20px">These two scenes accelerate at the same rate — 0.1489 against 0.1509, a 1.3% difference — while their friction coefficients differ by a factor of 2.3. On a level floor this pair could not exist. And unlike the same pair in v1, the two clips no longer <em>look</em> alike: different launch speeds send the cubes different distances at identical acceleration, which is exactly what stops a probe from reading the answer off one frame.</p>
+    <div class="pair">
+      <div class="pair-grid">
+        <div class="clip">
+          <div class="clip-tag"><h3>Steep &amp; sticky</h3><span class="id">scene_00082</span></div>
+          <video id="pairA" src="{{VID_scene_00082}}" muted loop playsinline preload="metadata" aria-label="Cube sliding down a 40 degree slope, mu 0.399"></video>
+          <div class="readout">
+            <div><div class="k">μ</div><div class="v mu">0.399</div></div>
+            <div><div class="k">θ</div><div class="v">40.0°</div></div>
+            <div><div class="k">a</div><div class="v ac">0.1489</div></div>
+            <div><div class="k">v₀</div><div class="v">0.56</div></div>
+          </div>
+        </div>
+        <div class="clip">
+          <div class="clip-tag"><h3>Shallow &amp; slippery</h3><span class="id">scene_00136</span></div>
+          <video id="pairB" src="{{VID_scene_00136}}" muted loop playsinline preload="metadata" aria-label="Cube sliding down a 29 degree slope, mu 0.170"></video>
+          <div class="readout">
+            <div><div class="k">μ</div><div class="v mu">0.170</div></div>
+            <div><div class="k">θ</div><div class="v">29.0°</div></div>
+            <div><div class="k">a</div><div class="v ac">0.1509</div></div>
+            <div><div class="k">v₀</div><div class="v">0.30</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="playBoth" type="button">▶ Play both</button>
+        <span class="hint">Same acceleration, 2.3× the friction, and different distances covered — the launch speed is what breaks the single-frame readout.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">coverage · 150 scenes</div>
+      <h2>What the sampler actually produced</h2>
+      <div class="rule"></div>
+    </div>
+    <p class="prose body-copy" style="margin-bottom:20px">μ is log-uniform on (0.15, 0.40); θ is uniform on (28°, 42°) and drawn independently — a cube tips over rather than slides beyond about 45°. Hover any point for its scene.</p>
+    <div class="plots">
+      <div class="plot" id="p1">
+        <h3>Friction against measured acceleration</h3>
+        <div class="sub">r = −0.677 &nbsp;·&nbsp; the dissociation this set exists for</div>
+        <div class="tip"></div>
+      </div>
+      <div class="plot" id="p2">
+        <h3>Friction against slope angle</h3>
+        <div class="sub">r = −0.021 &nbsp;·&nbsp; sampled independently, as designed</div>
+        <div class="tip"></div>
+      </div>
+      <div class="plot" id="p3">
+        <h3>Slope angle against acceleration</h3>
+        <div class="sub">r = +0.749 &nbsp;·&nbsp; θ now carries most of the motion</div>
+        <div class="tip"></div>
+      </div>
+    </div>
+    <p class="prose body-copy" style="margin-top:20px">The first panel is the one to read. Each θ level is its own descending line — hold the slope fixed and <span class="mono">a</span> falls linearly with μ, exactly as the formula says. Stack fourteen degrees of slope on top and those lines smear into a band, which is what drops the correlation from 0.9998 to 0.68 and leaves roughly half of μ's variance unreachable from acceleration.</p>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">samples · corners of the space</div>
+      <h2>Four corners of the space</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="grid4">
+      <div class="card">
+        <video src="{{VID_scene_00106}}" controls muted loop playsinline preload="metadata"></video>
+        <div class="kv"><span class="mu">μ 0.393</span><span>θ 28.6°</span><span class="ac">a 0.059</span></div>
+        <p class="hint">Highest friction, shallowest slope — barely accelerates, and coasts on its launch speed.</p>
+      </div>
+      <div class="card">
+        <video src="{{VID_scene_00008}}" controls muted loop playsinline preload="metadata"></video>
+        <div class="kv"><span class="mu">μ 0.207</span><span>θ 41.8°</span><span class="ac">a 0.230</span></div>
+        <p class="hint">Low friction, steepest slope — the fast corner.</p>
+      </div>
+      <div class="card">
+        <video src="{{VID_scene_00076}}" controls muted loop playsinline preload="metadata"></video>
+        <div class="kv"><span class="mu">μ 0.331</span><span>θ 41.8°</span><span class="ac">a 0.187</span></div>
+        <p class="hint">High friction <em>and</em> steep — still fast. Slope wins the argument.</p>
+      </div>
+      <div class="card">
+        <video src="{{VID_scene_00025}}" controls muted loop playsinline preload="metadata"></video>
+        <div class="kv"><span class="mu">μ 0.176</span><span>θ 28.0°</span><span class="ac">a 0.141</span></div>
+        <p class="hint">Low friction on the shallowest slope, for reference.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">validate_incline.py</div>
+      <h2>Every check, and the bar it had to clear</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>check</th><th>result</th><th>bar</th><th>what it rules out</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="check pass">physics</td>
+            <td class="mono">rel. err. vs g(sin θ − μ cos θ): median 4.4e−03, max 4.4e−02<br>μ recovered from (a, θ): median err 7.2e−03</td>
+            <td class="mono">0.08</td>
+            <td>Bullet not doing what the label says</td>
+          </tr>
+          <tr>
+            <td class="check pass">dissociation</td>
+            <td class="mono">corr(μ, a) = −0.677<br>corr(μ, θ) = −0.021</td>
+            <td class="mono">|r| &lt; 0.9</td>
+            <td>the set's one job — if this approached −1, no probe on it could be called friction rather than acceleration</td>
+          </tr>
+          <tr>
+            <td class="check pass">frame-0 leak</td>
+            <td class="mono">start-position spread 0.0000<br>μ from frame 0 alone: R² = −1.29</td>
+            <td class="mono">R² &lt; 0.25</td>
+            <td>the answer being visible before anything moves</td>
+          </tr>
+          <tr>
+            <td class="check pass">visibility</td>
+            <td class="mono">slope fills 61.7–65.6% of frame, luma 135.6–151.3, within-frame sd 3.1–4.1<br>smallest cube area 1465 px</td>
+            <td class="mono">&gt;15%, luma &gt;20, sd &gt;1.0</td>
+            <td>rendering a black wedge and validating it happily</td>
+          </tr>
+          <tr>
+            <td class="check pass">appearance leak</td>
+            <td class="mono">partial corr(luma, log μ | θ) = −0.137<br>μ-driven luma swing 0.101</td>
+            <td class="mono">swing &lt; 1.0</td>
+            <td>friction being readable off the floor's shading</td>
+          </tr>
+          <tr>
+            <td class="check pass">confounds</td>
+            <td class="mono">corr(log μ, cube size) = −0.020<br>6 rejections total, corr with μ = −0.113</td>
+            <td class="mono">|r| &lt; 0.24</td>
+            <td>μ hiding inside object appearance or the rejection sampler</td>
+          </tr>
+          <tr>
+            <td class="check pass">coverage</td>
+            <td class="mono">μ 0.151–0.399, log quartiles off ideal by ≤0.08<br>θ 28.0–42.0°, travel 1.64–6.87</td>
+            <td class="mono">0.35</td>
+            <td>a nominally continuous variable landing on clumps</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose body-copy" style="margin-top:18px"><span class="bar-note">Note the <span class="mono">latent_friction</span> arm: the floor albedo is pinned at 0.42 for every scene, so μ is nowhere in the pixels except through motion. The strong <span class="mono">corr(luma, θ) = −0.999</span> is expected and fine — tilting the slope changes its shading.</span></p>
+  </section>
+
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">found 2026-08-20 · fixed and re-rendered 2026-08-21</div>
+      <h2>The check that wasn't there</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="prose body-copy">
+      <p>This set exists because its predecessor, <code>incline_set_v1</code>, rendered 150/150 with every check green and was still unprobeable. The validator asked whether μ is readable from <em>frame 0</em>. It is not: the cube's frame-0 centroid does move across the set — 11 px in x, 14 px in y — but that movement is <strong>θ</strong> (r = +0.95, −0.98), which is drawn independently of μ (r = −0.07, +0.02). The check is correct and it passes.</p>
+      <p><strong>Nothing tests frames 1 through 48.</strong> And because <code>START_S</code> is pinned and every cube is released from rest, position at frame k is exactly <span class="mono">s₀ + ½·a·(k/8)²</span>. Displacement <em>is</em> acceleration; θ is visible in the same frame; together they are μ. Measured from the cube's segmentation mask alone, held out, 60/40 split:</p>
+    </div>
+    <div class="plots" style="margin-top:20px">
+      <div class="plot wide" id="p4">
+        <h3>How much of μ the cube's mask gives away, frame by frame</h3>
+        <div class="sub">held-out R² on μ from the cube's mask alone · v1 against v2 · the set's own bar is 0.459</div>
+        <div class="tip"></div>
+      </div>
+    </div>
+    <div class="tablewrap" style="margin-top:18px">
+      <table>
+        <thead><tr><th>route to μ</th><th>v1</th><th>v2</th><th>reading</th></tr></thead>
+        <tbody>
+          <tr><td>cube mask centroid + area, worst frame</td><td class="mono num" style="color:var(--hi);font-weight:600">+0.988</td><td class="mono num" style="color:var(--ok);font-weight:600">+0.066</td><td class="bar-note">three numbers from one frame</td></tr>
+          <tr><td>cube mask centroid only, worst frame</td><td class="mono num">+0.877</td><td class="mono num">+0.071</td><td class="bar-note">two numbers from one frame</td></tr>
+          <tr><td>cube mask, frame 0</td><td class="mono num">−0.010</td><td class="mono num">−0.065</td><td class="bar-note">the check that existed — clean in both</td></tr>
+          <tr><td>world position + θ, worst single frame</td><td class="mono num">+0.997</td><td class="mono num">+0.145</td><td class="bar-note">worst split 0.227, bar 0.25</td></tr>
+          <tr><td>world position + θ, three frames</td><td class="mono num">+0.997</td><td class="mono num">+0.997</td><td class="bar-note"><strong>must stay high — this is the acceleration</strong></td></tr>
+          <tr><td>acceleration alone — the bar the set imposes</td><td class="mono num">+0.459</td><td class="mono num">+0.416</td><td class="bar-note">what a friction probe has to beat</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose body-copy" style="margin-top:20px">
+      <p>So the set does not currently impose its own bar. A μ probe scoring 0.9 here would be reading <em>where the cube is</em>, not how fast it is speeding up — and §20's mask-only floor would sit near 0.99, the worst leak in the project, ahead of <code>cube_size</code> at 99% pooling mask.</p>
+      <div class="callout warn">
+        <p><strong>This is the frame-0 leak displaced by one frame — and the fix for that leak is what created it.</strong> Pinning <code>s₀</code> removed the cue from frame 0 and, by making the start a known constant, turned every later frame into a complete readout of the acceleration.</p>
+        <p style="color:var(--text-2)">Found the same way as the other three: by watching the clips and noticing the cube sits in different places.</p>
+      </div>
+      <p>The fix is to put unknowns into the initial condition until one frame is no longer enough. Each one costs an equation:</p>
+      <div class="eq">position at frame k  =  s₀  +  v₀·t  +  ½·a·t²
+<span class="cmt">v1:  s₀ fixed, v₀ = 0    → one snapshot gives a, solved</span>
+<span class="cmt">+ jittered start        → 1 equation, 2 unknowns → 2 frames, a velocity</span>
+<span class="cmt">+ random launch speed   → 1 equation, 3 unknowns → 3 frames, an ACCELERATION</span></div>
+      <p>Three unknowns means three moments in time, and three points is what it takes to see a trajectory bend. The bend <em>is</em> acceleration — so the smallest thing that answers the question becomes <span class="ac">a</span> together with θ, and nothing simpler.</p>
+    </div>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <thead><tr><th>constant</th><th>v1</th><th>fixed</th><th>why</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">START_JITTER</td><td class="mono num">—</td><td class="mono num">2.5</td><td class="bar-note">span of the uniform jitter on the start</td></tr>
+          <tr><td class="mono">LAUNCH_SPEED_RANGE</td><td class="mono num">(0, 0)</td><td class="mono num">(0, 0.60)</td><td class="bar-note">down-slope speed at frame 0</td></tr>
+          <tr><td class="mono">GRAVITY</td><td class="mono num">0.70</td><td class="mono num">0.45</td><td class="bar-note">frame budget — the two draws above eat 6.2 units of runway</td></tr>
+          <tr><td class="mono">CAMERA_DISTANCE</td><td class="mono num">14</td><td class="mono num">18</td><td class="bar-note">the rest of the budget; costs cube size, 36 px → 28 px</td></tr>
+          <tr><td class="mono">start anchor</td><td class="mono">−3.4, fixed</td><td class="mono">−runway(θ, h)</td><td class="bar-note">θ and h are independent of μ, so anchoring to them leaks nothing — v1's first attempt anchored to <em>travel</em>, which is <span class="ac">a</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose body-copy" style="margin-top:20px">
+      <p>Audited through the real sampler — 80k draws, <strong>zero rejections</strong> (a rejection that depends on travel depends on μ), and 20 subsamples of 150 scored the way a probe would score them:</p>
+    </div>
+    <div class="tablewrap" style="margin-top:16px">
+      <table>
+        <thead><tr><th>μ recoverable from…</th><th>1 frame</th><th>2 frames</th><th>3 frames</th><th>corr(μ, a)</th></tr></thead>
+        <tbody>
+          <tr><td>as rendered</td><td class="mono num" style="color:var(--hi);font-weight:600">0.997</td><td class="mono num">0.997</td><td class="mono num">0.997</td><td class="mono num">−0.677</td></tr>
+          <tr><td><strong>post-fix</strong></td><td class="mono num" style="color:var(--ok);font-weight:600">0.077</td><td class="mono num">0.46</td><td class="mono num">0.997</td><td class="mono num">−0.61 … −0.74</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose body-copy" style="margin-top:18px">
+      <p>The 3-frame row has to stay high, and does — otherwise a set could pass by being unreadable rather than by being honest. The dissociation the set exists for survives untouched.</p>
+      <p><code>check_frame0_leak</code> is gone, replaced by two checks. <code>check_single_frame_leak</code> sweeps <em>every</em> frame in world coordinates — cheap, no pixels. <code>check_mask_leak</code> runs the same attack on the segmentation masks in <strong>pixel</strong> space, which is what the model actually sees; it is §20's mask-only floor applied before capture instead of after. Both gate at R² &lt; 0.25 averaged over 20 repeated 60/40 splits, because one split at n = 150 is too noisy to gate on. Both were confirmed to <strong>fail this set</strong> — 0.997 and 0.975 — and to pass five independent post-fix draws at 0.008–0.066.</p>
+      <p class="bar-note">The sibling sets are not affected in this form — <code>slide_set_v2</code> jitters its start by ±0.4 and its launch speed over 1.00–1.60, and <code>collide_set_v1</code> jitters both starts by 0–0.5.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">what went wrong first</div>
+      <h2>Three rendering bugs, one of which would have voided the set silently</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="prose body-copy">
+      <ul class="plain">
+        <li><strong>The camera at height 0 rendered a black wedge.</strong> Sitting exactly in the slope plane made every surface point edge-on: the slope covered half the frame at luma 0.6 of 255. At height 5.0 it is lit but fills 89% of frame and the slope/background boundary — the only cue for θ — leaves the image. 1.5 keeps both.</li>
+        <li><strong>Six validation checks passed on that black render.</strong> The appearance-leak check measures the μ-driven swing in floor luma, which was correctly ~0 — on a floor that was black. It answered its own question honestly while the premise underneath was broken. Hence the visibility check above.</li>
+        <li><strong>The frame-0 leak, and no check saw it.</strong> Centring each trajectory on the origin made the start position a deterministic function of travel, hence of <span class="ac">a</span>: <span class="mono num">corr(s₀, a) = −0.9998</span>. Since θ is visible in frame 0 too, <span class="mono">μ was recoverable from the first frame alone at R² = 1.0000</span>. A probe could have scored perfectly on a model representing no dynamics whatsoever. The start is now pinned; the check reads −1.29.</li>
+      </ul>
+      <div class="callout warn">
+        <p><strong>This is the identity trap arriving through the rendering rather than the physics</strong> — a third distinct route into the same failure, after the algebraic one (momentum) and the correlational one (flat-floor μ).</p>
+        <p style="color:var(--text-2)">It was found by looking at the clips, not by any validator. Publish a contact sheet of every new set and look at it before probing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="eyebrow">status</div>
+      <h2>Where this sits, and what it is waiting on</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="prose body-copy">
+      <p>The set is rendered, validated and ready. <strong>Nothing has been captured or probed on it yet.</strong></p>
+      <ul class="plain">
+        <li><strong>Done:</strong> re-rendered as <code>incline_set_v2</code> — 150/150 in 365 min, 2.3 GB, zero failures, all eight checks pass.</li>
+        <li><strong>Two costs of the camera move,</strong> both inside their bars: the slope now covers 58.6–61.5% of frame (was 61.7–65.6%) and the smallest per-frame cube is 874 px (was 1465). The cube is the object being probed, so if object-local decodability comes back weak, that 40% area reduction is the first thing to check.</li>
+        <li><strong>v1 is kept, not deleted.</strong> It is the only set in the project with a known, quantified single-frame leak, which makes it the negative control — <code>check_mask_leak</code> was trusted only after it failed v1 at 0.975 and passed v2 at 0.066.</li>
+        <li><strong>Then:</strong> activation capture on both encoders, then μ direct-vs-composed against decoded <span class="ac">a</span> and θ. The prediction on record is that direct now <em>falls short</em> of composed, since μ became a quotient.</li>
+        <li><strong>The bar to clear is 0.459</strong>, not zero — that is what acceleration alone linearly affords on μ here. On the set as rendered, the mask-only floor is closer to 0.99.</li>
+        <li><strong>Siblings:</strong> <code>collide_set_v1</code> (two cubes, shared floor) is at 26/150 and paused; <code>slide_set_v2</code>'s pixels are not on this box.</li>
+        <li><strong>Uncommitted:</strong> the generator, the validator and this set's contact sheet are single-copy on a machine that has already lost a cache to a rebuild once.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <div>momentum_dataset/incline_set_v2 · arm latent_friction · generate_incline_scene.py · validate_incline.py</div>
+    <div>150 scenes · seeds 0–149 · frames/ segmentation/ video.mp4 labels.json per scene · manifest.json · _validation.json · _contact_sheet.png</div>
+  </footer>
+</main>
+
+<script>
+  const SCENES = {{SCENES_JSON}};
+  const LEAK_V2 = {{LEAK_V2}};
+  const LEAK = [{"f":0,"cen":-0.0103,"cen_area":-0.0371},{"f":3,"cen":0.0161,"cen_area":-0.0116},{"f":6,"cen":0.135,"cen_area":0.1189},{"f":9,"cen":0.3759,"cen_area":0.4068},{"f":12,"cen":0.6293,"cen_area":0.7134},{"f":15,"cen":0.789,"cen_area":0.8943},{"f":18,"cen":0.859,"cen_area":0.9681},{"f":21,"cen":0.8769,"cen_area":0.9877},{"f":24,"cen":0.8647,"cen_area":0.9801},{"f":27,"cen":0.8275,"cen_area":0.9519},{"f":30,"cen":0.7585,"cen_area":0.8897},{"f":33,"cen":0.6542,"cen_area":0.7746},{"f":36,"cen":0.5179,"cen_area":0.5956},{"f":39,"cen":0.3995,"cen_area":0.4214},{"f":42,"cen":0.368,"cen_area":0.3671},{"f":45,"cen":0.4253,"cen_area":0.4333},{"f":48,"cen":0.5153,"cen_area":0.5354}];
+
+  // ---- paired playback -------------------------------------------------------
+  const a = document.getElementById('pairA'), b = document.getElementById('pairB');
+  const btn = document.getElementById('playBoth');
+  btn.addEventListener('click', () => {
+    if (a.paused) {
+      a.currentTime = 0; b.currentTime = 0;
+      a.play(); b.play();
+      btn.textContent = '❚❚ Pause';
+    } else {
+      a.pause(); b.pause();
+      btn.textContent = '▶ Play both';
+    }
+  });
+  a.addEventListener('pause', () => { if (b.paused) btn.textContent = '▶ Play both'; });
+
+  // ---- scatter plots ---------------------------------------------------------
+  const W = 420, H = 300, M = {t: 12, r: 14, b: 44, l: 52};
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  function mix(c1, c2, t) {
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const A = p(c1), B = p(c2);
+    return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`;
+  }
+
+  function ticks(lo, hi, n) {
+    const step = (hi - lo) / n, out = [];
+    for (let i = 0; i <= n; i++) out.push(lo + step * i);
+    return out;
+  }
+
+  function scatter(id, xk, yk, xlab, ylab, opts) {
+    const host = document.getElementById(id);
+    const tip = host.querySelector('.tip');
+    const xs = SCENES.map(s => s[xk]), ys = SCENES.map(s => s[yk]);
+    const pad = (v, f) => [Math.min(...v) - (Math.max(...v) - Math.min(...v)) * f,
+                           Math.max(...v) + (Math.max(...v) - Math.min(...v)) * f];
+    const [x0, x1] = pad(xs, .06), [y0, y1] = pad(ys, .08);
+    const X = v => M.l + (v - x0) / (x1 - x0) * (W - M.l - M.r);
+    const Y = v => H - M.b - (v - y0) / (y1 - y0) * (H - M.t - M.b);
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `${ylab} against ${xlab}, 150 scenes`);
+    const el = (n, at) => { const e = document.createElementNS(NS, n); for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+    const line = css('--line'), soft = css('--line-soft'), muted = css('--muted');
+    // grid + axes
+    ticks(x0, x1, 4).forEach(t => {
+      svg.appendChild(el('line', {x1: X(t), x2: X(t), y1: M.t, y2: H - M.b, stroke: soft, 'stroke-width': 1}));
+      const tx = el('text', {x: X(t), y: H - M.b + 16, fill: muted, 'font-size': 10, 'text-anchor': 'middle',
+                             'font-family': 'IBM Plex Mono, monospace'});
+      tx.textContent = t.toFixed(opts.xdp); svg.appendChild(tx);
+    });
+    ticks(y0, y1, 4).forEach(t => {
+      svg.appendChild(el('line', {x1: M.l, x2: W - M.r, y1: Y(t), y2: Y(t), stroke: soft, 'stroke-width': 1}));
+      const tx = el('text', {x: M.l - 8, y: Y(t) + 3.5, fill: muted, 'font-size': 10, 'text-anchor': 'end',
+                             'font-family': 'IBM Plex Mono, monospace'});
+      tx.textContent = t.toFixed(opts.ydp); svg.appendChild(tx);
+    });
+    svg.appendChild(el('line', {x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b, stroke: line, 'stroke-width': 1}));
+    svg.appendChild(el('line', {x1: M.l, x2: M.l, y1: M.t, y2: H - M.b, stroke: line, 'stroke-width': 1}));
+
+    const xt = el('text', {x: (M.l + W - M.r) / 2, y: H - 10, fill: opts.xcolor || muted, 'font-size': 11,
+                           'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace'});
+    xt.textContent = xlab; svg.appendChild(xt);
+    const yt = el('text', {x: 14, y: (M.t + H - M.b) / 2, fill: opts.ycolor || muted, 'font-size': 11,
+                           'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace',
+                           transform: `rotate(-90 14 ${(M.t + H - M.b) / 2})`});
+    yt.textContent = ylab; svg.appendChild(yt);
+
+    // guide band for the matched-acceleration pair
+    if (opts.band) {
+      const [lo, hi] = opts.band;
+      svg.appendChild(el('rect', {x: M.l, y: Y(hi), width: W - M.l - M.r, height: Math.max(2, Y(lo) - Y(hi)),
+                                  fill: css('--hi'), opacity: .10}));
+    }
+
+    const lo = css('--ramp-lo'), hi = css('--ramp-hi');
+    const th = SCENES.map(s => s.theta), tmin = Math.min(...th), tmax = Math.max(...th);
+
+    SCENES.forEach(s => {
+      const isHi = opts.highlight && opts.highlight.includes(s.id);
+      const c = opts.rampByTheta ? mix(lo, hi, (s.theta - tmin) / (tmax - tmin)) : css('--dot');
+      const dot = el('circle', {cx: X(s[xk]), cy: Y(s[yk]), r: isHi ? 5 : 3.2,
+                                fill: isHi ? css('--hi') : c, opacity: isHi ? 1 : .72,
+                                stroke: isHi ? css('--surface') : 'none', 'stroke-width': 1.5});
+      dot.style.cursor = 'crosshair';
+      dot.addEventListener('pointerenter', ev => {
+        tip.textContent = `scene_${s.id}\nμ ${s.mu.toFixed(3)}  θ ${s.theta.toFixed(1)}°\na ${s.a.toFixed(4)}  travel ${s.travel.toFixed(2)}`;
+        const r = host.getBoundingClientRect(), d = ev.target.getBoundingClientRect();
+        tip.style.left = (d.left - r.left + d.width / 2) + 'px';
+        tip.style.top = (d.top - r.top) + 'px';
+        tip.style.opacity = 1;
+      });
+      dot.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+      svg.appendChild(dot);
+    });
+
+    if (opts.highlight) {
+      SCENES.filter(s => opts.highlight.includes(s.id)).forEach(s => {
+        const t = el('text', {x: X(s[xk]), y: Y(s[yk]) - 10, fill: css('--hi'), 'font-size': 9.5,
+                              'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace'});
+        t.textContent = s.id; svg.appendChild(t);
+      });
+    }
+    host.appendChild(svg);
+
+    if (opts.rampByTheta) {
+      const r = document.createElement('div');
+      r.className = 'ramp';
+      r.innerHTML = '<span>θ 28°</span><span class="bar"></span><span>42°</span>' +
+                    '<span style="margin-left:auto;color:var(--hi)">● the matched pair</span>';
+      host.appendChild(r);
+    }
+  }
+
+  scatter('p1', 'mu', 'a', 'μ', 'a (measured)', {
+    xdp: 2, ydp: 2, rampByTheta: true, highlight: ['00025', '00147'], band: [0.2185, 0.2218],
+    xcolor: css('--mu'), ycolor: css('--acc')
+  });
+  scatter('p2', 'mu', 'theta', 'μ', 'θ (deg)', {xdp: 2, ydp: 0, xcolor: css('--mu')});
+  scatter('p3', 'theta', 'a', 'θ (deg)', 'a (measured)', {xdp: 0, ydp: 2, ycolor: css('--acc')});
+
+  function leakChart(id) {
+    const host = document.getElementById(id), tip = host.querySelector('.tip');
+    const W = 880, H = 300, M = {t: 14, r: 16, b: 42, l: 52};
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Held-out R squared on mu from the cube mask, by frame');
+    const el = (n, at) => { const e = document.createElementNS(NS, n); for (const k in at) e.setAttribute(k, at[k]); return e; };
+    const X = f => M.l + f / 48 * (W - M.l - M.r);
+    const Y = v => H - M.b - (v + 0.1) / 1.15 * (H - M.t - M.b);
+    const soft = css('--line-soft'), line = css('--line'), muted = css('--muted');
+    [0, .25, .5, .75, 1].forEach(v => {
+      svg.appendChild(el('line', {x1: M.l, x2: W - M.r, y1: Y(v), y2: Y(v), stroke: soft, 'stroke-width': 1}));
+      const tx = el('text', {x: M.l - 8, y: Y(v) + 3.5, fill: muted, 'font-size': 10, 'text-anchor': 'end',
+                             'font-family': 'IBM Plex Mono, monospace'});
+      tx.textContent = v.toFixed(2); svg.appendChild(tx);
+    });
+    [0, 12, 24, 36, 48].forEach(f => {
+      const tx = el('text', {x: X(f), y: H - M.b + 16, fill: muted, 'font-size': 10, 'text-anchor': 'middle',
+                             'font-family': 'IBM Plex Mono, monospace'});
+      tx.textContent = 'f' + f; svg.appendChild(tx);
+    });
+    svg.appendChild(el('line', {x1: M.l, x2: W - M.r, y1: Y(0), y2: Y(0), stroke: line, 'stroke-width': 1}));
+    // the bar the set was built to impose
+    svg.appendChild(el('line', {x1: M.l, x2: W - M.r, y1: Y(0.459), y2: Y(0.459),
+                                stroke: css('--acc'), 'stroke-width': 1.5, 'stroke-dasharray': '5 4'}));
+    const bl = el('text', {x: W - M.r, y: Y(0.459) - 7, fill: css('--acc'), 'font-size': 10.5,
+                           'text-anchor': 'end', 'font-family': 'IBM Plex Mono, monospace'});
+    bl.textContent = 'acceleration alone: 0.459'; svg.appendChild(bl);
+    const path = (data, k) => 'M' + data.map(r => `${X(r.f).toFixed(1)},${Y(r[k]).toFixed(1)}`).join('L');
+    svg.appendChild(el('path', {d: path(LEAK, 'cen_area'), fill: 'none', stroke: css('--hi'), 'stroke-width': 2.4}));
+    svg.appendChild(el('path', {d: path(LEAK_V2, 'cen_area'), fill: 'none', stroke: css('--ok'), 'stroke-width': 2.4}));
+    const V2 = new Map(LEAK_V2.map(r => [r.f, r]));
+    LEAK.forEach(r => {
+      [[r, 'cen_area', css('--hi')], [V2.get(r.f), 'cen_area', css('--ok')]].forEach(([rr, k, col]) => {
+        if (!rr) return;
+        const c = el('circle', {cx: X(rr.f), cy: Y(rr[k]), r: 3.4, fill: col});
+        c.style.cursor = 'crosshair';
+        c.addEventListener('pointerenter', ev => {
+          const v2 = V2.get(r.f);
+          tip.textContent = `frame ${r.f}\nv1  ${r.cen_area >= 0 ? ' ' : ''}${r.cen_area.toFixed(3)}\nv2  ${v2 && v2.cen_area >= 0 ? ' ' : ''}${v2 ? v2.cen_area.toFixed(3) : '—'}`;
+          const b = host.getBoundingClientRect(), d = ev.target.getBoundingClientRect();
+          tip.style.left = (d.left - b.left + d.width / 2) + 'px';
+          tip.style.top = (d.top - b.top) + 'px';
+          tip.style.opacity = 1;
+        });
+        c.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+        svg.appendChild(c);
+      });
+    });
+    host.appendChild(svg);
+    const lg = document.createElement('div');
+    lg.className = 'ramp';
+    lg.innerHTML = '<span style="color:var(--hi)">━ incline_set_v1 — the leak</span>' +
+                   '<span style="color:var(--ok)">━ incline_set_v2 — after the fix</span>' +
+                   '<span style="margin-left:auto">both are centroid + mask area, held out</span>';
+    host.appendChild(lg);
+  }
+  leakChart('p4');
+</script>

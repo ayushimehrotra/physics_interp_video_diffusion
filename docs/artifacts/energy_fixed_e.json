@@ -1,0 +1,113 @@
+{
+ "pools": [
+  "all.pre",
+  "all.post",
+  "all.all",
+  "A.pre",
+  "A.post",
+  "A.all",
+  "B.pre",
+  "B.post",
+  "B.all"
+ ],
+ "n_perm": 200,
+ "targets": {},
+ "fixed_e": {
+  "outputs_cons_videomae-base": {
+   "identity": {
+    "n_honest": 150,
+    "mass_ratio_max_rel_error": 1.0241212280325735e-15,
+    "ke_ratio_reconstruction_r2": 1.0,
+    "ke_ratio_max_abs_error": 4.440892098500626e-16
+   },
+   "n": 75,
+   "probe": {
+    "r2": 0.5114158516497531,
+    "cell": "block.5.resid_post/all.pre"
+   },
+   "observers": {
+    "K1 kinematics only": 0.7847476034891647,
+    "K2 + radii (all visible)": 0.7491301024542627,
+    "K3 + true masses": 0.6100276373866539
+   },
+   "deltas": {
+    "K1 kinematics only": {
+     "mean": -0.2808507020719242,
+     "lo": -0.47677688818487535,
+     "hi": -0.11530491898988758,
+     "p_probe_higher": 0.0005
+    },
+    "K2 + radii (all visible)": {
+     "mean": -0.2451591130408052,
+     "lo": -0.44088777361781073,
+     "hi": -0.09051965751571817,
+     "p_probe_higher": 0.002
+    },
+    "K3 + true masses": {
+     "mean": -0.10400787455572472,
+     "lo": -0.3046598563506524,
+     "hi": 0.06637392844737804,
+     "p_probe_higher": 0.1175
+    }
+   },
+   "mass_decodability": {
+    "log mass_A": {
+     "r2": 0.9766528744210866,
+     "cell": "block.4.resid_post/A.all"
+    },
+    "log mass_B": {
+     "r2": 0.9824362409058873,
+     "cell": "block.6.resid_post/B.all"
+    }
+   }
+  },
+  "outputs_cons_vjepa2-vitl": {
+   "identity": {
+    "n_honest": 150,
+    "mass_ratio_max_rel_error": 1.0241212280325735e-15,
+    "ke_ratio_reconstruction_r2": 1.0,
+    "ke_ratio_max_abs_error": 4.440892098500626e-16
+   },
+   "n": 75,
+   "probe": {
+    "r2": 0.6728908920021239,
+    "cell": "block.18.resid_post/all.pre"
+   },
+   "observers": {
+    "K1 kinematics only": 0.7847476034891647,
+    "K2 + radii (all visible)": 0.7491301024542627,
+    "K3 + true masses": 0.6100276373866539
+   },
+   "deltas": {
+    "K1 kinematics only": {
+     "mean": -0.11908286424362978,
+     "lo": -0.27804869026455875,
+     "hi": 0.019762912631692366,
+     "p_probe_higher": 0.048
+    },
+    "K2 + radii (all visible)": {
+     "mean": -0.08339127521251077,
+     "lo": -0.24018930277916786,
+     "hi": 0.0434335986781666,
+     "p_probe_higher": 0.112
+    },
+    "K3 + true masses": {
+     "mean": 0.05775996327256972,
+     "lo": -0.11859624440230965,
+     "hi": 0.2169328373371412,
+     "p_probe_higher": 0.759
+    }
+   },
+   "mass_decodability": {
+    "log mass_A": {
+     "r2": 0.9901465970623298,
+     "cell": "block.5.resid_post/A.all"
+    },
+    "log mass_B": {
+     "r2": 0.9891507540719062,
+     "cell": "block.13.resid_post/B.all"
+    }
+   }
+  }
+ }
+}

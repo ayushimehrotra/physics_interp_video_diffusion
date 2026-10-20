@@ -1,0 +1,22 @@
+{
+ "outputs_v4_videomae-base": {
+  "site": "block.5.resid_post",
+  "pool": "all.post",
+  "accuracy": 0.58,
+  "auc": 0.5797333333333333,
+  "recall_leaked": 0.9166666666666666,
+  "recall_unleaked": 0.5714285714285714,
+  "n_leaked": 12,
+  "n_unleaked": 63
+ },
+ "outputs_v4_vjepa2-vitl": {
+  "site": "block.18.resid_post",
+  "pool": "all.post",
+  "accuracy": 0.5866666666666667,
+  "auc": 0.6675555555555556,
+  "recall_leaked": 0.6666666666666666,
+  "recall_unleaked": 0.5555555555555556,
+  "n_leaked": 12,
+  "n_unleaked": 63
+ }
+}

@@ -161,6 +161,34 @@ class InversionConfig:
     # Pool activations over per-object regions from the simulator's masks. With
     # this off, only the frame-wide "all" region is recorded.
     use_segmentation: bool = True
+    # Stop the climb once the ladder passes this timestep, instead of running to
+    # the top. ``None`` inverts all the way, which is what probing wants.
+    #
+    # For *editing* this must be set, and the reason is specific to this
+    # checkpoint. CogVideoX-2b is trained with ``rescale_betas_zero_snr``, so
+    # alpha(999) is exactly 0 and the terminal latent is nothing but the model's
+    # own predicted noise. That prediction is not unit-variance: starting from a
+    # clean latent there is no noise to find, so the early steps under-predict
+    # and the trajectory never catches up — measured here the terminal latent
+    # has std 0.53 against the 1.0 a sampler expects. Resampling from it is
+    # out of distribution and decodes to flat grey.
+    #
+    # Truncating fixes it outright. Measured on scene_00000, round-tripping
+    # invert -> resample and re-measuring momentum from the decoded pixels:
+    #
+    #     max_timestep    pixel MAE (of 255)    momentum error
+    #        199                1.26                0.21%
+    #        399                1.34                0.23%
+    #        599                1.41                0.23%
+    #        799                3.90             tracking fails
+    #        999 (None)        58.97             tracking fails
+    #
+    # Anything at or below 599 sits near the VAE's own round-trip floor of 0.82.
+    # This is not evidence against the recorded activations: the oracle check —
+    # add known noise, ask the model to recover it — returns eps at std 1.00 and
+    # cosine 0.99+ at every level, so the schedule algebra is right and the drift
+    # is a property of inverting from clean data, not of the implementation.
+    max_timestep: float | None = None
 
 
 @dataclass

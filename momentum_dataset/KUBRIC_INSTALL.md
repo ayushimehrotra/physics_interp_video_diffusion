@@ -103,7 +103,21 @@ the CPU and costs more than the render (6.0 s/frame vs 2.4 s/frame at 720x480):
     renderer.blender_scene.cycles.denoiser = "OPTIX"
 
 `generate_scene.py::configure_gpu()` implements this and records the result in
-each scene's `labels.json`.
+each scene's `labels.json`. It tries `OPTIX` first and falls back to `CUDA`, so a
+GPU whose OptiX path is unavailable still renders on the GPU.
+
+**`KUBRIC_USE_GPU=1` must actually be exported when you render.** `configure_gpu()`
+returns early unless it is set to one of `1/true/t/yes`, and the run silently
+proceeds on CPU with `render_device: "cpu (KUBRIC_USE_GPU not set)"`. The
+regeneration command in `../CLAUDE.md` carries it; if you assemble your own, do
+not drop it.
+
+**First render on a new machine pays a one-time OptiX JIT.** Blender 4.3 predates
+Blackwell, so there are no precompiled sm_120 OptiX kernels and the driver JITs
+them from PTX on first use, caching the result in `~/.cache/cycles`. On the RTX
+5090 the first scene took 509s and the identical scene then took 127s. Verified
+working: `render_device: OPTIX: NVIDIA GeForce RTX 5090`. Benchmark on the second
+scene, never the first.
 
 ## Render with `--workers 3`, not 5
 

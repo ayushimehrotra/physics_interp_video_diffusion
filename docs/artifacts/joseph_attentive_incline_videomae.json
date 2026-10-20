@@ -1,0 +1,189 @@
+{
+ "protocol": "joseph_et_al_intphys",
+ "pools": [
+  "all.all"
+ ],
+ "targets": [
+  "theta",
+  "accel_measured",
+  "mu"
+ ],
+ "grouping": "stratified (no matched pairs exist in this dataset; the paper's grouped CV holds out matched possible/impossible pairs)",
+ "epochs": 50,
+ "n_folds": 5,
+ "mask_floor": false,
+ "sweep": {
+  "lr": [
+   0.0001,
+   0.0003,
+   0.001,
+   0.003,
+   0.005
+  ],
+  "weight_decay": [
+   0.01,
+   0.1,
+   0.4,
+   0.8
+  ]
+ },
+ "models": {},
+ "attentive_epochs": [
+  120,
+  400
+ ],
+ "attentive": {
+  "outputs_incline_patch_videomae-base": {
+   "theta": {
+    "block.1.resid_post@120": {
+     "attentive_r2": 0.9884638484910254,
+     "attentive_shuffled": -0.9239914922591996,
+     "mean_ridge_r2": 0.9998757409792202,
+     "epochs": 120
+    },
+    "block.1.resid_post@400": {
+     "attentive_r2": 0.9894514726518372,
+     "attentive_shuffled": -0.8609144644634348,
+     "mean_ridge_r2": 0.9998757409792202,
+     "epochs": 400
+    },
+    "block.5.resid_post@120": {
+     "attentive_r2": 0.9703945100800251,
+     "attentive_shuffled": -0.8503077845534734,
+     "mean_ridge_r2": 0.9995172594905536,
+     "epochs": 120
+    },
+    "block.5.resid_post@400": {
+     "attentive_r2": 0.9734361107999696,
+     "attentive_shuffled": -1.043293721205334,
+     "mean_ridge_r2": 0.9995172594905536,
+     "epochs": 400
+    },
+    "block.7.resid_post@120": {
+     "attentive_r2": 0.9918189280510131,
+     "attentive_shuffled": -0.9241412517759557,
+     "mean_ridge_r2": 0.9992208657071994,
+     "epochs": 120
+    },
+    "block.7.resid_post@400": {
+     "attentive_r2": 0.991898340352361,
+     "attentive_shuffled": -0.7589024268837561,
+     "mean_ridge_r2": 0.9992208657071994,
+     "epochs": 400
+    },
+    "block.11.resid_post@120": {
+     "attentive_r2": 0.9905796143854545,
+     "attentive_shuffled": -0.6038689360795473,
+     "mean_ridge_r2": 0.9992960234897443,
+     "epochs": 120
+    },
+    "block.11.resid_post@400": {
+     "attentive_r2": 0.9925119116220644,
+     "attentive_shuffled": -0.5345172911893361,
+     "mean_ridge_r2": 0.9992960234897443,
+     "epochs": 400
+    }
+   },
+   "accel_measured": {
+    "block.1.resid_post@120": {
+     "attentive_r2": 0.41716849420878777,
+     "attentive_shuffled": -0.7893856234028644,
+     "mean_ridge_r2": 0.5607295567428968,
+     "epochs": 120
+    },
+    "block.1.resid_post@400": {
+     "attentive_r2": 0.37941433658755397,
+     "attentive_shuffled": -0.718447615589207,
+     "mean_ridge_r2": 0.5607295567428968,
+     "epochs": 400
+    },
+    "block.5.resid_post@120": {
+     "attentive_r2": 0.49598584520024147,
+     "attentive_shuffled": -1.0975958954523746,
+     "mean_ridge_r2": 0.5734944617410502,
+     "epochs": 120
+    },
+    "block.5.resid_post@400": {
+     "attentive_r2": 0.5306482063865453,
+     "attentive_shuffled": -1.0063374156416458,
+     "mean_ridge_r2": 0.5734944617410502,
+     "epochs": 400
+    },
+    "block.7.resid_post@120": {
+     "attentive_r2": 0.5843782533148758,
+     "attentive_shuffled": -1.4289418246442205,
+     "mean_ridge_r2": 0.5964922908646157,
+     "epochs": 120
+    },
+    "block.7.resid_post@400": {
+     "attentive_r2": 0.5839531317508571,
+     "attentive_shuffled": -1.1733932964807483,
+     "mean_ridge_r2": 0.5964922908646157,
+     "epochs": 400
+    },
+    "block.11.resid_post@120": {
+     "attentive_r2": 0.6444019115541644,
+     "attentive_shuffled": -1.0257347058391395,
+     "mean_ridge_r2": 0.5822758693183046,
+     "epochs": 120
+    },
+    "block.11.resid_post@400": {
+     "attentive_r2": 0.6196330931782779,
+     "attentive_shuffled": -0.7626208303879976,
+     "mean_ridge_r2": 0.5822758693183046,
+     "epochs": 400
+    }
+   },
+   "mu": {
+    "block.1.resid_post@120": {
+     "attentive_r2": -0.6447192252580098,
+     "attentive_shuffled": -0.8388619539598487,
+     "mean_ridge_r2": -0.06101750105958681,
+     "epochs": 120
+    },
+    "block.1.resid_post@400": {
+     "attentive_r2": -0.5304728055802419,
+     "attentive_shuffled": -0.856072921341821,
+     "mean_ridge_r2": -0.06101750105958681,
+     "epochs": 400
+    },
+    "block.5.resid_post@120": {
+     "attentive_r2": -0.4000969322949375,
+     "attentive_shuffled": -0.6394412103392804,
+     "mean_ridge_r2": 0.018821424510613194,
+     "epochs": 120
+    },
+    "block.5.resid_post@400": {
+     "attentive_r2": -0.4035701162865073,
+     "attentive_shuffled": -0.5237119795329928,
+     "mean_ridge_r2": 0.018821424510613194,
+     "epochs": 400
+    },
+    "block.7.resid_post@120": {
+     "attentive_r2": -0.17338130618931746,
+     "attentive_shuffled": -1.400510600830256,
+     "mean_ridge_r2": 0.07089649723336522,
+     "epochs": 120
+    },
+    "block.7.resid_post@400": {
+     "attentive_r2": -0.1388965613603812,
+     "attentive_shuffled": -1.3020721950085772,
+     "mean_ridge_r2": 0.07089649723336522,
+     "epochs": 400
+    },
+    "block.11.resid_post@120": {
+     "attentive_r2": -0.5126394268266958,
+     "attentive_shuffled": -0.412339905467894,
+     "mean_ridge_r2": 0.036839003319997565,
+     "epochs": 120
+    },
+    "block.11.resid_post@400": {
+     "attentive_r2": -0.5363990168996549,
+     "attentive_shuffled": -0.406794676892007,
+     "mean_ridge_r2": 0.036839003319997565,
+     "epochs": 400
+    }
+   }
+  }
+ }
+}

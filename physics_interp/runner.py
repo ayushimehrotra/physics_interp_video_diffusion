@@ -53,6 +53,7 @@ from .video import (
     pixel_frame_to_latent,
     save_frames,
     save_video,
+    tubelet_frame_to_cell,
     write_json,
 )
 
@@ -179,6 +180,33 @@ class ActivationRecorder:
                 )
             out[site] = np.stack([by_step[s] for s in steps])
         return out
+
+
+class PatchRecorder:
+    """Stores raw per-token activations, for patch-preserving probes.
+
+    The deliberate opposite of :class:`ActivationRecorder`, which pools inside
+    the hook precisely because storing tokens is expensive. Joseph et al. pair
+    mean-pooled linear probes with patch-preserving attentive probes and read
+    them jointly, on the grounds that pooling can hide spatial and temporal
+    structure — so reproducing that needs the tokens kept.
+
+    The cost is why this is opt-in per site rather than default: one site for one
+    scene is 1568 x 768 (VideoMAE, 2.4 MB at fp16) or 6144 x 1024 (V-JEPA2,
+    12.6 MB). Across every layer and 300 scenes that is 8.6 GB and 90 GB
+    respectively, so callers pass a strided subset of layers and accept a coarser
+    depth curve for the attentive probe than for the linear one.
+    """
+
+    def __init__(self, branch: str = "cond"):
+        self.branch = branch
+        self.store: dict[str, np.ndarray] = {}
+
+    def __call__(self, x: torch.Tensor, ctx) -> None:
+        rows = ctx.rows(self.branch) or [0]
+        vid = x[rows[0], ctx.layout.video_slice(), :]        # [tokens, dim]
+        self.store[ctx.site.name] = vid.to(torch.float16).cpu().numpy()
+        return None
 
 
 def build_pool_weights(
@@ -470,6 +498,13 @@ class VideoDiffusionRunner:
         scheduler.set_timesteps(cfg.num_steps, device=device)
         # Sampling walks noise -> data; inversion walks data -> noise.
         ladder = list(reversed(scheduler.timesteps.tolist()))
+        if cfg.max_timestep is not None:
+            ladder = [t for t in ladder if t <= cfg.max_timestep]
+            if not ladder:
+                raise ValueError(
+                    f"max_timestep={cfg.max_timestep} is below the whole ladder "
+                    f"(lowest {min(reversed(scheduler.timesteps.tolist()))})"
+                )
 
         capture_at = self._capture_steps(cfg, len(ladder))
         handle = None
@@ -581,30 +616,208 @@ class VideoDiffusionRunner:
         return sorted({round(i * (num_steps - 1) / (n - 1)) for i in range(n)})
 
     @torch.no_grad()
-    def resample(self, noise: torch.Tensor, *, inversion: InversionConfig | None = None):
+    def resample(
+        self,
+        noise: torch.Tensor,
+        *,
+        inversion: InversionConfig | None = None,
+        steer=None,
+        sites: str | Sequence[str] = "block.*.resid_post",
+        steer_steps: Any = "all",
+        t_start: float | None = None,
+    ):
         """Integrate forward from recovered noise back to a video.
 
         The reconstruction check: if this does not return the clip that was
         inverted, the trajectory is not one the model would have taken and
         nothing recorded along it means what it is supposed to mean. Uses the
         same explicit scheme as :meth:`invert`, run the other way.
+
+        With ``steer`` — any hook callable, typically an
+        :class:`~physics_interp.interp.ActivationSteer` — this becomes the
+        intervention arm of a steering experiment: invert a real scene to noise,
+        then integrate back while writing a direction into the residual stream,
+        and decode what comes out. Pairing it against the same noise resampled
+        *without* the hook is what makes the comparison clean, because both arms
+        share a scene, a seed and a trajectory, so the edit is the only variable
+        and the tracker's own systematic bias cancels between them.
+
+        ``steer_steps`` selects which denoising steps are hooked, in the same
+        vocabulary :class:`StepFilter` accepts. That axis matters: the reference
+        work finds concept directions that hold across all timesteps, while the
+        physical signal here is strongest at intermediate noise, and only a
+        sweep distinguishes those.
         """
         cfg = inversion or InversionConfig()
         device = self.adapter.device
         scheduler = self.adapter.scheduler
         scheduler.set_timesteps(cfg.num_steps, device=device)
         ladder = scheduler.timesteps.tolist()          # noise -> data
+        # Descend from wherever the inversion actually stopped. Starting higher
+        # than the latent's true noise level hands the model an input it never
+        # sees in training, and it decodes to grey; see InversionConfig.
+        start = cfg.max_timestep if t_start is None else t_start
+        if start is not None:
+            ladder = [t for t in ladder if t <= start]
+            if not ladder:
+                raise ValueError(f"t_start={start} is below the whole ladder")
 
-        embeds = self.adapter.embed_prompt(cfg.prompt)
-        z = noise.float().to(device)
+        handle = None
+        prev_guidance = self.hooks.guidance_scale
+        try:
+            self.hooks.reset()
+            # Same single unguided row as inversion; see invert() for why this
+            # has to be set rather than inferred from the generation config.
+            self.hooks.guidance_scale = cfg.guidance_scale
+            if steer is not None:
+                handle = self.hooks.add(sites, steer, steps=steer_steps, name="steer")
 
-        for i, t in enumerate(ladder):
-            alpha, sigma = self.adapter.alpha_sigma(t)
-            out = self.adapter.denoise(z, torch.tensor(t, device=device), embeds)
-            x0, eps = self.adapter.split_prediction(out.float(), z, alpha, sigma)
-            nxt = ladder[i + 1] if i + 1 < len(ladder) else None
-            a_n, s_n = self.adapter.alpha_sigma(nxt) if nxt is not None else (1.0, 0.0)
-            z = a_n * x0 + s_n * eps
+            embeds = self.adapter.embed_prompt(cfg.prompt)
+            z = noise.float().to(device)
+
+            for i, t in enumerate(ladder):
+                alpha, sigma = self.adapter.alpha_sigma(t)
+                self.hooks.step_override = i
+                out = self.adapter.denoise(z, torch.tensor(t, device=device), embeds)
+                x0, eps = self.adapter.split_prediction(out.float(), z, alpha, sigma)
+                nxt = ladder[i + 1] if i + 1 < len(ladder) else None
+                a_n, s_n = self.adapter.alpha_sigma(nxt) if nxt is not None else (1.0, 0.0)
+                z = a_n * x0 + s_n * eps
+        finally:
+            self.hooks.step_override = None
+            self.hooks.guidance_scale = prev_guidance
+            if handle is not None:
+                self.hooks.remove(handle)
+
+        return self.adapter.decode_latents(z)
+
+    @torch.no_grad()
+    def inpaint(
+        self,
+        latent: torch.Tensor,
+        keep_frames: Sequence[int],
+        *,
+        inversion: InversionConfig | None = None,
+        t_start: float | None = None,
+        seed: int = 0,
+        prompt: str | None = None,
+        guidance_scale: float = 1.0,
+        negative_prompt: str = "",
+        steer=None,
+        sites: str | Sequence[str] = "block.*.resid_post",
+    ):
+        """Regenerate some latent frames while holding the rest to a real clip.
+
+        This is the only experiment here that asks the model to *do* physics
+        rather than to represent it. Probing an inverted clip can never
+        distinguish "the model inferred the aftermath" from "the model is
+        looking at the aftermath": CogVideoX attends bidirectionally over all 13
+        latent frames (``is_causal=False``), so a pre-collision token has
+        already seen the post-collision ones. Measured on this dataset,
+        ``momentum_post`` decodes as well from the pre-collision pool (R2 0.792)
+        as from the post one (0.807) — the probe was reading, not predicting.
+
+        Holding frames 0-5 (strictly pre-contact) and regenerating 6-12
+        (strictly post-contact) removes that escape route. The aftermath becomes
+        a free variable the model has to produce, and whether momentum is
+        conserved across the seam is then a property of the model rather than of
+        the dataset. It is also the only setting in which conservation is
+        *identifiable at all*: in a fixed clip, delta-p is variance we authored,
+        not variance the model controls.
+
+        Known frames are re-imposed at every step, correctly renoised to that
+        step's level, rather than pasted once at the start — pasting once lets
+        the constraint wash out as the trajectory evolves away from it.
+
+        Unlike :meth:`invert`, this runs **guided** by default when asked to.
+        The rest of the pipeline is deliberately unguided because a CFG
+        trajectory is not the one being inverted, but that argument does not
+        apply here: nothing is being recovered, the model is being asked to
+        produce video, and CFG is the regime it was trained to produce video in.
+        Running generation at ``guidance_scale=1.0`` with an empty prompt — the
+        inversion settings — measures the model at its weakest and would answer
+        a question about the configuration rather than about the model.
+
+        ``t_start`` must leave ``alpha`` at or near zero for the regenerated
+        region, i.e. the top of the ladder. The truncation that :meth:`invert`
+        needs is actively wrong here: at t=599 alpha is 0.215, so the model
+        expects a signal component that pure noise does not have, reads the
+        missing signal as ``x0 ~ 0``, and returns the dataset mean. Measured on
+        an empty-prompt generation, per-frame pixel variance is 19.5 starting
+        from t=599 against 2694 from t=999.
+
+        The unknown frames start at unit variance rather than at
+        ``alpha*x0 + sigma*eps`` with some guessed ``x0``. That is not a
+        shortcut: the marginal of ``z_t`` is unit-variance at every level (since
+        ``alpha^2 + sigma^2 = 1`` and the latents are ~unit), so a plain
+        Gaussian is a valid draw at any ``t_start`` and injects no information
+        about the true aftermath. Seeding a guess would leak the answer.
+        """
+        cfg = inversion or InversionConfig()
+        device = self.adapter.device
+        scheduler = self.adapter.scheduler
+        scheduler.set_timesteps(cfg.num_steps, device=device)
+        ladder = scheduler.timesteps.tolist()               # noise -> data
+        start = cfg.max_timestep if t_start is None else t_start
+        if start is not None:
+            ladder = [t for t in ladder if t <= start]
+        if not ladder:
+            raise ValueError(f"t_start={start} is below the whole ladder")
+
+        x0 = latent.float().to(device)
+        n_frames = x0.shape[1]
+        keep = torch.zeros(n_frames, dtype=torch.bool, device=device)
+        keep[list(keep_frames)] = True
+        if keep.all() or not keep.any():
+            raise ValueError(
+                f"keep_frames={list(keep_frames)} leaves nothing to regenerate "
+                f"(or nothing to hold) out of {n_frames} latent frames"
+            )
+        view = (1, n_frames) + (1,) * (x0.ndim - 2)
+        keep_b = keep.view(view)
+
+        gen = torch.Generator(device="cpu").manual_seed(seed)
+        eps = torch.randn(x0.shape, generator=gen).to(device).float()
+
+        a_s, s_s = self.adapter.alpha_sigma(ladder[0])
+        z = torch.where(keep_b, a_s * x0 + s_s * eps, eps)
+
+        text = cfg.prompt if prompt is None else prompt
+        guided = guidance_scale is not None and guidance_scale > 1.0
+
+        handle = None
+        prev_guidance = self.hooks.guidance_scale
+        try:
+            self.hooks.reset()
+            # Tell the hook substrate the real batch layout: guided means the
+            # rows are an [uncond, cond] pair, and ctx.rows("cond") has to point
+            # at the second one or every branch-aware tap reads the wrong row.
+            self.hooks.guidance_scale = guidance_scale if guided else cfg.guidance_scale
+            if steer is not None:
+                handle = self.hooks.add(sites, steer, name="steer")
+
+            embeds = self.adapter.embed_prompt(text)
+            if guided:
+                embeds = torch.cat([self.adapter.embed_prompt(negative_prompt), embeds])
+
+            for i, t in enumerate(ladder):
+                alpha, sigma = self.adapter.alpha_sigma(t)
+                self.hooks.step_override = i
+                z_in = torch.cat([z, z]) if guided else z
+                out = self.adapter.denoise(z_in, torch.tensor(t, device=device), embeds)
+                if guided:
+                    uncond, cond = out.float().chunk(2)
+                    out = uncond + guidance_scale * (cond - uncond)
+                x0_hat, eps_hat = self.adapter.split_prediction(out.float(), z, alpha, sigma)
+                nxt = ladder[i + 1] if i + 1 < len(ladder) else None
+                a_n, s_n = self.adapter.alpha_sigma(nxt) if nxt is not None else (1.0, 0.0)
+                z = a_n * x0_hat + s_n * eps_hat
+                z = torch.where(keep_b, a_n * x0 + s_n * eps, z)
+        finally:
+            self.hooks.step_override = None
+            self.hooks.guidance_scale = prev_guidance
+            if handle is not None:
+                self.hooks.remove(handle)
 
         return self.adapter.decode_latents(z)
 
@@ -666,6 +879,110 @@ class VideoDiffusionRunner:
             "contact_latent_frame": contact_latent,
             "labels": labels,
             "metadata": result.metadata,
+        }
+
+    @torch.no_grad()
+    def encode_scene(
+        self,
+        scene_dir: str | Path,
+        *,
+        sites: str | Sequence[str] = ("block.*.resid_post", "embed.out"),
+        patch_sites: str | Sequence[str] | None = None,
+    ) -> dict[str, Any]:
+        """Capture one scene from an *encoder*: a single forward pass, no trajectory.
+
+        The counterpart to :meth:`capture_scene`, and deliberately the same shape
+        of output — ``site -> [steps, pools, dim]`` with one step — so the probe
+        grid, the permutation nulls and the summary table are reached unchanged.
+        Everything that differs is geometric and lives in the adapter.
+
+        Two things are genuinely different from the diffusion path and both are
+        checked rather than assumed:
+
+        * **Which pixel frames the model sees.** VideoMAE takes exactly 16, so a
+          49-frame clip is subsampled; the adapter picks the stride and offset,
+          and :func:`~physics_interp.models.encoders.tubelet_phase_split` then
+          re-derives the pre/post boundary from the actual contact frame and
+          raises if any tubelet straddles it. The diffusion path gets that
+          guarantee free from the causal VAE's grouping; here it has to be
+          earned per model.
+        * **The temporal grouping of the masks.** Tubelets are a plain
+          ``frame // tubelet``, not the VAE's first-frame-alone scheme.
+        """
+        from .models.encoders import EncoderAdapter, tubelet_phase_split
+
+        adapter = self.adapter
+        if not isinstance(adapter, EncoderAdapter):
+            raise TypeError(
+                f"encode_scene() needs an EncoderAdapter, got "
+                f"{type(adapter).__name__}. Use capture_scene() for a diffusion "
+                "model — it has a trajectory to invert.")
+
+        scene_dir = Path(scene_dir)
+        labels = json.loads((scene_dir / "labels.json").read_text())
+        frames = load_frames(scene_dir, num_frames=self.generation.num_frames)
+
+        idx = adapter.frame_indices(len(frames))
+        contact = float(labels["collision"]["actual_frame"])
+        n_pre = tubelet_phase_split(idx, contact, adapter.tubelet)
+
+        to_cell = lambda t: tubelet_frame_to_cell(t, adapter.tubelet)  # noqa: E731
+        # Masks are resized into the encoder's own square input frame before
+        # being reduced to the token grid — see EncoderAdapter.preprocess_masks.
+        seg = adapter.preprocess_masks(load_segmentation(scene_dir)[idx])
+        occ = masks_to_latent_grid(seg, self.layout, ids=(1, 2), frame_to_cell=to_cell)
+        regions = {"A": occ[0], "B": occ[1]}
+        regions["all"] = np.ones(
+            (self.layout.frames, self.layout.height, self.layout.width), np.float32)
+
+        phases = {
+            "pre": (0, n_pre),
+            "post": (n_pre, self.layout.frames),
+            "all": (0, self.layout.frames),
+        }
+        weights, names = build_pool_weights(self.layout, regions, phases)
+        recorder = ActivationRecorder(weights, names)
+
+        patches = PatchRecorder() if patch_sites else None
+        prev_guidance = self.hooks.guidance_scale
+        start = time.perf_counter()
+        try:
+            self.hooks.reset()
+            # One unguided row; nothing here is a CFG pair.
+            self.hooks.guidance_scale = 1.0
+            self.hooks.step_override = 0
+            with self.hooks.hook(sites, recorder, steps=[0], name="activation_recorder"):
+                if patches is not None:
+                    with self.hooks.hook(patch_sites, patches, steps=[0],
+                                         name="patch_recorder"):
+                        adapter.encode(frames[idx])
+                else:
+                    adapter.encode(frames[idx])
+        finally:
+            self.hooks.step_override = None
+            self.hooks.guidance_scale = prev_guidance
+        elapsed = time.perf_counter() - start
+
+        return {
+            "scene_id": labels.get("scene_id", scene_dir.name),
+            "activations": recorder.collect([0]),
+            "patches": (patches.store if patches is not None else {}),
+            "pools": recorder.names,
+            "captured_steps": [0],
+            # One forward pass on clean pixels: there is no noise axis at all.
+            # Kept so the stored record indexes like a diffusion capture.
+            "noise_levels": [0.0],
+            "phases": {k: list(v) for k, v in phases.items()},
+            "contact_latent_frame": n_pre - 1,
+            "frame_indices": list(idx),
+            "labels": labels,
+            "metadata": {
+                "family": "encoder",
+                "model": adapter.describe(),
+                "layout": self.layout.__dict__,
+                "elapsed_seconds": round(elapsed, 2),
+                "denoiser_calls": self.hooks.call_idx,
+            },
         }
 
     def _pool_clean_latent(self, latent: torch.Tensor, weights: torch.Tensor) -> np.ndarray:

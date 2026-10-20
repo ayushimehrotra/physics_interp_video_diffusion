@@ -1,0 +1,106 @@
+{
+ "pools": [
+  "all.pre",
+  "all.post",
+  "all.all",
+  "A.pre",
+  "A.post",
+  "A.all",
+  "B.pre",
+  "B.post",
+  "B.all"
+ ],
+ "instrument": "regress signed dKE, rank outside",
+ "outputs_evoe_videomae-base": {
+  "grid_best": {
+   "cell": "block.9.resid_post/all.pre",
+   "auc": 0.765,
+   "p_corrected": 0.0
+  },
+  "per_pool": {
+   "all.pre": {
+    "cell": "block.9.resid_post/all.pre",
+    "auc": 0.765
+   },
+   "all.post": {
+    "cell": "block.9.resid_post/all.post",
+    "auc": 0.7575
+   },
+   "all.all": {
+    "cell": "block.7.resid_post/all.all",
+    "auc": 0.715
+   },
+   "A.pre": {
+    "cell": "block.11.resid_post/A.pre",
+    "auc": 0.645
+   },
+   "A.post": {
+    "cell": "block.6.resid_post/A.post",
+    "auc": 0.6475
+   },
+   "A.all": {
+    "cell": "block.7.resid_post/A.all",
+    "auc": 0.6525
+   },
+   "B.pre": {
+    "cell": "block.9.resid_post/B.pre",
+    "auc": 0.6425
+   },
+   "B.post": {
+    "cell": "block.0.resid_post/B.post",
+    "auc": 0.735
+   },
+   "B.all": {
+    "cell": "block.3.resid_post/B.all",
+    "auc": 0.6925
+   }
+  },
+  "oracle_signed_dke": 1.0
+ },
+ "outputs_evoe_vjepa2-vitl": {
+  "grid_best": {
+   "cell": "block.15.resid_post/all.pre",
+   "auc": 0.78,
+   "p_corrected": 0.0
+  },
+  "per_pool": {
+   "all.pre": {
+    "cell": "block.15.resid_post/all.pre",
+    "auc": 0.78
+   },
+   "all.post": {
+    "cell": "block.20.resid_post/all.post",
+    "auc": 0.7325
+   },
+   "all.all": {
+    "cell": "block.20.resid_post/all.all",
+    "auc": 0.695
+   },
+   "A.pre": {
+    "cell": "block.18.resid_post/A.pre",
+    "auc": 0.7725
+   },
+   "A.post": {
+    "cell": "block.16.resid_post/A.post",
+    "auc": 0.7625
+   },
+   "A.all": {
+    "cell": "block.19.resid_post/A.all",
+    "auc": 0.7125
+   },
+   "B.pre": {
+    "cell": "block.19.resid_post/B.pre",
+    "auc": 0.695
+   },
+   "B.post": {
+    "cell": "block.13.resid_post/B.post",
+    "auc": 0.7625
+   },
+   "B.all": {
+    "cell": "block.18.resid_post/B.all",
+    "auc": 0.72
+   }
+  },
+  "oracle_signed_dke": 1.0
+ }
+}

@@ -1,0 +1,82 @@
+{
+ "pools": [
+  "all.pre",
+  "all.post",
+  "all.all",
+  "A.pre",
+  "A.post",
+  "A.all",
+  "B.pre",
+  "B.post",
+  "B.all"
+ ],
+ "outputs_evoe_videomae-base": {
+  "n": 60,
+  "mass_free_ceiling": 1.0,
+  "oracles": {
+   "e_meas": 1.0,
+   "rel_post": 0.805,
+   "speed_sum_post": 0.7125
+  },
+  "per_pool": {
+   "all.pre": {
+    "cell": "block.8.resid_post/all.pre",
+    "auc": 0.83,
+    "p": 0.0
+   },
+   "all.post": {
+    "cell": "block.10.resid_post/all.post",
+    "auc": 0.715,
+    "p": 0.005
+   },
+   "all.all": {
+    "cell": "block.0.resid_post/all.all",
+    "auc": 0.6725,
+    "p": 0.0
+   },
+   "A.pre": {
+    "cell": "block.8.resid_post/A.pre",
+    "auc": 0.71,
+    "p": 0.0
+   },
+   "A.post": {
+    "cell": "block.1.resid_post/A.post",
+    "auc": 0.7275,
+    "p": 0.0
+   },
+   "A.all": {
+    "cell": "block.1.resid_post/A.all",
+    "auc": 0.6725,
+    "p": 0.005
+   },
+   "B.pre": {
+    "cell": "block.8.resid_post/B.pre",
+    "auc": 0.7275,
+    "p": 0.0
+   },
+   "B.post": {
+    "cell": "block.10.resid_post/B.post",
+    "auc": 0.705,
+    "p": 0.0
+   },
+   "B.all": {
+    "cell": "block.3.resid_post/B.all",
+    "auc": 0.6525,
+    "p": 0.0
+   }
+  },
+  "grid_best": {
+   "cell": "block.8.resid_post/all.pre",
+   "auc": 0.83,
+   "p_corrected": 0.005
+  },
+  "paired_best": {
+   "cell": "block.4.resid_post/all.pre",
+   "fraction": 1.0,
+   "n_pairs": 20,
+   "p_corrected": 0.06,
+   "null_max_p95": 1.0
+  },
+  "max_momentum_rel_error": 3.9365100090924016e-16
+ }
+}

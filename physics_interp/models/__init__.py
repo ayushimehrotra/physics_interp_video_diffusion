@@ -14,6 +14,8 @@ import torch
 
 from .base import ModelAdapter, SiteSpec, TokenLayout
 from .cogvideox import CogVideoXAdapter
+from .encoders import (EncoderAdapter, VideoMAEAdapter, VideoMAEv2Adapter,
+                       VideoMAEv2GiantAdapter, VJEPA2Adapter)
 
 __all__ = [
     "REGISTRY",
@@ -23,6 +25,11 @@ __all__ = [
     "SiteSpec",
     "TokenLayout",
     "CogVideoX5BAdapter",
+    "EncoderAdapter",
+    "VideoMAEAdapter",
+    "VideoMAEv2Adapter",
+    "VideoMAEv2GiantAdapter",
+    "VJEPA2Adapter",
 ]
 
 
@@ -42,6 +49,13 @@ class CogVideoX5BAdapter(CogVideoXAdapter):
 REGISTRY: dict[str, type[ModelAdapter]] = {
     CogVideoXAdapter.key: CogVideoXAdapter,
     CogVideoX5BAdapter.key: CogVideoX5BAdapter,
+    # Encoders. Same registry and same canonical site names, but they are
+    # captured with runner.encode_scene() rather than capture_scene() — there is
+    # no trajectory to invert. See models/encoders.py.
+    VideoMAEAdapter.key: VideoMAEAdapter,
+    VideoMAEv2Adapter.key: VideoMAEv2Adapter,
+    VideoMAEv2GiantAdapter.key: VideoMAEv2GiantAdapter,
+    VJEPA2Adapter.key: VJEPA2Adapter,
 }
 
 
