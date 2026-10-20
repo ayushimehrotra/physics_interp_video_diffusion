@@ -258,3 +258,39 @@ RuntimeError: 1 scenes have no admissible donor in this cell
   [184/1000] ok  elastic_mixed_violating_seed246                         135s   eta   287 min
   [185/1000] ok  elastic_mixed_honest_seed247                            137s   eta   285 min
   [186/1000] ok  elastic_mixed_violating_seed247                         136s   eta   283 min
+  [187/1000] ok  elastic_mixed_honest_seed250                            118s   eta   290 min
+  [188/1000] ok  elastic_mixed_violating_seed250                         119s   eta   288 min
+  [189/1000] ok  elastic_mixed_honest_seed251                            119s   eta   286 min
+  [190/1000] ok  elastic_mixed_violating_seed251                         119s   eta   284 min
+  [191/1000] ok  elastic_mixed_honest_seed252                            120s   eta   283 min
+  [192/1000] ok  elastic_mixed_violating_seed252                         118s   eta   281 min
+  [193/1000] FAIL elastic_mixed_honest_seed253                              1s   eta   279 min
+  [194/1000] FAIL elastic_mixed_violating_seed253                           1s   eta   277 min
+  [195/1000] FAIL elastic_mixed_honest_seed255                              1s   eta   276 min
+  [196/1000] FAIL elastic_mixed_violating_seed255                           2s   eta   274 min
+  [197/1000] FAIL elastic_mixed_honest_seed262                              2s   eta   272 min
+  [198/1000] FAIL elastic_mixed_violating_seed262                           2s   eta   271 min
+  [199/1000] FAIL elastic_mixed_honest_seed264                              2s   eta   269 min
+  [200/1000] FAIL elastic_mixed_violating_seed264                           2s   eta   267 min
+  [201/1000] FAIL elastic_mixed_honest_seed266                              2s   eta   266 min
+  [202/1000] FAIL elastic_mixed_violating_seed266                           2s   eta   264 min
+  [203/1000] FAIL elastic_mixed_honest_seed267                              2s   eta   263 min
+  [204/1000] FAIL elastic_mixed_violating_seed267                           2s   eta   261 min
+  [205/1000] FAIL elastic_mixed_honest_seed272                              2s   eta   260 min
+  [206/1000] FAIL elastic_mixed_violating_seed272                           2s   eta   258 min
+  [207/1000] FAIL elastic_mixed_honest_seed273                              2s   eta   257 min
+  [208/1000] FAIL elastic_mixed_violating_seed273                           2s   eta   255 min
+  [209/1000] FAIL elastic_mixed_honest_seed278                              3s   eta   254 min
+  [210/1000] FAIL elastic_mixed_violating_seed278                           3s   eta   252 min
+  [211/1000] FAIL elastic_mixed_honest_seed279                              4s   eta   251 min
+  [212/1000] FAIL elastic_mixed_violating_seed279                           4s   eta   249 min
+  [213/1000] FAIL elastic_mixed_honest_seed280                              3s   eta   248 min
+  [214/1000] FAIL elastic_mixed_violating_seed280                           4s   eta   247 min
+  [215/1000] FAIL elastic_mixed_honest_seed282                              3s   eta   245 min
+  [216/1000] FAIL elastic_mixed_violating_seed282                           3s   eta   244 min
+  [217/1000] FAIL elastic_mixed_honest_seed284                              3s   eta   243 min
+  [218/1000] FAIL elastic_mixed_violating_seed284                           3s   eta   241 min
+  [219/1000] FAIL elastic_mixed_honest_seed291                              3s   eta   240 min
+  [220/1000] FAIL elastic_mixed_violating_seed291                           3s   eta   238 min
+  [221/1000] FAIL elastic_mixed_honest_seed292                              3s   eta   237 min
+  [222/1000] FAIL elastic_mixed_violating_seed292                           3s   eta   236 min
