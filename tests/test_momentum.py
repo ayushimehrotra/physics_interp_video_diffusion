@@ -228,7 +228,7 @@ def test_synthetic_sets_have_the_register_structure():
 
 def _load_generate_scene():
     import importlib.util
-    path = Path(__file__).resolve().parents[1] / "momentum_dataset" / "generate_scene.py"
+    path = Path(__file__).resolve().parents[1] / "datasets" / "generate_scene.py"
     spec = importlib.util.spec_from_file_location("generate_scene_under_test", path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod

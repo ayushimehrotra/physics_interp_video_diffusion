@@ -1,7 +1,7 @@
 # Figure: elastic vs inelastic, binary probe
 
 **Files:** `figures/fig_elasticity_probe.pdf` / `.png`
-**Script:** `scripts/fig_elasticity_probe.py` (no recomputation — reads existing artifacts)
+**Script:** `scripts/figures/fig_elasticity_probe.py` (no recomputation — reads existing artifacts)
 **Data:** `docs/artifacts/energy_probes.json`, `energy_probes_maskfloor.json`
 **Target:** `energy_loss_honest` on `conservation_set_v1`, honest half — 75 clips at
 e = 1.00 (KE ratio 1.000 on all 75) vs 75 at e = 0.15 (KE ratio 0.098–0.992 on all 75).

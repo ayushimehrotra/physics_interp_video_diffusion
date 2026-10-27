@@ -9,7 +9,7 @@ crashed rank to hang the others — the failure mode of a sweep is "some runs
 missing", which a re-launch fixes because completed runs are skipped.
 
 Launch with ``torchrun``, which sets ``RANK``/``WORLD_SIZE``/``LOCAL_RANK``, or
-with nothing at all for a single-process run. ``scripts/run_experiment.sh``
+with nothing at all for a single-process run. ``scripts/pipeline/run_experiment.sh``
 picks the GPU count automatically.
 
 If a model ever needs to be *split* across GPUs (a 14B denoiser on 24GB cards),

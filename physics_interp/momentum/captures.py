@@ -1,6 +1,6 @@
 """The capture format and the clip-set index.
 
-One ``.npz`` per clip, written by ``scripts/capture_encoder.py`` (and, with a
+One ``.npz`` per clip, written by ``scripts/pipeline/capture_encoder.py`` (and, with a
 leading step axis, by the older CogVideoX inversion capture)::
 
     act.<site>   float16 [pools, dim]            (or [steps, pools, dim])

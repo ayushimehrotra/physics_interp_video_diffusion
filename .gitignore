@@ -10,25 +10,26 @@ __pycache__/
 .DS_Store
 
 # Generated Kubric datasets: rendered frames and masks are large (a 50-scene pilot is
-# ~540MB) and reproducible from a seed via momentum_dataset/run_batch.py. The small
+# ~540MB) and reproducible from a seed via datasets/run_batch.py. The small
 # validation artifacts are kept, since they are the evidence the set was checked.
 # (excluding pilot/* rather than pilot/ so the _validation negation can still apply --
 # git will not descend into an excluded directory to re-include anything inside it)
-momentum_dataset/pilot/*
-!momentum_dataset/pilot/_validation/
-momentum_dataset/*/scene_*/
+datasets/pilot/*
+!datasets/pilot/_validation/
+datasets/*/scene_*/
 
-# Superseded experiments, archived 2026-09-21. See old/MANIFEST.txt. Nothing deleted.
-old/
+# Superseded experiments, archived 2026-09-21. See old_experiments/MANIFEST.txt. Nothing deleted.
+old_experiments/*
+!old_experiments/MANIFEST.txt
+!old_experiments/scripts/
 
-# Captured activations: large and reproducible from a capture run.
-outputs_*/
+# Captured activations live under outputs/ (ignored above): large, reproducible from a capture run.
 
 # Claude Code worktrees and local settings
 .claude/worktrees/
 
 # Rendered clips in plan-driven sets (named <cell>_seed<N>, not scene_*); keep plan/build log
-momentum_dataset/*/*_seed*/
-momentum_dataset/*/*.npz
+datasets/*/*_seed*/
+datasets/*/*.npz
 # Rendered clips in the KE factor set (named <family><group>_k<level>, e.g. M000_k+0)
-momentum_dataset/*/[MS][0-9][0-9][0-9]_k*/
+datasets/*/[MS][0-9][0-9][0-9]_k*/

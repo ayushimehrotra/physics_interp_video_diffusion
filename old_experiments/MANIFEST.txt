@@ -1,0 +1,92 @@
+Superseded experiments, archived 2026-09-21.
+Nothing here is deleted. To restore one:  mv old_experiments/<path> <path>
+KEPT in the working tree: outputs/cons_* (3 models), outputs/evoe450_*,
+datasets/conservation_set_v1, datasets/energy_voe_pilot (450 clips).
+
+path	size	reason
+datasets/collide_pilot	60.3 MB	pilot for a paused set
+datasets/collide_set_v1	211.1 MB	render PAUSED at 26/150, never used
+datasets/demo_2x2	88.8 MB	demo render
+datasets/demo_2x2_mixed	88.5 MB	demo render
+datasets/incline_pilot	64.0 MB	pilot, friction line closed
+datasets/incline_set_v1	1600.6 MB	VOID -- single-frame leak (S32b)
+datasets/incline_set_v2	1603.7 MB	friction, closed
+datasets/pilot	1.7 MB	earliest pilot
+datasets/probe_set	1578.2 MB	v1 -- cos leak AUC 1.000
+datasets/probe_set_v2_latent	715.5 MB	v2 -- antiparallel leak
+datasets/probe_set_v3_latent	2861.9 MB	v3 -- unidentifiable by theorem
+datasets/probe_set_v4_legacy_fixed	1577.1 MB	v4 -- e>1 leak
+datasets/slide_pilot	56.5 MB	pilot, friction line closed
+datasets/slide_set_v1	2123.5 MB	friction, closed
+datasets/slide_set_v2	2208.5 MB	friction, closed
+outputs	1308.8 MB	CogVideoX-2b on probe_set v1 -- v1 leaks cos(dv_A,dv_B) at AUC 1.000 (S38)
+outputs/evoe_videomae-base	10.8 MB	20-seed energy-VoE pilot -- superseded by outputs/evoe450_*
+outputs/evoe_vjepa2-vitl	26.7 MB	same
+outputs/incline_patch_videomae-base	1360.3 MB	same, per-token
+outputs/incline_patch_vjepa2-vitl	7073.8 MB	same, per-token
+outputs/incline_videomae-base	25.8 MB	same
+outputs/incline_vjepa2-vitl	66.0 MB	same
+outputs/patch_videomae-base	1363.2 MB	v1 per-token capture; attentive probe broken at n=150 (S34g/S43e)
+outputs/patch_vjepa2-vitl	7054.5 MB	v1 per-token capture -- same
+outputs/predict_vjepa2-vitl	0.0 MB	prediction route closed (S15/S21)
+outputs/render	0.4 MB	one-off renders
+outputs/slide_videomae-base	52.9 MB	friction line CLOSED -- no geometry-independent mu (S35c)
+outputs/slide_vjepa2-vitl	133.3 MB	same
+outputs/steer_videomae-base	1.9 MB	steering on v1/v3 (S5 negative, S18/S41)
+outputs/steer_vjepa2-vitl	0.6 MB	same
+outputs/steer_vjepa2-vitl_pow	0.4 MB	same, powered rerun
+outputs/trunc_videomae-base.json	0.0 MB	v1 truncation ladder
+outputs/trunc_videomae-base_acts.npz	85.7 MB	v1 truncation ladder (S43/S47); v1 post labels leak
+outputs/trunc_vjepa2-vitl.json	0.0 MB	v1 truncation ladder
+outputs/trunc_vjepa2-vitl_acts.npz	216.2 MB	v1 truncation ladder
+outputs/v2_videomae-base	54.1 MB	v2 -- antiparallel leak, S11 says do not probe
+outputs/v2_vjepa2-vitl	133.7 MB	v2 -- same
+outputs/v3_videomae-base	56.7 MB	v3 -- conservation unidentifiable by theorem (S14)
+outputs/v3_vjepa2-vitl	138.8 MB	v3 -- same
+outputs/v4_videomae-base	27.0 MB	v4 -- e>1 leak in 12/75 violating (S38b)
+outputs/v4_vjepa2-vitl	66.8 MB	v4 -- same
+outputs/videomae-base	30.0 MB	VideoMAE on v1 -- same leak
+outputs/vjepa2-vitl	72.5 MB	V-JEPA2 on v1 -- same leak
+
+--- 2026-09-23: withdrawn / confounded experiments ---
+withdrawn_and_confounded/	0.3 MB	S2h VoE momentum arm (CONFOUNDED, S53) + S54 latent manifold (WITHDRAWN, S54b). See its README.txt. Removed from the Momentum Protocol Register; still written up in docs/variables/momentum.md.
+
+--- 2026-10-27: repository layout refactor ---
+old/ was renamed old_experiments/, momentum_dataset/ datasets/, and every outputs_<x>/ moved
+to outputs/<x>/. The paths above are rewritten to match. Entries listed above but absent
+from this folder were lost before the refactor (only empty directories remained).
+
+scripts/	30 scripts whose every input (dataset or capture) is archived above:
+	the friction line, probe_set v1-v4, steering/patching, prediction/rendering,
+	the v1 truncation ladder and the 20-seed energy pilot. Run them as
+	python old_experiments/scripts/<name>.py; they import from scripts/ as before.
+	analyse_collide_friction.py
+	causal_collision.py
+	compose_incline.py
+	fig_energy_combined.py
+	fig_energy_created_depth.py
+	fig_incline_depth.py
+	fig_norm_route_layers.py
+	incline_composed_mu.py
+	joseph_intphys_probe.py
+	lawful_errors.py
+	leak_vs_probe.py
+	norm_route.py
+	patch_conservation.py
+	patch_surface.py
+	patch_velocity.py
+	predict_object_local.py
+	predict_pre_only.py
+	probe_energy_voe_depth.py
+	probe_energy_voe_pairs.py
+	probe_incline_depth.py
+	render_prediction.py
+	steer_friction.py
+	steer_multidim.py
+	steer_polar.py
+	subspace_angles.py
+	transfer_geometry.py
+	trunc_restitution.py
+	trunc_targets.py
+	truncation_curve.py
+	why_low_auc.py

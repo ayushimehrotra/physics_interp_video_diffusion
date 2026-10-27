@@ -20,9 +20,9 @@ not be the register's numbers until it is run on real captures.
 | folds | random 60/40 by scene | grouped K-fold by seed (twins never split) |
 | protocols | one binary probe + variable decodability | §2a, §2c, §2g, §47, §48, §49, §50, §51, §52, §54b, §55, §56, §57, §58, §59, §60, §61 |
 | scripts | `run_experiment.py` | ~13 named analysis scripts, `plan_energy_voe_set_register.py --from-conservation-plan`, a VoE pipeline |
-| docs | `CLAUDE.md`, dataset README | `docs/variables/momentum.md` (§1–§55), `docs/conservation_set_v1.md`, `docs/artifacts/*.json`, `old/` archives |
+| docs | `CLAUDE.md`, dataset README | `docs/variables/momentum.md` (§1–§55), `docs/conservation_set_v1.md`, `docs/artifacts/*.json`, `old_experiments/` archives |
 
-The physics in `momentum_dataset/generate_scene.py` (zero gravity, planar,
+The physics in `datasets/generate_scene.py` (zero gravity, planar,
 frictionless, contact on frame 20, pre/post frames 18/22) is the same physics the
 register's sets are built on, and is reused unchanged.
 
@@ -34,23 +34,23 @@ register's sets are built on, and is reused unchanged.
 | the split-changing violation, the (1+e)/(1+e_sim) restitution edit (Part 1, §58) | `physics.split_edit`, `physics.restitution_edit`; wired into `generate_scene.py` (`--violation-mode split`, `--edit-restitution`, `--restitution`) | tests: edit keeps separation speed, breaks momentum, equals a common drift along n; restitution edit exact, dKE closed form, identity at e_sim |
 | raw AUC, permutation null, grouped folds, inner alpha selection (§55) | `physics_interp/momentum/stats.py` | tests on signal vs shuffled labels |
 | capture format + clip-set index, `concat` = `A.all+B.all` | `physics_interp/momentum/captures.py` | used by every script below on synthetic captures |
-| §2a direct probe, §2c fitted norm, every layer | `scripts/probe_conservation_set_register.py` | runs on synthetic captures |
-| §2a diagnosis / §61 (exact dp linear vs exact \|dp\|, quadratic ingredient oracle, terciles, sample-size curve) | `scripts/direct_probe_failure.py` | exact \|dp\| → 1.000 on synthetic; exact dp vector linear → ~0.5 |
-| §2g Q1–Q4 at every layer | `scripts/momentum_failure_register.py`, `detectors.failure_localisation` | runs; radial/tangential/cos/tercile table |
-| §47 valid-collision subspace on truncation rungs | `scripts/valid_collision_subspace.py`; truncation via `capture_encoder.py --truncate k` | refuses unless the geometry control passes; on synthetic rungs the gap is positive pre-contact and closes post-contact |
-| §48 composed norm | `scripts/geometric_violation_detector.py` | runs; self-calibration floor reported |
-| §49 subspace membership, `--fit-honest` | `scripts/subspace_membership.py` | runs; honest-only fit predicts every clip |
-| §50 four routes on identical features, label-free site choice | `scripts/momentum_by_elasticity.py` | runs; object-local vs frame-wide |
-| §51 lawful errors ratio, second arm per stratum | `scripts/lawful_errors_register.py` | runs; bootstrap CI |
-| §54b three-point chord test (register: "never written to a script") | `scripts/chord_test.py` | returns 0.400 ± 0.001 on a near-linear noiseless synthetic encoder; test asserts the physics value |
-| §56 manifold shape, §56h legal-six / PC2 LOO-R² audit | `scripts/elasticity_manifold.py` | runs on a synthetic 20 × 11 ladder |
-| §57 population γ with chord/random ablations and the cancellation diagnostic | `scripts/curve_detector.py --ladder` | runs; null on synthetic |
-| §60 per-scene curve, matched-legal control, chord ablation, kinematic oracle | `scripts/curve_detector.py --per-scene` | kinematic oracle 1.000 with honest 0.000 on synthetic |
-| §59 VoE rank statistic, residualised twin difference, boundary slopes | `scripts/voe_ladder.py` (statistics) + `capture_encoder.py --surprise` (V-JEPA2 predictor) | statistics run on a synthetic surprise table; the predictor call is **unverified** |
-| encoder captures with pools × phases, `embed.out`/`block.i.resid_post`, straddle refusal | `physics_interp/momentum/encoders.py`, `scripts/capture_encoder.py` | frame specs and token counts checked (1568 / 8192 / 2048); pool weights sum to 1; **no model run here yet** |
-| conservation_set_v1 plan (seeds 101+, e alternating 1.00/0.15) | `momentum_dataset/plan_conservation_set_register.py` | 300 jobs |
-| energy_voe_450, energy_ladder_v1 (seeds 9500+), scene_ladder_v1 `--from-conservation-plan` | `momentum_dataset/plan_energy_voe_set_register.py`, `run_plan.py` | 450 / 220 / 1950 jobs; 1950 − the register's 393 drops = its 1557 |
-| §58's validation checks, label-trap check, relative in-frame rule | `momentum_dataset/validate_sets.py`; rule enforced in `generate_scene.py` (`_DROPPED`) | all checks pass on synthetic label sets; an injected trap fails the right check |
+| §2a direct probe, §2c fitted norm, every layer | `scripts/momentum/probe_conservation_set_register.py` | runs on synthetic captures |
+| §2a diagnosis / §61 (exact dp linear vs exact \|dp\|, quadratic ingredient oracle, terciles, sample-size curve) | `scripts/momentum/direct_probe_failure.py` | exact \|dp\| → 1.000 on synthetic; exact dp vector linear → ~0.5 |
+| §2g Q1–Q4 at every layer | `scripts/momentum/momentum_failure_register.py`, `detectors.failure_localisation` | runs; radial/tangential/cos/tercile table |
+| §47 valid-collision subspace on truncation rungs | `scripts/momentum/valid_collision_subspace.py`; truncation via `capture_encoder.py --truncate k` | refuses unless the geometry control passes; on synthetic rungs the gap is positive pre-contact and closes post-contact |
+| §48 composed norm | `scripts/momentum/geometric_violation_detector.py` | runs; self-calibration floor reported |
+| §49 subspace membership, `--fit-honest` | `scripts/momentum/subspace_membership.py` | runs; honest-only fit predicts every clip |
+| §50 four routes on identical features, label-free site choice | `scripts/momentum/momentum_by_elasticity.py` | runs; object-local vs frame-wide |
+| §51 lawful errors ratio, second arm per stratum | `scripts/momentum/lawful_errors_register.py` | runs; bootstrap CI |
+| §54b three-point chord test (register: "never written to a script") | `scripts/momentum/chord_test.py` | returns 0.400 ± 0.001 on a near-linear noiseless synthetic encoder; test asserts the physics value |
+| §56 manifold shape, §56h legal-six / PC2 LOO-R² audit | `scripts/elasticity/elasticity_manifold.py` | runs on a synthetic 20 × 11 ladder |
+| §57 population γ with chord/random ablations and the cancellation diagnostic | `scripts/momentum/curve_detector.py --ladder` | runs; null on synthetic |
+| §60 per-scene curve, matched-legal control, chord ablation, kinematic oracle | `scripts/momentum/curve_detector.py --per-scene` | kinematic oracle 1.000 with honest 0.000 on synthetic |
+| §59 VoE rank statistic, residualised twin difference, boundary slopes | `scripts/momentum/voe_ladder.py` (statistics) + `capture_encoder.py --surprise` (V-JEPA2 predictor) | statistics run on a synthetic surprise table; the predictor call is **unverified** |
+| encoder captures with pools × phases, `embed.out`/`block.i.resid_post`, straddle refusal | `physics_interp/momentum/encoders.py`, `scripts/pipeline/capture_encoder.py` | frame specs and token counts checked (1568 / 8192 / 2048); pool weights sum to 1; **no model run here yet** |
+| conservation_set_v1 plan (seeds 101+, e alternating 1.00/0.15) | `datasets/plan_conservation_set_register.py` | 300 jobs |
+| energy_voe_450, energy_ladder_v1 (seeds 9500+), scene_ladder_v1 `--from-conservation-plan` | `datasets/plan_energy_voe_set_register.py`, `run_plan.py` | 450 / 220 / 1950 jobs; 1950 − the register's 393 drops = its 1557 |
+| §58's validation checks, label-trap check, relative in-frame rule | `datasets/validate_sets.py`; rule enforced in `generate_scene.py` (`_DROPPED`) | all checks pass on synthetic label sets; an injected trap fails the right check |
 | the label trap itself | fixed at the source: new clips write `restitution` = realised and keep `restitution_simulated`; `physics.clip_restitution` prefers `restitution_realised` and refuses to fall back on an edited arm | tested |
 
 ## Not built, and why
@@ -61,7 +61,7 @@ register's sets are built on, and is reused unchanged.
 * **V-JEPA2 predictor surprise.** Written against `VJEPA2Model.forward(context_mask=, target_mask=)` and `predictor_output.{last_hidden_state, target_hidden_state}`; raises with the available fields if the API differs.
 * **§52** (scale) is §48–§51 run on the giant; no separate script. **§55** is a method change and is enforced by `stats.py` having no paired accuracy.
 * **Rerun queue item 4** ("a set where the violation is NOT geometrically off the rendered family") is a dataset design question, not written.
-* **`docs/variables/momentum.md`, `docs/conservation_set_v1.md`, `old/`** — the notebook and archives exist only on the other box.
+* **`docs/variables/momentum.md`, `docs/conservation_set_v1.md`, `old_experiments/`** — the notebook and archives exist only on the other box.
 
 ## The fastest way to actually catch up
 

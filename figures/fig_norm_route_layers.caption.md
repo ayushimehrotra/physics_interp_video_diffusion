@@ -1,7 +1,7 @@
 # Figure: norm-route AUC across depth
 
 **File:** `figures/fig_norm_route_layers.pdf` (vector, for LaTeX) / `.png`
-**Script:** `scripts/fig_norm_route_layers.py` — regenerates from the two JSONs below.
+**Script:** `old_experiments/scripts/fig_norm_route_layers.py` — regenerates from the two JSONs below.
 **Data:** `docs/artifacts/norm_route_v1.json`, `docs/artifacts/norm_route_v4.json`
 
 ## Draft caption

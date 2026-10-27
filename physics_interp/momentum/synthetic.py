@@ -1,7 +1,7 @@
 """Synthetic clips and a synthetic encoder, so every protocol runs without a GPU.
 
 :func:`sample_scene` draws a pre-contact state with the generator's ranges and
-builds labels in the same schema as ``momentum_dataset/generate_scene.py``
+builds labels in the same schema as ``datasets/generate_scene.py``
 (the subset the protocols read). :func:`make_conservation_set`,
 :func:`make_three_arm_set` and :func:`make_ladder_set` assemble the four live
 sets' structure — honest/violating twins at pinned restitution, sub/anchor/super

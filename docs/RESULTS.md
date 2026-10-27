@@ -150,7 +150,7 @@ decoded acceleration predicts R²(mu) of 0.584 / 0.829 against the observed
 The quotient test §32 was built for did not materialise: mu is **0.997 linear in
 (a, θ)** over the sampled theta range. Widening theta to 15–70° is the fix.
 
-## 6. No evidence of lawful error structure (`scripts/lawful_errors.py`)
+## 6. No evidence of lawful error structure (`old_experiments/scripts/lawful_errors.py`)
 
 Run 2026-08-22 on `probe_set_v3_latent`, both encoders. One readout tied across
 time (same weights on `.pre` and `.post` pools), fit on conserving scenes only;
@@ -190,7 +190,7 @@ Two things this run established about the instrument, both worth keeping:
 
 ## 7. Energy is read as elasticity, and elasticity is mass-free (§44)
 
-Run 2026-08-25, `conservation_set_v1`, both encoders, `scripts/probe_energy.py`.
+Run 2026-08-25, `conservation_set_v1`, both encoders, `scripts/kinetic_energy/probe_energy.py`.
 The full 9-cell pool grid ({all, A, B} × {pre, post, all}) × every site, grouped
 5-fold by seed, 200-draw max-over-grid nulls.
 
@@ -264,7 +264,7 @@ would take are not stored.
 
 ## 8. Energy does not survive a change of scenario (§45)
 
-Run 2026-08-25, `scripts/energy_composition.py`, both encoders. §7 showed the
+Run 2026-08-25, `scripts/kinetic_energy/energy_composition.py`, both encoders. §7 showed the
 collision sets cannot ask the question — conservation makes the mass ratio visible,
 so the energy ratio is mass-free at R² = 1.000000. The friction sets can: one cube,
 one floor, **no second body**, so the floor's recoil is unobservable and nothing
@@ -360,7 +360,7 @@ plausible scenes regardless of the latent), or a generatively competent model.
 | `incline_set_v1` (§32) | **void** | §32b: single-frame leak, mu at R² 0.88–0.99 |
 | `probe_set_v2_latent` | **superseded** | §11, the antiparallel leak |
 | Conservation null on v3 (§14) | **not evidence about models** | a theorem about the dataset |
-| Per-head capture `outputs_heads/` | **deleted, never analysed** | ~110 GPU-min to redo |
+| Per-head capture `outputs/heads/` | **deleted, never analysed** | ~110 GPU-min to redo |
 
 ---
 

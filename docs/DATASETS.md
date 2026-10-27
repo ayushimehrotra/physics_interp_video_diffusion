@@ -167,7 +167,7 @@ Injected `|dp|/|p_pre|` ∈ (0.35, 0.75).
 — §13's answer is no: 0.49–0.58 against a 0.516 kinematic oracle, i.e. exactly
 what a linear readout of the model's own noisy velocity estimates gives with no
 notion of mass anywhere. Also the error-structure tests in
-`scripts/lawful_errors.py`, for which the theorem below is an *asset*.
+`old_experiments/scripts/lawful_errors.py`, for which the theorem below is an *asset*.
 
 **Cannot answer — and this is a theorem, not a measurement.** Any antiparallel
 pair of deflections is consistent with conservation under *some* mass ratio,
@@ -213,7 +213,7 @@ must not be cited as friction results. Use `incline_set_v2` instead.
 
 **Mask-leak floor: the worst in the project.** `cube_size` is 99% recoverable
 from the pooling mask alone, and mu from the mask-only floor reads 0.796. Every
-object-local number from this set needs `scripts/mask_only_floor.py` beside it.
+object-local number from this set needs `scripts/common/mask_only_floor.py` beside it.
 
 **Still answers one thing cleanly.** Whether mu binds to the *surface* or the
 *object* — §31 patches floor tokens into cube tokens and back, on disjoint
@@ -302,8 +302,8 @@ never tested, and the only one where the conservation label is decidable but
 | **antiparallel** | **never rendered** | theorem-null (§14), is v3 |
 
 ```bash
-KUBRIC_USE_GPU=1 /workspace/kubric/.venv/bin/python momentum_dataset/run_batch.py \
-    --num-scenes 300 --output-dir momentum_dataset/probe_set_v4_visible \
+KUBRIC_USE_GPU=1 /workspace/kubric/.venv/bin/python datasets/run_batch.py \
+    --num-scenes 300 --output-dir datasets/probe_set_v4_visible \
     --seed-offset 0 --violate-frac 0.25 --workers 3 --arm visible_mass
 ```
 
@@ -328,4 +328,4 @@ arm — check it before probing.
   `all.*` will report nulls that are not there: `log_mass_ratio` reads ~0 in
   every frame-wide pool and 0.75–0.81 in object-local ones on v1.
 * Every object-local number needs its mask-only floor
-  (`scripts/mask_only_floor.py`) printed beside it, or it is not reportable.
+  (`scripts/common/mask_only_floor.py`) printed beside it, or it is not reportable.

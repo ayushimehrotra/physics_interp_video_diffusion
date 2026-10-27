@@ -1,10 +1,10 @@
 # Figure: friction sweep on incline_set_v2
 
 **Files:** `figures/fig_incline_depth.pdf` / `.png`
-**Script:** `scripts/fig_incline_depth.py`
+**Script:** `old_experiments/scripts/fig_incline_depth.py`
 **Data:** `docs/artifacts/incline_depth_videomae_Apre.json`,
 `incline_depth_vjepa2_allpre.json`, `incline_mu_oracles.json`
-**Sweep:** `scripts/probe_incline_depth.py`, 12 fold seeds per layer, n = 150.
+**Sweep:** `old_experiments/scripts/probe_incline_depth.py`, 12 fold seeds per layer, n = 150.
 
 ## Draft caption
 

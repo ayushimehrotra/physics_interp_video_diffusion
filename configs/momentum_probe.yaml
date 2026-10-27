@@ -2,8 +2,8 @@
 #
 # Two stages, both driven by this file:
 #
-#   python scripts/run_experiment.py configs/momentum_probe.yaml --mode capture
-#   python scripts/run_experiment.py configs/momentum_probe.yaml --mode probe
+#   python scripts/pipeline/run_experiment.py configs/momentum_probe.yaml --mode capture
+#   python scripts/pipeline/run_experiment.py configs/momentum_probe.yaml --mode probe
 #
 # Capture inverts every scene in `dataset_dir` — encoding the rendered clip to a
 # clean latent and integrating the model's own sampler backwards to noise — and
@@ -13,7 +13,7 @@
 
 name: momentum_probe
 output_dir: outputs
-dataset_dir: momentum_dataset/probe_set
+dataset_dir: datasets/probe_set
 notes: >
   Momentum decodability along the inverted trajectory. Report on the
   matched-momentum stratum: momentum and mass are only decorrelated there, so it

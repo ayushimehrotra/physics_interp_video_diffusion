@@ -17,7 +17,7 @@ Interactive use::
 
     runner = VideoDiffusionRunner.from_config(load_config("configs/momentum_probe.yaml"))
     print(runner.sites[:5])                     # discover tap points
-    rec = runner.capture_scene("momentum_dataset/pilot/scene_00000")
+    rec = runner.capture_scene("datasets/pilot/scene_00000")
     rec["activations"]["block.20.resid_post"].shape   # [steps, pools, dim]
 
 Hooked use — the hook layer is the only extension point the runner knows about,

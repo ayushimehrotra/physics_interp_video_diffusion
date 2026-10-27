@@ -11,17 +11,17 @@ everything else reads what capture wrote and runs in seconds to minutes.
 
 ## The one script every experiment goes through
 
-**`scripts/run_experiment.py`** — three modes.
+**`scripts/pipeline/run_experiment.py`** — three modes.
 
 ```bash
 # 1. capture: invert/encode every scene, store pooled activations (GPU)
-.venv/bin/python scripts/run_experiment.py configs/momentum_probe.yaml \
+.venv/bin/python scripts/pipeline/run_experiment.py configs/momentum_probe.yaml \
     --mode capture --model videomae-base \
-    --dataset-dir momentum_dataset/probe_set_v3_latent -o outputs_v3_videomae-base
+    --dataset-dir datasets/probe_set_v3_latent -o outputs/v3_videomae-base
 
 # 2. probe: fit linear probes on what capture wrote (no GPU, seconds)
-.venv/bin/python scripts/run_experiment.py configs/momentum_probe.yaml \
-    --mode probe -o outputs_v3_videomae-base --tag v3grid \
+.venv/bin/python scripts/pipeline/run_experiment.py configs/momentum_probe.yaml \
+    --mode probe -o outputs/v3_videomae-base --tag v3grid \
     --pools "A.pre,A.post,A.all,B.pre,B.post,B.all,all.pre,all.post,all.all" \
     --targets momentum_pre,momentum_delta,mass_A,velocity_A_pre
 
@@ -32,7 +32,7 @@ Capture and generate shard across GPUs and skip finished work, so an
 interrupted sweep resumes. Probe is single-process and re-runnable with
 different targets or strata without touching a GPU.
 
-**Storage layout.** `outputs_<tag>_<model>/momentum_probe/activations/scene_*.npz`,
+**Storage layout.** `outputs/<tag>_<model>/momentum_probe/activations/scene_*.npz`,
 one file per scene: `act.<site>` arrays of shape `[steps, pools, dim]`, plus a
 `meta` blob holding the scene's whole `labels.json`. Keeping the full labels is
 what lets a new question be asked of an already-captured set without re-running
@@ -44,7 +44,7 @@ of *train*, `shuf*` permutation control), `probe_grid` (every site × step × po
 × target), `select_scenes` (`--where`), and `DERIVED` (every probe target that
 is computed from `labels.json` rather than stored in it).
 
-**Output dir naming.** `outputs_<experiment>_<model>`, where `<experiment>` is
+**Output dir naming.** `outputs/<experiment>_<model>`, where `<experiment>` is
 the dataset or intervention family — `v3`, `slide`, `incline`, `patch`, `steer`,
 `predict`. `outputs/` with no suffix is CogVideoX-2b on v1.
 
@@ -72,9 +72,9 @@ asks whether the two readouts' errors are shared. Run both arms — the placebo 
 the control the result stands on:
 
 ```bash
-.venv/bin/python scripts/lawful_errors.py outputs_v3_videomae-base/momentum_probe \
-    --n-perm 500 --out outputs_v3_videomae-base/momentum_probe/lawful_errors.json
-.venv/bin/python scripts/lawful_errors.py outputs_v3_videomae-base/momentum_probe \
+.venv/bin/python old_experiments/scripts/lawful_errors.py outputs/v3_videomae-base/momentum_probe \
+    --n-perm 500 --out outputs/v3_videomae-base/momentum_probe/lawful_errors.json
+.venv/bin/python old_experiments/scripts/lawful_errors.py outputs/v3_videomae-base/momentum_probe \
     --placebo ke
 ```
 
@@ -87,11 +87,11 @@ readable.** The bare grid says the binary "is this clip losing energy" decodes a
 AUC 0.95–0.98; `--vs-kinematics` says a camera does it at 1.000. Run all four:
 
 ```bash
-.venv/bin/python scripts/probe_energy.py --n-perm 200            # the 9-cell grid, all sites
-.venv/bin/python scripts/probe_energy.py --mask-floor            # §20's floor, same grid
-.venv/bin/python scripts/probe_energy.py --transfer              # fit honest, predict violating
-.venv/bin/python scripts/probe_energy.py --vs-kinematics         # probe vs a mass-free observer
-.venv/bin/python scripts/probe_energy.py --fixed-e               # the magnitude, at e pinned
+.venv/bin/python scripts/kinetic_energy/probe_energy.py --n-perm 200            # the 9-cell grid, all sites
+.venv/bin/python scripts/kinetic_energy/probe_energy.py --mask-floor            # §20's floor, same grid
+.venv/bin/python scripts/kinetic_energy/probe_energy.py --transfer              # fit honest, predict violating
+.venv/bin/python scripts/kinetic_energy/probe_energy.py --vs-kinematics         # probe vs a mass-free observer
+.venv/bin/python scripts/kinetic_energy/probe_energy.py --fixed-e               # the magnitude, at e pinned
 ```
 
 No GPU and no torch — numpy throughout, plus Pillow for `--mask-floor`. Pools are the
@@ -108,8 +108,8 @@ The friction sets have one cube and one floor, so the floor's recoil is unobserv
 and nothing hands the observer a mass:
 
 ```bash
-.venv/bin/python scripts/energy_composition.py --test A   # slide -> collision transfer
-.venv/bin/python scripts/energy_composition.py --test B   # direct vs composed, in-set
+.venv/bin/python scripts/kinetic_energy/energy_composition.py --test A   # slide -> collision transfer
+.venv/bin/python scripts/kinetic_energy/energy_composition.py --test B   # direct vs composed, in-set
 ```
 
 `--test A` is the one that works. **Read its two CONTROL rows first** — apparent size
@@ -170,7 +170,7 @@ All prediction routes came back closed. See RESULTS §8.
 
 ## Dataset generation
 
-Under `momentum_dataset/`. Rendering uses the **kubric venv**
+Under `datasets/`. Rendering uses the **kubric venv**
 (`/workspace/kubric/.venv/bin/python`), not the project venv.
 
 | script | set |
@@ -185,8 +185,8 @@ Under `momentum_dataset/`. Rendering uses the **kubric venv**
 | `contact_sheet.py` | **run this and look at it before probing** |
 
 ```bash
-KUBRIC_USE_GPU=1 /workspace/kubric/.venv/bin/python momentum_dataset/run_batch.py \
-    --num-scenes 300 --output-dir momentum_dataset/<set> \
+KUBRIC_USE_GPU=1 /workspace/kubric/.venv/bin/python datasets/run_batch.py \
+    --num-scenes 300 --output-dir datasets/<set> \
     --seed-offset 0 --violate-frac 0.25 --workers 3 --arm <arm>
 ```
 
@@ -203,9 +203,9 @@ not a nicety.
 Three scripts, and the design note lives in `plan_energy_voe_set.py`'s docstring:
 
 ```bash
-python momentum_dataset/plan_energy_voe_set.py --seeds 60 --k 1.25 1.5 2.0   # physics only
-python momentum_dataset/run_energy_voe_set.py --workers 4                     # render
-python momentum_dataset/validate_energy_voe_set.py                            # 6 checks
+python datasets/plan_energy_voe_set.py --seeds 60 --k 1.25 1.5 2.0   # physics only
+python datasets/run_energy_voe_set.py --workers 4                     # render
+python datasets/validate_energy_voe_set.py                            # 6 checks
 ```
 
 The plan step runs the generator with `render=False` and applies the edit, so

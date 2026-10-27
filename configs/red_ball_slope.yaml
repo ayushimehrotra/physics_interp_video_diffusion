@@ -7,8 +7,8 @@
 # way the ball actually goes) to validate a steering intervention against.
 #
 # Run:
-#   .venv/bin/python scripts/run_experiment.py configs/red_ball_slope.yaml
-#   ./scripts/run_experiment.sh configs/red_ball_slope.yaml     # all GPUs
+#   .venv/bin/python scripts/pipeline/run_experiment.py configs/red_ball_slope.yaml
+#   ./scripts/pipeline/run_experiment.sh configs/red_ball_slope.yaml     # all GPUs
 
 name: red_ball_slope
 output_dir: outputs
