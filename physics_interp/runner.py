@@ -41,6 +41,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from .config import ExperimentConfig, GenerationConfig, HookConfig, InversionConfig, ModelConfig
 from .experiment import DONE_MARKER, RunSpec
@@ -121,12 +122,17 @@ class InversionResult:
 
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    explicit_noise_levels: list[float] | None = None
+    """Set by single-step noising, where the levels are not trajectory positions."""
+
     @property
     def noise_levels(self) -> list[float]:
         """Captured steps as a fraction of the trajectory, in ``[0, 1]``.
 
         This is the paper's y-axis: 0 is clean data, 1 is pure noise.
         """
+        if self.explicit_noise_levels is not None:
+            return list(self.explicit_noise_levels)
         n = max(len(self.timesteps) - 1, 1)
         return [s / n for s in self.captured_steps]
 
@@ -180,6 +186,73 @@ class ActivationRecorder:
                 )
             out[site] = np.stack([by_step[s] for s in steps])
         return out
+
+
+class AttentionRecorder:
+    """Region-to-region attention mass per head, reduced on the GPU as it is computed.
+
+    A full attention map is ``[heads, queries, keys]`` = 30 x 17550 x 17776 per block
+    per step for CogVideoX-2b, so it is never formed. Instead the attention kernel is
+    run a second time with the *values* replaced by key-group indicators: for a query
+    ``q`` the output is then ``sum_k softmax(q.k)_k * G[k]``, i.e. exactly the share of
+    its attention landing in each key group. Pooling that over query regions with the
+    same weights :class:`ActivationRecorder` uses gives ``[heads, q_pools, k_groups]``.
+
+    The adapter calls :meth:`record` from inside its attention processor with the
+    post-norm, post-RoPE query and key, so the mass is the model's own attention.
+    """
+
+    def __init__(self, hooks, query_weights: torch.Tensor, query_names: Sequence[str],
+                 key_groups: torch.Tensor, key_names: Sequence[str], steps: Sequence[int]):
+        self.hooks = hooks                  # step index is read from hooks.step_override
+        self.qw = query_weights             # [q_pools, video_tokens], rows sum to 1
+        self.kg = key_groups                # [k_groups, text + video tokens], columns sum to 1
+        self.query_names, self.key_names = list(query_names), list(key_names)
+        self.steps = set(steps)
+        self.store: dict[str, dict[int, np.ndarray]] = {}
+
+    def active(self) -> bool:
+        return self.hooks.step_override in self.steps
+
+    def record(self, block: int, query: torch.Tensor, key: torch.Tensor, text_len: int) -> None:
+        q = query[:1, :, text_len:]                                  # video queries, row 0
+        k = key[:1]
+        head_dim = q.shape[-1]
+        g = self.kg.to(device=q.device, dtype=q.dtype)               # [G, N]
+        v = torch.zeros(1, 1, k.shape[2], head_dim, device=q.device, dtype=q.dtype)
+        v[0, 0, :, : g.shape[0]] = g.T                               # one-hot groups as values
+        v = v.expand(1, k.shape[1], -1, -1)
+        mass = F.scaled_dot_product_attention(q, k, v)[0, :, :, : g.shape[0]]   # [H, Nv, G]
+        w = self.qw.to(device=q.device, dtype=torch.float32)        # [P, Nv]
+        pooled = torch.einsum("pn,hng->hpg", w, mass.float())        # [H, P, G]
+        self.store.setdefault(f"block.{block}", {})[self.hooks.step_override] = (
+            pooled.to(torch.float16).cpu().numpy())
+
+    def collect(self, steps: Sequence[int]) -> dict[str, np.ndarray]:
+        """``block.i -> [steps, heads, q_pools, k_groups]``."""
+        return {b: np.stack([by[s] for s in steps]) for b, by in sorted(self.store.items())}
+
+
+def build_key_groups(layout, occ_a: np.ndarray, occ_b: np.ndarray, contact_latent: int,
+                     text_len: int) -> tuple[torch.Tensor, list[str]]:
+    """Key-group indicators over the joint ``[text, video]`` sequence.
+
+    Groups: text, then {A, B, background} x {pre, post}. Occupancy is fractional on
+    the latent grid, so a token's membership is split between A, B and background in
+    proportion; every key column sums to 1 and the groups partition attention mass.
+    """
+    bg = np.clip(1.0 - occ_a - occ_b, 0.0, 1.0)
+    pre = np.zeros(layout.frames, np.float32); pre[: contact_latent + 1] = 1.0
+    rows, names = [], []
+    text = np.zeros(text_len + layout.frames * layout.height * layout.width, np.float32)
+    text[:text_len] = 1.0
+    rows.append(text); names.append("text")
+    for r_name, occ in (("A", occ_a), ("B", occ_b), ("bg", bg)):
+        for p_name, ph in (("pre", pre), ("post", 1.0 - pre)):
+            row = np.zeros_like(text)
+            row[text_len:] = (occ * ph[:, None, None]).reshape(-1)
+            rows.append(row); names.append(f"{r_name}.{p_name}")
+    return torch.from_numpy(np.stack(rows)), names
 
 
 class PatchRecorder:
@@ -597,6 +670,95 @@ class VideoDiffusionRunner:
             },
         )
 
+    @torch.no_grad()
+    def noise_capture(
+        self,
+        video: torch.Tensor | np.ndarray,
+        *,
+        inversion: InversionConfig | None = None,
+        recorder: ActivationRecorder | None = None,
+        sites: str | Sequence[str] = "block.*.resid_post",
+    ) -> InversionResult:
+        """Forward-noise the clip's latent to each level and record one denoiser call.
+
+        The cheap alternative to :meth:`invert`: no trajectory is recovered. For
+        each ``t`` in ``inversion.noise_timesteps``::
+
+            z_t = alpha_t * z_0 + sigma_t * eps        # eps ~ N(0, I), one draw per clip
+            model(z_t, t)                              # recorded, output discarded
+
+        so the states probed are exactly the noisy inputs the model was trained
+        on, at a cost of one call per level instead of ``num_steps``. Recording
+        index ``i`` is ``noise_timesteps[i]``; ``noise_levels`` reports ``t / T``.
+        """
+        cfg = inversion or InversionConfig()
+        device = self.adapter.device
+        if isinstance(video, np.ndarray):
+            video = torch.from_numpy(video)
+        if video.dtype == torch.uint8:
+            video = video.float() / 255.0
+
+        scheduler = self.adapter.scheduler
+        num_train = int(getattr(scheduler.config, "num_train_timesteps", 1000))
+        levels = [int(t) for t in cfg.noise_timesteps]
+        bad = [t for t in levels if not 0 <= t < num_train]
+        if not levels or bad:
+            raise ValueError(f"noise_timesteps must be non-empty and in [0, {num_train}); got {levels}")
+        capture_at = list(range(len(levels)))
+
+        handle = None
+        if recorder is not None:
+            handle = self.hooks.add(sites, recorder, steps=capture_at, name="activation_recorder")
+
+        prev_guidance = self.hooks.guidance_scale
+        try:
+            self.hooks.reset()
+            # One unguided row, exactly as in invert().
+            self.hooks.guidance_scale = cfg.guidance_scale
+            embeds = self.adapter.embed_prompt(cfg.prompt)
+            z0 = self.adapter.encode_video(video).float()
+            gen = torch.Generator(device=z0.device).manual_seed(int(cfg.noise_seed))
+            eps = torch.randn(z0.shape, generator=gen, device=z0.device, dtype=z0.dtype)
+
+            start = time.perf_counter()
+            for i, t in enumerate(levels):
+                alpha, sigma = self.adapter.alpha_sigma(t)
+                z_t = alpha * z0 + sigma * eps
+                self.hooks.step_override = i
+                self.adapter.denoise(z_t, torch.tensor(t, device=device), embeds)
+            elapsed = time.perf_counter() - start
+        finally:
+            self.hooks.step_override = None
+            self.hooks.guidance_scale = prev_guidance
+            if handle is not None:
+                self.hooks.remove(handle)
+
+        activations, pools = {}, []
+        if recorder is not None:
+            activations = recorder.collect(capture_at)
+            pools = recorder.names
+
+        return InversionResult(
+            noise=eps,
+            clean_latent=z0,
+            timesteps=[float(t) for t in levels],
+            captured_steps=capture_at,
+            activations=activations,
+            pools=pools,
+            explicit_noise_levels=[t / num_train for t in levels],
+            metadata={
+                "method": "noise",
+                "noise_timesteps": levels,
+                "noise_seed": int(cfg.noise_seed),
+                "prompt": cfg.prompt,
+                "prediction_type": getattr(scheduler.config, "prediction_type", "epsilon"),
+                "scheduler": type(scheduler).__name__,
+                "elapsed_seconds": round(elapsed, 2),
+                "denoiser_calls": self.hooks.call_idx,
+                "layout": self.layout.__dict__,
+            },
+        )
+
     def _capture_steps(self, cfg: InversionConfig, num_steps: int) -> list[int]:
         """Which inversion steps to record at.
 
@@ -864,12 +1026,40 @@ class VideoDiffusionRunner:
 
         weights, names = build_pool_weights(self.layout, regions, phases)
         recorder = ActivationRecorder(weights, names)
-        result = self.invert(frames, inversion=cfg, recorder=recorder, sites=sites)
+
+        attn_rec, restore = None, None
+        if cfg.record_attention:
+            if cfg.method != "noise" or not cfg.use_segmentation:
+                raise ValueError("record_attention needs inversion.method='noise' and use_segmentation")
+            if not hasattr(self.adapter, "install_attention_recorder"):
+                raise ValueError(f"{type(self.adapter).__name__} cannot record attention")
+            kg, k_names = build_key_groups(self.layout, regions["A"], regions["B"],
+                                           contact_latent, self.adapter.text_len)
+            attn_rec = AttentionRecorder(self.hooks, weights, names, kg, k_names,
+                                         steps=range(len(cfg.noise_timesteps)))
+            restore = self.adapter.install_attention_recorder(attn_rec)
+        try:
+            if cfg.method == "noise":
+                result = self.noise_capture(frames, inversion=cfg, recorder=recorder, sites=sites)
+            elif cfg.method == "invert":
+                result = self.invert(frames, inversion=cfg, recorder=recorder, sites=sites)
+            else:
+                raise ValueError(f"unknown inversion.method {cfg.method!r}; use 'invert' or 'noise'")
+        finally:
+            if restore is not None:
+                restore()
 
         activations = dict(result.activations)
         activations["vae.latent"] = self._pool_clean_latent(result.clean_latent, weights)
 
+        extra = {}
+        if attn_rec is not None:
+            extra = {"attention": attn_rec.collect(result.captured_steps),
+                     "attention_query_pools": attn_rec.query_names,
+                     "attention_key_groups": attn_rec.key_names}
+
         return {
+            **extra,
             "scene_id": labels.get("scene_id", scene_dir.name),
             "activations": activations,
             "pools": result.pools,

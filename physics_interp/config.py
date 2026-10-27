@@ -135,6 +135,33 @@ class InversionConfig:
     so the defaults are deliberately expensive rather than fast.
     """
 
+    # How the noisy latents are produced.
+    #
+    # * "invert" — DDIM inversion: integrate the model's own field from the clean
+    #   latent up to noise, recording at `num_captures` points along the way. One
+    #   denoiser call per step, so `num_steps` calls per clip.
+    # * "noise" — forward-noise the clean latent directly to each timestep in
+    #   `noise_timesteps` (``z_t = alpha_t * z_0 + sigma_t * eps``, one shared eps)
+    #   and record ONE denoiser call at each. No trajectory; one call per level.
+    #   Every option below that shapes the trajectory (num_steps, solver,
+    #   num_captures, capture_steps, max_timestep) is ignored in this mode.
+    method: str = "invert"
+    # Training timesteps for method="noise", 0 = clean, 999 = pure noise
+    # (CogVideoX-2b is zero-SNR, so 999 carries no signal from the clip at all).
+    noise_timesteps: list[int] = field(
+        default_factory=lambda: [50, 100, 200, 300, 400, 500, 600, 700, 800]
+    )
+    # Seed for the shared eps. Fixed across scenes on purpose: twins that agree
+    # before contact then get identical noise there, so a pre-contact difference
+    # between their activations cannot come from the noise draw.
+    noise_seed: int = 0
+    # Also record region-to-region ATTENTION per head, per block, at every capture
+    # step: for each query pool (A/B/all x pre/post/all) the attention mass it sends
+    # to each key group (text, A/B/background x pre/post). Computed on the fly with a
+    # second fused attention call and reduced before leaving the GPU; full maps are
+    # never formed (one would be ~17776^2 per head per block). Stored as ``attn.*``.
+    record_attention: bool = False
+
     # Integration steps from clean latent to noise. Probe signal degrades much
     # faster than reconstruction quality as this drops: a coarse trajectory
     # still rebuilds the video but stops passing through the states the model

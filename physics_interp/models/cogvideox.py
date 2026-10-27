@@ -89,6 +89,65 @@ class CogVideoXAdapter(ModelAdapter):
 
     # ---- structure -------------------------------------------------------- #
 
+    # ---- attention recording ------------------------------------------------ #
+
+    def install_attention_recorder(self, recorder) -> "callable":
+        """Route every block's self-attention through a processor that reports to
+        ``recorder`` (see ``runner.AttentionRecorder``). Returns a restore function.
+
+        The processor is diffusers' ``CogVideoXAttnProcessor2_0`` line for line, plus
+        one call handing the post-norm, post-RoPE query and key to the recorder at
+        capture steps. The block's output is computed exactly as before.
+        """
+        from diffusers.models.attention_processor import CogVideoXAttnProcessor2_0
+        import torch.nn.functional as F
+
+        class _Recording(CogVideoXAttnProcessor2_0):
+            def __init__(self, block):
+                super().__init__()
+                self.block = block
+
+            def __call__(self, attn, hidden_states, encoder_hidden_states,
+                         attention_mask=None, image_rotary_emb=None):
+                text_seq_length = encoder_hidden_states.size(1)
+                hidden_states = torch.cat([encoder_hidden_states, hidden_states], dim=1)
+                batch_size, sequence_length, _ = hidden_states.shape
+                if attention_mask is not None:
+                    attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+                    attention_mask = attention_mask.view(batch_size, attn.heads, -1, attention_mask.shape[-1])
+                query, key, value = attn.to_q(hidden_states), attn.to_k(hidden_states), attn.to_v(hidden_states)
+                head_dim = key.shape[-1] // attn.heads
+                query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+                key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+                value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+                if attn.norm_q is not None:
+                    query = attn.norm_q(query)
+                if attn.norm_k is not None:
+                    key = attn.norm_k(key)
+                if image_rotary_emb is not None:
+                    from diffusers.models.embeddings import apply_rotary_emb
+                    query[:, :, text_seq_length:] = apply_rotary_emb(query[:, :, text_seq_length:], image_rotary_emb)
+                    if not attn.is_cross_attention:
+                        key[:, :, text_seq_length:] = apply_rotary_emb(key[:, :, text_seq_length:], image_rotary_emb)
+                if attention_mask is None and recorder.active():
+                    recorder.record(self.block, query, key, text_seq_length)
+                hidden_states = F.scaled_dot_product_attention(
+                    query, key, value, attn_mask=attention_mask, dropout_p=0.0, is_causal=False)
+                hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
+                hidden_states = attn.to_out[1](attn.to_out[0](hidden_states))
+                encoder_hidden_states, hidden_states = hidden_states.split(
+                    [text_seq_length, hidden_states.size(1) - text_seq_length], dim=1)
+                return hidden_states, encoder_hidden_states
+
+        previous = [blk.attn1.processor for blk in self.blocks]
+        for i, blk in enumerate(self.blocks):
+            blk.attn1.set_processor(_Recording(i))
+
+        def restore():
+            for blk, proc in zip(self.blocks, previous):
+                blk.attn1.set_processor(proc)
+        return restore
+
     @property
     def denoiser(self) -> nn.Module:
         return self.pipe.transformer

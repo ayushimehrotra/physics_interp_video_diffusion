@@ -102,6 +102,18 @@ def parse_args(argv=None):
         help="continue past a failing unit instead of aborting the rank",
     )
     p.add_argument(
+        "--inversion-method", choices=("invert", "noise"), default=None,
+        help="override inversion.method: full DDIM inversion, or single-step noising",
+    )
+    p.add_argument(
+        "--noise-timesteps", default=None,
+        help="override inversion.noise_timesteps, comma-separated (method=noise)",
+    )
+    p.add_argument(
+        "--record-attention", action="store_true",
+        help="also record region-to-region attention per head (method=noise)",
+    )
+    p.add_argument(
         "--sites", default=None,
         help="capture mode: site pattern to tap, overriding the config (e.g. "
              "'block.*.attn_heads'). Capture cost is set by the diffusion pass, "
@@ -245,11 +257,15 @@ def run_capture(cfg, args, info) -> int:
     else:
         patch_sites = None
         sites = cfg.sites
-        info.log(
-            f"inverting with {inv.num_steps} {inv.solver} steps, capturing at "
-            f"{inv.num_captures if inv.capture_steps is None else len(inv.capture_steps)} "
-            f"point(s), sites={sites!r}"
-        )
+        if inv.method == "noise":
+            info.log(f"single-step noising at t={inv.noise_timesteps} "
+                     f"(seed {inv.noise_seed}), sites={sites!r}")
+        else:
+            info.log(
+                f"inverting with {inv.num_steps} {inv.solver} steps, capturing at "
+                f"{inv.num_captures if inv.capture_steps is None else len(inv.capture_steps)} "
+                f"point(s), sites={sites!r}"
+            )
 
     failures: list[tuple[str, str]] = []
     out_root.mkdir(parents=True, exist_ok=True)
@@ -262,8 +278,10 @@ def run_capture(cfg, args, info) -> int:
                        else runner.capture_scene(scene, inversion=inv, sites=sites))
                 payload = {f"act.{k}": v for k, v in rec["activations"].items()}
                 payload.update({f"patch.{k}": v for k, v in rec.get("patches", {}).items()})
+                # Region-to-region attention, [steps, heads, q_pools, k_groups] per block.
+                payload.update({f"attn.{k}": v for k, v in rec.get("attention", {}).items()})
                 meta = {k: v for k, v in rec.items()
-                        if k not in ("activations", "patches")}
+                        if k not in ("activations", "patches", "attention")}
                 # Labels are large; keep the whole thing so probing can ask a
                 # new question later without re-inverting anything.
                 payload["meta"] = np.frombuffer(
@@ -538,6 +556,12 @@ def main(argv=None) -> int:
     if args.model:
         cfg.model.id = args.model
         cfg.model.repo = None      # let the adapter pick its own default repo
+    if args.inversion_method:
+        cfg.inversion.method = args.inversion_method
+    if args.noise_timesteps:
+        cfg.inversion.noise_timesteps = [int(t) for t in args.noise_timesteps.split(",")]
+    if args.record_attention:
+        cfg.inversion.record_attention = True
     if args.no_resume:
         cfg.resume = False
 

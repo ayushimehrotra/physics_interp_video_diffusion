@@ -65,6 +65,13 @@ DERIVED: dict[str, Any] = {
         np.asarray(l["collision"]["post"]["total_momentum"][:2])
         - np.asarray(l["collision"]["pre"]["total_momentum"][:2])
     ),
+    # |Delta p|, the size of the conservation violation: exactly 0 on honest clips.
+    # A scalar NORM, so a linear readout of it is not the same question as reading
+    # the vector and taking the norm outside (§34a's "norm route").
+    "momentum_delta_norm": lambda l: float(np.linalg.norm(
+        np.asarray(l["collision"]["post"]["total_momentum"][:2])
+        - np.asarray(l["collision"]["pre"]["total_momentum"][:2])
+    )),
     "impulse": lambda l: l["collision"]["impulse_vector"][:2],
     # Energies. The ratio is the elasticity of the collision; the absolute values
     # are quadratic in speed and so a genuinely different readout from momentum,
