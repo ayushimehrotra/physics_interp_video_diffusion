@@ -21,6 +21,10 @@ imageio-ffmpeg==0.6.0
 pillow==11.3.0
 opencv-python-headless==4.12.0.88
 
+# VideoMAEv2 (trust_remote_code): its remote modeling file imports these
+timm==1.0.28
+easydict==1.13
+
 # Experiment plumbing
 numpy==2.2.6
 einops==0.8.1
