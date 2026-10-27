@@ -94,6 +94,23 @@ Nearly every obvious next step has already been tried. Read the relevant file be
 proposing new work — the ones that failed mostly failed for *structural* reasons that no
 amount of engineering fixes.
 
+## RESUME — 2026-10-27 (RTX 4090 pod, stopped mid-capture)
+
+* **CogVideoX-2b single-step-noise capture on `conservation_set_1000` is PAUSED at
+  684/1000** (residuals + region-to-region attention, ~35 s/clip, ~3 h left). After a
+  restart run `bash /workspace/envs/rebuild_envs.sh` (venvs, git dir, HF cache), then
+  re-run the same command; it skips finished clips:
+  ```bash
+  HF_HOME=/root/hf_cache HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python \
+      scripts/pipeline/run_experiment.py configs/momentum_probe.yaml --mode capture \
+      --model cogvideox-2b --inversion-method noise --record-attention \
+      --dataset-dir datasets/conservation_set_1000 -o outputs/consnoise_cogvideox-2b --keep-going
+  ```
+  Three clips fail by design (the truncated seed255/262/264). Then probe |Δp|:
+  `scripts/momentum/delta_p_norm_probe.py --outputs outputs/consnoise_cogvideox-2b`.
+* Branch `refactor-layout` is **not pushed**; the git dir is restored from
+  `/workspace/envs/git-dirs.tar`, so re-tar it before every stop.
+
 ## UPDATE — 2026-10-23 (A100 box, VideoMAEv2-giant + V-JEPA2-L, new 1000-clip sets)
 
 * **§62 — FROM PRE-COLLISION CLIPS, BOTH ENCODERS HOLD THE VALID-COLLISION LINE BUT NOT
