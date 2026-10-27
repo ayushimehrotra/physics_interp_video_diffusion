@@ -1,0 +1,50 @@
+{
+ "1 every planned clip rendered": {
+  "pass": true,
+  "detail": "1000/1000"
+ },
+ "2 both twins present for every seed": {
+  "pass": true,
+  "detail": "0 orphaned"
+ },
+ "3 deflections exactly antiparallel": {
+  "pass": true,
+  "detail": "max |cos+1| = 4.44e-16"
+ },
+ "4 realised restitution == pinned e": {
+  "pass": true,
+  "detail": "max dev = 9.99e-16"
+ },
+ "5 honest conserve, violating do not": {
+  "pass": true,
+  "detail": "honest max 6.6e-16, violating min 0.082"
+ },
+ "6 joint mass-free AUC, inelastic/same": {
+  "pass": true,
+  "detail": "0.561"
+ },
+ "6 joint mass-free AUC, inelastic/mixed": {
+  "pass": true,
+  "detail": "0.505"
+ },
+ "6 joint mass-free AUC, elastic/same": {
+  "pass": true,
+  "detail": "0.501"
+ },
+ "6 joint mass-free AUC, elastic/mixed": {
+  "pass": true,
+  "detail": "0.562"
+ },
+ "7 worst single mass-free scalar": {
+  "pass": true,
+  "detail": "0.550 (speedB in elastic/mixed); null sd at n=200/200 is 0.029"
+ },
+ "8 KE ratio (competing law) near chance": {
+  "pass": true,
+  "detail": "AUC 0.510"
+ },
+ "9 frame-exit balanced across classes": {
+  "pass": true,
+  "detail": "AUC 0.502"
+ }
+}

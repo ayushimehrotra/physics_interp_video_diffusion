@@ -17,6 +17,13 @@ lands in train while its violating twin is in test, the classifier memorises the
 honest deflection split per scene, and it reads AUC 0.213 -- a leak the data does
 not contain. Grouped, the same classifier reads 0.498.
 
+Grouping by seed is not enough on its own: a violating clip borrows its implied
+ratio from a DONOR seed's honest twin, so the same value sits as "honest" in one
+seed and "violating" in another. With the donor in train and the recipient in test
+the classifier learns the inverted label, and the AUC goes systematically BELOW 0.5
+(conservation_set_1000, inelastic/same: 0.384 on a set with no signal). So training
+also drops every seed donor-linked to the test fold; that reads 0.497.
+
     python momentum_dataset/validate_conservation_set.py \
         --dataset-dir momentum_dataset/conservation_set_v1
 """
@@ -89,15 +96,18 @@ def read(d):
     )
 
 
-def grouped_joint_auc(rows, seed=0):
-    """Linear logistic on the full kinematic observation, 5-fold GROUPED by seed."""
+def grouped_joint_auc(rows, donor, seed=0):
+    """Linear logistic on the full kinematic observation, 5-fold GROUPED by seed, with
+    seeds donor-linked to the test fold purged from training. `donor`: seed -> donor seed."""
     X = np.array([r["feats"] for r in rows]); y = np.array([r["viol"] for r in rows], float)
     groups = np.array([r["seed"] for r in rows])
     uniq = np.unique(groups); rng = np.random.default_rng(seed)
     folds = np.array_split(rng.permutation(uniq), 5)
     oof = np.zeros(len(y))
     for g in folds:
-        te = np.isin(groups, g); tr = ~te
+        fs = set(g.tolist())
+        linked = fs | {donor[s] for s in fs} | {s for s in uniq if donor[s] in fs}
+        te = np.isin(groups, g); tr = ~np.isin(groups, list(linked))
         mu, sd = X[tr].mean(0), X[tr].std(0) + 1e-9
         Z = np.hstack([(X - mu) / sd, np.ones((len(X), 1))])
         w = np.zeros(Z.shape[1]); R = 1e-4 * np.eye(Z.shape[1])
@@ -164,7 +174,8 @@ def main():
             a_ = auc([r[k] for r in hv], [r[k] for r in hh]); a_ = max(a_, 1 - a_)
             if a_ > worst:
                 worst, worst_name, worst_n = a_, f"{k} in {tag}", (len(hv), len(hh))
-        j = grouped_joint_auc(sub)
+        j = grouped_joint_auc(sub, {c["seed"]: c["donor_seed"] for c in plan["clips"]
+                                    if c["violate"] and c["restitution"] == e})
         gate(abs(j - 0.5) <= JOINT_TOL - 0.5, f"6 joint mass-free AUC, {tag}", f"{j:.3f}")
     nv, nh = worst_n
     null_sd = np.sqrt((nv + nh + 1) / (12 * max(nv * nh, 1)))

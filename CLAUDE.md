@@ -33,6 +33,32 @@ Nearly every obvious next step has already been tried. Read the relevant part
 before proposing new work — the ones that failed mostly failed for *structural*
 reasons that no amount of engineering fixes.
 
+## UPDATE — 2026-10-23 (A100 box, VideoMAEv2-giant + V-JEPA2-L, new 1000-clip sets)
+
+* **§62 — FROM PRE-COLLISION CLIPS, BOTH ENCODERS HOLD THE VALID-COLLISION LINE BUT NOT
+  THE POINT ON IT.** Legal outcome decoded at R2 0.68 / 0.71 at k = 20 against a 0.93
+  ceiling (restitution is latent until impact, and corr(implied e, e) is ~0 until contact).
+  **V-JEPA2's pre-collision prediction is structured toward the valid subspace at k = 19–20
+  (p = 0.005 on all three statistics); the giant's is not until the aftermath is visible.**
+  Violations are represented as a momentum DRIFT in the right direction (cos 0.61 / 0.56,
+  35–49% of its size, zero impulse change), detectable with the models' own masses at AUC
+  0.63 / 0.58 (paired p 1e-13 / 3e-8) — but the models' pre-collision expectation barely
+  registers them (AUC 0.54 / 0.51). §42f's ceiling, not law application.
+* **§63 — KE MOVED BY THE REDUCED MASS ALONE READS AT CEILING (within-M slope 1.00, and
+  1.00 / 0.99 holding material fixed), BUT THERE IS NO SHARED KE DIRECTION ACROSS
+  ROUTES.** Speed-calibrated readout applied where only mu moves: ~0 (source-refit CIs
+  contain 0, exclude 1 and 2); mass-calibrated applied where only speed moves: 0.17–0.24.
+  The naive cross-family slope of ~1 equals transferring log mu and log v_rel separately
+  and adding them (§34b). Open thread: holding material fixed lifts S->M to 0.42 / 0.46,
+  plausibly apparent size within material.
+* **§64 — §62 REDONE WITHOUT LABELS: WEAK, AND THE DESIGN IS WHY.** Activation-only
+  pre->post map on honest clips, off-residual-subspace score: AUC 0.56 / 0.55 (giant 291/497
+  paired at k = 20, p 8e-5), +0.02–0.03 over a plain PCA control. Rank-insensitive, and the
+  violation moves ALONG the residual directions. Each seed has ONE honest future, so no
+  per-scene valid subspace is identifiable without labels. Needs a multi-e-per-seed set.
+* **`conservation_set_1000` has three truncated clips** (`elastic_mixed_violating_seed255/
+  262/264`, 41–42 frames) marked `_COMPLETE`. Re-render them.
+
 ## CURRENT STATE — 2026-08-26
 
 * **§46f — THE MODEL IS SURPRISED BY IMPOSSIBLE ENERGY AND NOT BY IMPOSSIBLE
@@ -2612,6 +2638,325 @@ result under another name.
   for both twins, as `voe_cogvideox.py` uses identical `eps`. 40 clips x 32 draws ~ 47
   min. Script does not exist.
 * **NOT DONE: the k-ladder**, which is what 46f-ii says the interpretation needs.
+
+---
+
+### 62. THE VALID-COLLISION SUBSPACE FROM PRE-COLLISION CLIPS, AND HOW VIOLATIONS LEAVE IT — `conservation_set_1000`
+
+Run 2026-10-23 on the A100 box, VideoMAEv2-giant (40 blocks) and V-JEPA2-ViT-L (24
+blocks). Numbered §62 to stay clear of the register's §47–§61 (`docs/register_gap.md`);
+this is the register's §47 (valid-collision subspace on truncation rungs) and §49
+(subspace membership, `--fit-honest`) rebuilt and extended on the 1000-clip set.
+
+**The set.** 500 seeds x {honest, violating} twins, e pinned to 1.00 / 0.15, `mixed` /
+`same` material: 200/50/200/50 pairs per cell. **997 of 1000 clips are usable — three
+violating clips (`elastic_mixed_violating_seed255/262/264`) have only 41–42 of 49 frames
+on disk despite carrying `_COMPLETE`**; `load_frames` refuses them. 497 complete pairs.
+
+**Captures.** Full clips (`outputs_cons_<model>/`) and resample-truncation rungs
+`--resample-to 10,14,17,19,20,22,25,30,38,48` (`outputs_construnc_<model>_a100/`). Contact
+is at frame 20, so **k <= 20 is a genuinely pre-collision clip** — unlike the `.pre`
+pools of a full clip, which have attended to the aftermath (§4). Only the `*.all` pools
+are exact on resampled rungs. The `_a100` suffix keeps these apart from the partial
+`outputs_construnc_*` the other box captured on an RTX 5090 (§58: never mix capture GPUs).
+Twins must encode identically before contact and do: max relative activation difference
+**0.1–0.7% at k <= 20**, jumping to **6–27% at k >= 22**.
+
+**The geometry.** For a smooth frictionless pair the legal outcome `(dv_A, dv_B)` lies on
+ONE line per scene, `J (-n/m_A, +n/m_B)`. The scene's basis {normal impulse, tangential
+impulse, drift along n, drift across n} spans R^4; only the first is allowed. A
+violation in this set is a **pure common drift along n** (verified: the true twin
+difference has every other coefficient below 1e-14 of the drift).
+
+> **LABEL BUG, fixed in the script and not in the library.** `pre_state_from_labels`
+> prefers `contact_normal_analytic`, which on this set sits up to **0.66 deg** off the true
+> impulse direction: honest outcomes then miss their own legal line by up to 2% and
+> score membership up to 0.012 instead of 0. The solver's `contact_normal` agrees with
+> `dv_A`'s direction to 1e-6 deg and makes the honest legal outcome exact (5e-15). It is
+> recorded at the solver event, before any edit, so it is also every violating clip's
+> pre-contact normal. Same bug as §46a, second instance.
+
+#### 62a. PART A — what the pre-collision representation holds
+
+Decode the legal outcome from each rung with a readout fit on honest clips only
+(grouped 5-fold by seed, alpha nested), best cell by honest R2 (always `A.all+B.all`).
+Two brackets: the **ceiling** is a perfect observer of everything except restitution,
+which is latent until impact (it is pinned per cell, not per material) — the legal outcome
+at the mean e, **R2 0.930**. The **shuffled-residual reference** re-deals the decoded
+outcome's own errors across scenes (200 draws): same error sizes, no relation to each
+scene's line. "Structured" = the decoded outcome stays on its legal line more than that.
+
+| k (contact = 20) | giant R2 | on-line, obs / shuffled (p) | V-JEPA2 R2 | on-line, obs / shuffled (p) |
+|---|---|---|---|---|
+| 10 | 0.636 | 0.792 / 0.831 (1.00) | 0.658 | 0.815 / 0.847 (1.00) |
+| 14 | 0.658 | 0.818 / 0.830 (0.86) | 0.678 | 0.824 / 0.831 (0.73) |
+| 17 | 0.665 | 0.800 / 0.825 (0.98) | 0.685 | 0.845 / 0.836 (0.19) |
+| 19 | 0.675 | 0.821 / 0.820 (0.48) | 0.709 | **0.868 / 0.838 (0.005)** |
+| 20 | 0.684 | 0.835 / 0.827 (0.22) | 0.710 | **0.875 / 0.839 (0.005)** |
+| 22 | 0.769 | **0.880 / 0.861 (0.02)** | 0.758 | **0.888 / 0.858 (0.005)** |
+| 25 | 0.837 | **0.915 / 0.892 (0.005)** | 0.830 | **0.920 / 0.889 (0.005)** |
+| 30 | 0.878 | **0.930 / 0.913 (0.005)** | 0.880 | **0.932 / 0.916 (0.01)** |
+| 48 | 0.892 | 0.934 / 0.926 (0.02) | 0.900 | 0.937 / 0.926 (0.005) |
+
+("on-line" = median share of the decoded outcome's energy on the legal line, 1 - membership^2.)
+
+* **Before contact both models hold the LINE and not the POINT on it.** The decoded
+  restitution is flat — median implied e 0.44 (true 0.15) vs 0.48 (true 1.00) on the giant
+  at k = 20 — and corr(implied e, true e) is +0.01 to +0.09 at every k <= 20, rising to
+  **+0.64 / +0.77 at k = 48**. A theorem-null, measured: e is invisible pre-contact.
+* **V-JEPA2's pre-collision prediction is shaped by the collision geometry; the giant's is
+  not.** V-JEPA2 is more on-line, less tangential (0.192 vs 0.237) and has less momentum
+  drift (0.843 vs 1.028) than shuffled errors, all p = 0.005, at k = 19 and 20 — and not at
+  k <= 17. The giant passes only the drift statistic before contact (p = 0.005 at every k);
+  on-line and tangential are at or BELOW shuffled (p 0.16–1.00) until k = 22.
+* **Fidelity is not the difference** — both sit at R2 0.68–0.71 at k = 20 against the 0.93
+  ceiling. The difference is where the error goes.
+* 200 draws floor p at 0.005; across 10 rungs x 3 statistics treat isolated p = 0.02–0.05
+  cells as noise. V-JEPA2's k = 19/20 hold on all three statistics together.
+
+#### 62b. PART B — how violating collisions deviate (full clips)
+
+Decode the OBSERVED outcome with a readout fit on honest clips only, so it has never seen a
+violation; cell chosen by honest R2 only (`A.post+B.post`, giant block 26 / V-JEPA2 block 16;
+honest R2 0.856 / 0.833, violating outcomes decoded at 0.826 / 0.776). The detection
+statistic is membership (§49: distance to the legal line / |outcome|). **The paired sign
+test over twins is the null** — group permutation is a no-op on a balanced twin design
+(§46d).
+
+| | VideoMAEv2-giant | V-JEPA2-L |
+|---|---|---|
+| membership AUC, true outcome (ceiling) | 1.000 | 1.000 |
+| **membership AUC, decoded outcome + true masses** | **0.628** | **0.575** |
+| paired: violating twin further off the line | **330/497, p = 1e-13** | **309/497, p = 3e-8** |
+| decoded outcome + the MODEL'S OWN decoded masses | 0.629 (331/497) | 0.576 (310/497) |
+| true outcome + model's decoded masses (mass R2 0.988 / 0.992) | 0.959 | 0.975 |
+| by cell: elastic-mixed / elastic-same / inelastic-mixed / inelastic-same | 0.64 / 0.56 / 0.67 / 0.52 | 0.57 / 0.59 / 0.59 / 0.56 |
+
+**The direction of the deviation** — decoded twin difference against the true one (a pure
+drift along n), medians with bootstrap CIs:
+
+| | giant | V-JEPA2 |
+|---|---|---|
+| cos(decoded, true) | **0.61** [0.58, 0.65] | **0.56** [0.52, 0.60] |
+| share of the drift recovered | 0.49 [0.45, 0.55] | 0.35 [0.31, 0.41] |
+| read as an impulse change instead | -0.002 [-0.017, 0.009] | +0.002 [-0.009, 0.016] |
+| tangential | +0.007 | -0.007 |
+| implied-e shift, violating - honest | -0.002 [-0.029, 0.017] | +0.005 [-0.014, 0.034] |
+
+* **The deviation is represented as what it is** — a momentum drift — and not as a
+  different collision (impulse change and implied-e shift are zero within their CIs). It is
+  under-recovered (35–49% of its size), which is ridge shrinkage plus the representation's
+  own fidelity.
+* **The models' own masses are as good as the true ones** for this: 0.629 vs 0.628. The
+  bottleneck is decoding the outcome precisely enough, not the mass.
+* **In activation space** the twin difference loads on the rank-4 span of the honest
+  outcome readout **2.2x (giant) / 1.6x (V-JEPA2)** more than on random rank-4 subspaces
+  (p = 0.005): the edit moves the representation preferentially along outcome-coding
+  directions.
+* **The models do not EXPECT the violation.** Distance between the full-clip decoded outcome
+  and the k = 20 pre-collision prediction separates violating from honest at AUC **0.536**
+  (288/497, p = 2e-4) / **0.509** (258/497, p = 0.21). The pre-collision prediction is too
+  coarse (R2 0.68–0.71) relative to violations of median size 0.27–0.49 of |p_pre|.
+
+#### 62c. THE CLAIM, and what it is not
+
+Before contact, both encoders hold the collision's valid line but not where on it the
+outcome lands (restitution is unknowable, and they correctly do not know it). V-JEPA2's
+prediction respects the geometry of valid collisions in the last frames before contact;
+the giant's does not until the aftermath is on screen. After contact, a violation is
+represented as a momentum drift in the right direction, at about half its size, and the
+models' own masses suffice to certify it at AUC 0.58–0.63.
+
+**This is §42f's ceiling and not more.** The deviation is in the visible aftermath; the
+readout and the legal line (true or decoded masses) do the comparison. Nothing here shows
+the model APPLIES conservation, and the expectation-gap row says its own pre-collision
+prediction barely registers the violation — consistent with §46f-iii's momentum VoE null.
+
+#### 62d. Files and commands
+
+```bash
+# captures (A100 box, from a local-disk copy of the set; see Reference for the env)
+python scripts/capture_encoder.py --model <m> --dataset momentum_dataset/conservation_set_1000 \
+    --out outputs_cons_<m>/momentum_probe/activations --keep-going
+python scripts/capture_encoder.py --model <m> --dataset momentum_dataset/conservation_set_1000 \
+    --out outputs_construnc_<m>_a100/activations --resample-to 10,14,17,19,20,22,25,30,38,48 --keep-going
+# analysis, CPU only, ~6 min per model at 48 workers
+python scripts/momentum_valid_subspace.py --model <m> \
+    --full outputs_cons_<m>/momentum_probe/activations --trunc outputs_construnc_<m>_a100/activations
+```
+
+* `scripts/momentum_valid_subspace.py` — Parts A and B; `scripts/_fast_cv.py` — the same
+  grouped-CV ridge as `stats.cv_predict` with every alpha read off one eigendecomposition
+  per split (matches it to ~1e-6; constant features zeroed per §44e).
+* `docs/artifacts/momentum_valid_subspace_{videomaev2-giant,vjepa2-vitl}.json`, logs in
+  `docs/artifacts/logs_2026-10-23/`.
+
+---
+
+### 63. THE KINETIC-ENERGY READOUT WITH THE REDUCED MASS VARIED — `ke_factor_set`
+
+Run 2026-10-23, same two encoders, all 1000 clips, full-clip captures `outputs_ke_<model>/`.
+
+**The set** (`plan_ke_set.py`): 200 groups, each one scene at five KE levels x {1/2,
+1/sqrt2, 1, sqrt2, 2}. **Family M** (100 groups) scales both masses by c — so the reduced
+mass mu, the total KE and `K_rel = 1/2 mu v_rel^2` all scale by c while the motion is
+the SAME video at every level. **Family S** (100 groups) scales both speeds. e = 1
+throughout. Checked on the labels: within-group dlog mu / dlogKE = 1.000 (M) and 0.000
+(S); dlog|p| / dlogKE = 1.000 (M) and 0.500 (S); corr(radius, level) = 0.04 in M, but
+**corr(#metal, level) = 0.77** — the mass level flips material in many M groups.
+
+#### 63a. Within a route, KE reads at ceiling — including when only mu moves
+
+| | giant | V-JEPA2 |
+|---|---|---|
+| log KE within S, R2 (best cell) | 0.989 (`all.all` b18) | 0.990 (`all.all` b15) |
+| log KE within M, R2 | 0.988 (`all.all` b15) | 0.987 (`all.all` b15) |
+| `embed.out` best, S / M | 0.40 / 0.44 | 0.37 / 0.31 |
+| **within-M group slope, cell chosen on S** (only mu moves) | **1.003** [0.990, 1.016] | **0.997** [0.980, 1.012] |
+| same, partialling the material count | 1.004 [0.984, 1.026] | 0.987 [0.960, 1.012] |
+| log mu itself, within-M slope | 0.998 | 0.994 |
+
+Material alone explains 58.5% of the within-M variance in log KE, so the partial slope is
+well posed and says **the readout follows graded mass, not "metal or rubber"**. (A first
+version also partialled radius; with material and radius both fixed m = rho r^3 is
+determined, the covariates explained nearly everything, and the partial slope was
+uninterpretable. Do not reintroduce it.)
+
+#### 63b. THE CROSS-ROUTE TEST — and the version of it that is an identity
+
+The set's designed test: fit log KE on one family, apply it unchanged to the other, read the
+within-group slope. Energy code -> 1; momentum code -> 2 (S->M) or 0.5 (M->S); speed code
+(S->M) or mass code (M->S) -> 0. Cell chosen on the source only.
+
+> **THE RAW VERSION IS §34b AGAIN.** S groups sit at five mass levels and M groups at five
+> speed levels, so the source family's BETWEEN-group variation already carries the other
+> route, and `log K_rel = log mu + 2 log v_rel - log 2` is linear in the factors. Raw
+> transfer gives **0.979–0.994** — and transferring log mu and log v_rel SEPARATELY and
+> adding them gives the same number (K_rel: 0.948 vs 0.951 giant, 1.005 vs 0.996 V-JEPA2,
+> 0.975 vs 0.975, 0.979 vs 0.979). Slope 1 here follows from decodable factors alone. **The
+> test is the ROUTE-CALIBRATED readout**: trained on group-demeaned source data, so it sees
+> speed only (S) or mass only (M), read against a same-route split-half ceiling.
+
+| | giant | V-JEPA2 |
+|---|---|---|
+| **S->M route-calibrated** (speed-calibrated, applied where only mu moves) | 0.160 | -0.111 |
+| — refit on bootstrap-resampled source groups | 0.16 [-0.08, 0.37] | -0.07 [-0.27, 0.16] |
+| — median over blocks at depth >= 0.25 (IQR) | -0.02 [-0.12, 0.05] | -0.05 [-0.15, 0.09] |
+| — partialling the material count | 0.42 [0.40, 0.44] * | 0.46 [0.44, 0.48] * |
+| **M->S route-calibrated** (mass-calibrated, applied where only speed moves) | **0.233** | **0.169** |
+| — refit on bootstrap-resampled source groups | **0.24 [0.17, 0.32]** | **0.20 [0.15, 0.26]** |
+| — median over blocks at depth >= 0.25 (IQR) | 0.22 [0.20, 0.25] | 0.16 [0.11, 0.19] |
+| same-route split-half ceiling, S / M | 0.981 / 0.991 | 0.974 / 0.990 |
+| gate: mass readout S->M / speed readout M->S | 0.991 / 0.959 | 0.975 / 0.964 |
+
+\* target-group bootstrap only; it understates the uncertainty, which the source refit
+shows is ~0.2 wide at this cell.
+
+* **No single KE direction serves both routes.** Calibrated on speed, the readout does not
+  follow KE when only the reduced mass changes: the source-refit CIs contain 0 and exclude
+  1 (energy) and 2 (momentum), and across depth it scatters around 0 with sign flips
+  block to block (single blocks reach 0.57 / 0.97 among neighbours near 0 — never quote a
+  single cell). Calibrated on mass, it follows speed at **0.17–0.24, stable at every
+  block** — excluding energy (1), momentum (0.5) and a pure mass code (0).
+* **Both gates pass** (0.96–0.99), so the factors cross the gap and this is a negative,
+  not a void test.
+* **The material partial is the open thread.** Holding material fixed, the speed-calibrated
+  readout follows mass at **0.42 / 0.46**: material flips push it DOWN, same-material mass
+  increases push it UP. Within one material a heavier ball is a BIGGER ball, so a
+  frame-wide speed feature that grows with the area of moving pixels predicts exactly this
+  without any energy concept. This set cannot separate the two (radius is decorrelated
+  from level overall, not within material). A size-matched M family — mass via density
+  only, the `latent_mass` arm's trick — would.
+
+#### 63c. THE CLAIM
+
+**KE, including KE moved by the reduced mass alone, is read near-perfectly within a route,
+and is not held as one quantity across routes.** The mass route and the speed route are
+read off largely different directions; a readout calibrated on one transfers 0–0.24 of the
+energy-code slope to the other. The naive cross-family slope of ~1 is the composition of
+two separately decodable factors, measured to agree with it to the second decimal. This
+is §26 / §45 for `KE = 1/2 mu v_rel^2`, now with the mass varied in isolation: **the
+factors are represented; the energy is assembled at readout.**
+
+#### 63d. Files
+
+```bash
+python scripts/ke_reduced_mass.py --model <m> --captures outputs_ke_<m>/momentum_probe/activations
+```
+
+* `scripts/ke_reduced_mass.py` — within-family grid, route-calibrated and raw transfer,
+  composed-from-factors identity check, split-half ceiling, source-refit bootstrap, depth
+  curve, gates, material partial. ~8 min per model at 40 workers, numpy only.
+* `docs/artifacts/ke_reduced_mass_{videomaev2-giant,vjepa2-vitl}.json`.
+
+---
+
+### 64. §62 WITHOUT LABELS — a pooled conditional subspace, and why it is not the legal line
+
+Run 2026-10-23/24 on the same captures as §62 (`outputs_cons_<m>`, `outputs_construnc_<m>_a100`),
+same 497 twin pairs. No readout, no physics label in the construction: fit an
+activation-to-activation map `f: pre -> post` on honest clips (pre = rung `k*/`
+`A.all+B.all`, post = full-clip `A.post+B.post` or `all.post`; PCA 64 each side, ridge,
+alpha by inner grouped CV on reconstruction error), PCA the OUT-OF-FOLD honest residuals,
+pick the rank by parallel analysis, and score a held-out clip by Mahalanobis distance of its
+residual outside the top-r directions. Cell chosen by honest reconstruction R2 (label-free).
+Labels used only to evaluate. Paired sign test over twins; grid-max null flips which twin is
+violating, per pair.
+
+| | giant k=10 | giant k=20 | giant k=25 | V-JEPA2 k=10 | V-JEPA2 k=20 | V-JEPA2 k=25 |
+|---|---|---|---|---|---|---|
+| chosen cell | `all.post` b16 | `all.post` b16 | `all.post` b16 | `A.post+B.post` b10 | b10 | b14 |
+| recon R2 (honest) | 0.672 | 0.714 | 0.783 | 0.675 | 0.719 | 0.802 |
+| residual rank (PA, per fold) | 3–6 | 2–6 | 2–6 | 5–11 | 7–10 | 8–11 |
+| **AUC, off-subspace** | **0.551** | **0.560** | **0.561** | **0.545** | **0.550** | **0.541** |
+| paired | 278/497, p 5e-3 | **291/497, p 8e-5** | 300/497, p 2e-6 | 270/497, p 0.03 | 276/497, p 8e-3 | 266/497, p 0.06 |
+| same cell, NO pre clip (plain PCA), r=0 | 0.537 | 0.537 | 0.537 | 0.528 | 0.528 | 0.517 |
+| top residual dir reads e (AUC) | 0.670 | 0.537 | 0.541 | 0.533 | 0.510 | 0.531 |
+| twin diff share in span(U_r) / random | 0.41 / 0.05 | 0.30 / 0.04 | 0.40 / 0.07 | 0.24 / 0.13 | 0.27 / 0.15 | 0.35 / 0.13 |
+
+Grid-max paired fraction 0.60–0.62 against null 95th 0.567–0.575 on every rung, both models.
+Twins encode identically pre-contact (max rel diff 0.07% V-JEPA2 / 0.3% giant at k = 20).
+Giant rung trend for the record: k = 14 0.554 (290/497), 17 0.558 (292/497, top dir ~ e at
+0.775), 19 0.547, 22 0.563 (299/497).
+
+* **Weak detection, about the size of §62's supervised readout** (0.63 / 0.58 there with
+  true masses; 0.56 / 0.55 here with nothing). Conditioning on the pre-collision clip buys
+  +0.02–0.03 AUC over a plain PCA of valid post-collision activations at the same cell.
+* **Rank does not matter** (r = 0, 1, 8, PA all within 0.01). The score is "any residual",
+  not "residual off a valid subspace". The residual spectrum is flat (top direction 10–16%).
+* **The violation moves the representation ALONG the residual directions, 2–10x more than a
+  random subspace.** Opposite of what an off-subspace score needs.
+* **The top residual direction is NOT a stable restitution axis.** It reads e at 0.51–0.78,
+  inconsistent across rungs.
+
+**WHY — THE DESIGN CANNOT GIVE A PER-SCENE SUBSPACE WITHOUT LABELS.** Every seed has ONE
+honest future: e is pinned per cell and never varied within a seed. §62's legal line
+`J (-n/m_A, +n/m_B)` is 1-D per scene, traced out by e, and §62 got it from the labels. Pooled
+across scenes, the honest residual is mostly the pre->post map's own error, with a binary e
+somewhere inside it. So this is a conditional anomaly score, not a recovered valid subspace.
+**Do not report it as "the unsupervised valid-collision subspace".**
+
+**What would make it work: several honest futures per pre-clip.** Render each seed at 3–4
+restitutions with a bit-identical pre-contact segment, plus the violating twin. Each scene's
+valid subspace is then `span{Q_e - Q_e'}` over its own honest clips, label-free and per scene.
+Score the violating clip's distance from that affine span against the honest clips'
+leave-one-out distance. `energy_voe_pilot` already has 2 legal futures per seed (e = 1,
+1/1.5; momentum conserved) and can test the construction, but has no momentum violations.
+The full set is ~200 seeds x 5 clips, ~21 h at §42e's throughput.
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python scripts/momentum_unsup_subspace.py --model <m> \
+    --full outputs_cons_<m>/momentum_probe/activations --trunc outputs_construnc_<m>_a100/activations --workers 56
+```
+
+* **Set `OMP_NUM_THREADS=1`.** Without it the workers oversubscribe BLAS on the 120-core box
+  and a 2-site smoke test ran >10 min instead of 108 s.
+* Loading is the bottleneck: ~3.5 MB/s off `/workspace` (geesefs), ~40 min for the giant's
+  captures. Fit is 25 / 43 min (V-JEPA2 / giant) at 56 workers.
+* The unconditioned control's label-free cell choice is degenerate (recon R2 = 0 everywhere,
+  picks `embed.out`); compare it at the conditioned cell, as in the table.
+* `docs/artifacts/momentum_unsup_subspace_{videomaev2-giant,vjepa2-vitl}.json`, logs in
+  `docs/artifacts/logs_2026-10-23/`.
 
 ---
 

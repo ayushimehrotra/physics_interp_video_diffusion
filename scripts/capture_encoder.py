@@ -40,6 +40,16 @@ def clip_dirs(root: Path) -> list[Path]:
                   and (d / "_COMPLETE").exists())
 
 
+def even_indices(k: int, n: int) -> list[int]:
+    """n frame indices spread evenly over [0, k], as §43's truncation_curve.py: a
+    temporally denser but normal-looking clip, rather than one that stops dead."""
+    return [int(round(x)) for x in np.linspace(0, k, n)]
+
+
+def _dest(out: Path, k, d: Path) -> Path:
+    return (out / f"k{k}" if k is not None else out) / f"{d.name}.npz"
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True, choices=sorted(ENCODERS))
@@ -48,6 +58,10 @@ def main():
     p.add_argument("--out", required=True, type=Path)
     p.add_argument("--frames", default=None, help="frame spec start:stop:step[xrepeat]; default per model")
     p.add_argument("--truncate", type=int, default=None, help="frames the encoder sees (hold the last one after)")
+    p.add_argument("--resample-to", default=None,
+                   help="comma list of k: per k, sample the encoder's N frames evenly over [0, k] (§43's "
+                        "truncation, not the hold-last-frame one) and write to OUT/k<k>/. Only the *.all "
+                        "pools are meaningful: pre/post splits are not exact on resampled frames")
     p.add_argument("--allow-straddle", action="store_true")
     p.add_argument("--surprise", action="store_true", help="V-JEPA2 predictor surprise instead of activations")
     p.add_argument("--device", default="cuda")
@@ -65,6 +79,7 @@ def main():
     print(f"{args.model} ({spec.hf_id}): {len(clips)} clips, frames {frames[0]}..{frames[-1]} "
           f"({len(frames)}), truncate={args.truncate}", flush=True)
 
+    rungs = [int(k) for k in args.resample_to.split(",")] if args.resample_to else [None]
     enc = Encoder(spec, device=args.device, hf_id=args.hf_id)
     print(f"loaded: {len(enc.blocks)} blocks; sites {enc.sites[0]} .. {enc.sites[-1]}", flush=True)
     import torch
@@ -74,8 +89,8 @@ def main():
     surprises = []
     t0 = time.time()
     for i, d in enumerate(clips, 1):
-        dest = args.out / f"{d.name}.npz"
-        if not args.surprise and dest.exists():
+        todo = [k for k in rungs if args.surprise or not _dest(args.out, k, d).exists()]
+        if not todo:
             continue
         try:
             labels = json.loads((d / "labels.json").read_text())
@@ -85,18 +100,21 @@ def main():
                 s = enc.surprise(rgb, masks, frames, allow_straddle=args.allow_straddle)
                 surprises.append({"clip_id": d.name, "labels": labels, "surprise": s})
             else:
-                pooled, names, layout = enc.capture(rgb, masks, frames, truncate=args.truncate,
-                                                    allow_straddle=args.allow_straddle)
+              for k in todo:
+                fr = frames if k is None else even_indices(k, spec.n_frames)
+                pooled, names, layout = enc.capture(rgb, masks, fr, truncate=args.truncate,
+                                                    allow_straddle=args.allow_straddle or k is not None)
                 meta = {
                     "labels": labels, "pools": names, "sites": enc.sites, "model": args.model,
-                    "hf_id": args.hf_id or spec.hf_id, "frames": frames, "tubelet": layout.tubelet,
+                    "hf_id": args.hf_id or spec.hf_id, "frames": fr, "tubelet": layout.tubelet,
                     "grid": [layout.n_tubelets, layout.grid_h, layout.grid_w],
-                    "phase_split_frame": 20, "truncate": args.truncate,
+                    "phase_split_frame": 20, "truncate": k if k is not None else args.truncate,
+                    "truncate_mode": "resample" if k is not None else ("hold" if args.truncate else None),
                     "capture_device": device_name,
                     "render_device": labels.get("scene_constants", {}).get("render_device"),
                     "clip_id": d.name,
                 }
-                write_capture(dest, pooled, meta)
+                write_capture(_dest(args.out, k, d), pooled, meta)
             if i % 10 == 0 or i == len(clips):
                 rate = (time.time() - t0) / i
                 print(f"  [{i}/{len(clips)}] {d.name}  {rate:.1f}s/clip", flush=True)

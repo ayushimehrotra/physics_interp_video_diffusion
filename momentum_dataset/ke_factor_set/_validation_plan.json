@@ -1,0 +1,63 @@
+{
+ "gates": {
+  "physics": true,
+  "ladder": true,
+  "one_factor": true,
+  "same_population": true,
+  "nuisance_flat": true
+ },
+ "report": {
+  "physics": {
+   "momentum_rel_err_max": 1.0596007702312918e-14,
+   "ke_ratio_dev_max": 9.992007221626409e-16,
+   "e_dev_max": 1.5543122344752192e-15,
+   "contact_offset_max": 0.06666666666666643
+  },
+  "ladder": {
+   "max_rel_dev": 1.850361353028518e-07,
+   "groups": 200
+  },
+  "one_factor": {
+   "max_abs_dev": 0.0
+  },
+  "same_population": {
+   "auc": {
+    "log_ke": 0.498792,
+    "log_m_a": 0.4586,
+    "log_m_b": 0.51552,
+    "log_speed_a": 0.53068,
+    "speed_b": 0.48156,
+    "r_a": 0.50738,
+    "r_b": 0.55656,
+    "metal": 0.475,
+    "log_p": 0.478604,
+    "b_frac": 0.5211,
+    "b_moving": 0.495,
+    "sep0": 0.5841
+   },
+   "worst": "sep0"
+  },
+  "nuisance_flat": {
+   "M": {
+    "log_r_a": 0.0443398175173932,
+    "log_speed_a": 0.0,
+    "b_frac": 0.0,
+    "exit": -0.040089186286863664
+   },
+   "S": {
+    "log_m_a": 0.0,
+    "log_r_a": 0.0,
+    "metal": 0.0
+   }
+  },
+  "reported_not_gated": {
+   "M: corr(material, level) -- the visible mass cue": 0.765175765176149,
+   "S: corr(frame-0 separation, level) -- speed": 0.9408308044283368,
+   "S: corr(first exit frame, level) -- speed": -0.27806126618800725,
+   "within-group momentum slope dlog|p|/dlogKE (S 0.5, M 1.0 by construction)": {
+    "S": 0.4999999995615162,
+    "M": 1.0
+   }
+  }
+ }
+}

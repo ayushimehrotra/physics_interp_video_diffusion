@@ -30,3 +30,5 @@ outputs_*/
 # Rendered clips in plan-driven sets (named <cell>_seed<N>, not scene_*); keep plan/build log
 momentum_dataset/*/*_seed*/
 momentum_dataset/*/*.npz
+# Rendered clips in the KE factor set (named <family><group>_k<level>, e.g. M000_k+0)
+momentum_dataset/*/[MS][0-9][0-9][0-9]_k*/

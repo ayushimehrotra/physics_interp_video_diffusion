@@ -120,16 +120,17 @@ def pool_weights(masks: np.ndarray, layout: FrameLayout, *, allow_straddle: bool
     xs = (np.arange(W) * gw // W)
     occ = {r: np.zeros((layout.n_tubelets, gh, gw), np.float32) for r in ("A", "B", "all")}
     phases = [layout.phase_of_tubelet(j, allow_straddle) for j in range(layout.n_tubelets)]
+    cell_idx = (ys[:, None] * gw + xs[None, :]).ravel()
+    cells: dict[tuple[int, int], np.ndarray] = {}     # (frame, id) -> pixel count per patch
     for j in range(layout.n_tubelets):
         for f in layout.tubelet_frames(j):
             if truncate is not None:
                 f = min(f, truncate - 1)
-            m = masks[f]
             for r, sid in (("A", 1), ("B", 2)):
-                hit = (m == sid).astype(np.float32)
-                cell = np.zeros((gh, gw), np.float32)
-                np.add.at(cell, (ys[:, None], xs[None, :]), hit)
-                occ[r][j] += cell
+                if (f, sid) not in cells:
+                    hit = (masks[f] == sid).ravel()
+                    cells[(f, sid)] = np.bincount(cell_idx[hit], minlength=gh * gw).reshape(gh, gw).astype(np.float32)
+                occ[r][j] += cells[(f, sid)]
         occ["all"][j] = 1.0
     rows, names = [], []
     for r in ("A", "B", "all"):
@@ -213,12 +214,19 @@ class Encoder:
         from PIL import Image
         R = self.spec.resolution
         out = np.empty((len(frames), R, R, 3), np.float32)
+        done: dict[int, int] = {}                     # clip frame -> first row holding it
         for k, f in enumerate(frames):
             if truncate is not None:
                 f = min(f, truncate - 1)
+            if f in done:
+                out[k] = out[done[f]]
+                continue
             im = Image.fromarray(rgb[f]).resize((R, R), Image.BILINEAR)
             out[k] = (np.asarray(im, np.float32) / 255.0 - self.mean) / self.std
+            done[f] = k
         t = self.torch.from_numpy(out).permute(0, 3, 1, 2)[None]          # [1, T, 3, R, R]
+        if self.spec.name == "videomaev2-giant":
+            t = t.permute(0, 2, 1, 3, 4)       # remote code's Conv3d patch embed wants [1, 3, T, R, R]
         return t.to(self.device, dtype=next(self.model.parameters()).dtype)
 
     # ---- capture ---------------------------------------------------------- #

@@ -1,0 +1,561 @@
+<title>Collision Subspace and Reduced-Mass KE</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500&display=swap">
+<style>
+/* Layout: one reading column (~68ch) with figures and tables allowed wider; a lab-report treatment.
+   Single light theme by explicit request: every surface (page, figures, tables) is white. */
+:root {
+  color-scheme: light;
+  --paper: #ffffff;
+  --ink: #0b0b0b;
+  --ink-2: #4a4945;
+  --muted: #6b6964;
+  --rule: #e4e3dd;
+  --axis: #b9b8ae;
+  --grid: #ececE7;
+  --wash: #f6f6f3;
+  --accent: #1c5cab;
+  --giant: #2a78d6;
+  --vjepa: #eb6834;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.1875rem;
+  --step-2: 1.5rem;
+  --step-3: 2.25rem;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+.page { max-width: 980px; margin: 0 auto; display: grid; gap: 28px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-family: var(--font-display); font-weight: 500; font-size: var(--step-3); line-height: 1.12; letter-spacing: -0.01em; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: var(--step-2); line-height: 1.2; padding-top: 20px; border-top: 1px solid var(--rule); }
+h3 { font-size: var(--step-1); font-weight: 600; line-height: 1.3; }
+p { margin: 0; }
+.stack { display: grid; gap: 14px; }
+.eyebrow { font-family: var(--font-data); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: var(--step-1); color: var(--ink-2); max-width: 62ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); }
+code, .mono { font-family: var(--font-data); font-size: 0.88em; }
+code { background: var(--wash); padding: 1px 5px; border-radius: 3px; }
+ul.findings { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; max-width: 72ch; }
+ul.findings li { padding-left: 18px; position: relative; }
+ul.findings li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 7px; height: 7px; background: var(--accent); border-radius: 1px; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+.note { font-size: var(--step--1); color: var(--ink-2); max-width: 72ch; }
+.callout { border: 1px solid var(--rule); background: var(--paper); padding: 14px 16px; border-radius: 4px; max-width: 74ch; }
+.callout strong { font-weight: 600; }
+
+figure { margin: 0; display: grid; gap: 10px; }
+figcaption { font-size: var(--step--1); color: var(--ink-2); max-width: 78ch; }
+figcaption b { color: var(--ink); font-weight: 600; }
+.fig-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 18px; }
+.fig-title { font-weight: 600; font-size: var(--step-0); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--step--1); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.sw-hollow { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--paper); border: 2px solid var(--ink-2); }
+.sw-dash { width: 16px; height: 0; border-top: 2px dashed var(--muted); display: inline-block; }
+.chart { background: #ffffff; border: 1px solid var(--rule); border-radius: 4px; padding: 6px 4px 2px; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; min-width: 520px; }
+.chart svg text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+.chart svg text.lab { fill: var(--ink-2); }
+.chart svg text.head { fill: var(--ink); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+
+.tablewrap { overflow-x: auto; background: #ffffff; border: 1px solid var(--rule); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; background: #ffffff; font-size: var(--step--1); }
+caption { caption-side: top; text-align: left; padding: 10px 12px 4px; font-weight: 600; font-size: var(--step-0); color: var(--ink); }
+th, td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 14ch; }
+thead th { font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--axis); vertical-align: bottom; }
+tbody tr:last-child td { border-bottom: 0; }
+td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+td:first-child { font-family: var(--font-body); }
+td.sig { font-weight: 600; color: var(--ink); }
+td.dim { color: var(--muted); }
+.k-pre { background: #ffffff; }
+tr.contact td { border-bottom: 2px solid var(--axis); }
+
+.tip { position: fixed; pointer-events: none; z-index: 20; background: #ffffff; color: var(--ink); border: 1px solid var(--axis); border-radius: 4px; padding: 6px 9px; font-family: var(--font-data); font-size: 12px; line-height: 1.45; box-shadow: 0 2px 8px rgba(11,11,11,0.08); max-width: 300px; }
+.hit { cursor: default; }
+.hit:focus { outline: none; }
+.hit:focus-visible + .ring, .hit:hover + .ring { stroke: var(--ink); stroke-width: 1.5px; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.files { display: grid; gap: 6px; font-size: var(--step--1); }
+.files div { display: grid; grid-template-columns: minmax(0, 22rem) 1fr; gap: 4px 16px; }
+@media (max-width: 640px) { .files div { grid-template-columns: 1fr; } h1 { font-size: 1.85rem; } }
+</style>
+
+<div class="page">
+
+<header class="stack">
+  <p class="eyebrow">physics_interp_video_diffusion · §62 and §63 · 23 Oct 2026</p>
+  <h1>Collision Subspace and Reduced-Mass KE</h1>
+  <p class="lede">Two probing experiments on frozen video encoders: what the representation of a collision holds before contact, how a momentum violation shows up in it, and whether kinetic energy is one quantity or two factors when only the reduced mass changes.</p>
+  <div class="meta"><span>VideoMAEv2-giant · 40 blocks</span><span>V-JEPA2-ViT-L · 24 blocks</span><span>conservation_set_1000 · 997 clips</span><span>ke_factor_set · 1000 clips</span></div>
+</header>
+
+<section class="stack">
+  <h2>What came out</h2>
+  <ul class="findings">
+    <li><strong>Before contact both encoders hold the line of valid outcomes, not the point on it.</strong> The legal outcome decodes at R² 0.68 / 0.71 from clips that stop at contact, against a 0.93 ceiling set by restitution, which no observer can see before impact. Their decoded restitution does not track the true one until the aftermath is on screen.</li>
+    <li><strong>V-JEPA2's pre-collision prediction respects the collision geometry; the giant's does not.</strong> In the last two frames before contact, V-JEPA2's errors stay on the valid line more than shuffled errors of the same size (p = 0.005 on all three statistics). The giant's only do once the outcome is visible.</li>
+    <li><strong>A violation is represented as a momentum drift in the right direction, at roughly half its size.</strong> With the models' own decoded masses it separates violating twins at AUC 0.63 / 0.58 (paired p 10⁻¹³ / 10⁻⁸). The models' own pre-collision expectation barely registers it (AUC 0.54 / 0.51).</li>
+    <li><strong>Kinetic energy moved only by the reduced mass reads at ceiling, but there is no shared KE direction across routes.</strong> A KE readout calibrated on speed does not follow KE when only mass changes (slope ≈ 0, energy code would give 1); calibrated on mass it follows speed at 0.17–0.24. The naive cross-family slope of ≈ 1 is exactly what decoding μ and v_rel separately and adding them gives.</li>
+  </ul>
+</section>
+
+<section class="stack">
+  <h2>Setup</h2>
+  <div class="tablewrap"><table>
+    <caption>Datasets</caption>
+    <thead><tr><th>Set</th><th>Clips</th><th>Design</th></tr></thead>
+    <tbody>
+      <tr><td><code>conservation_set_1000</code></td><td>997 of 1000</td><td style="text-align:left;white-space:normal">500 seeds × honest/violating twins · e pinned 1.00 / 0.15 · mixed / same material · contact at frame 20</td></tr>
+      <tr><td><code>ke_factor_set</code></td><td>1000</td><td style="text-align:left;white-space:normal">200 groups × 5 KE levels (½, 1/√2, 1, √2, 2) · family M scales both masses, family S both speeds · e = 1</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Three violating clips (<code>elastic_mixed_violating_seed255/262/264</code>) have only 41–42 of 49 frames on disk although they carry <code>_COMPLETE</code>; the loader refuses them, leaving 497 complete twin pairs.</p>
+  <ul class="plain">
+    <li><strong>Captures.</strong> Residual stream after every block, pooled over ball A, ball B and the whole frame × pre-contact, post-contact and whole clip. Pre-collision clips use the project's resample truncation: the encoder sees frames 0…k only, with contact at frame 20.</li>
+    <li><strong>Readouts.</strong> Ridge, 5-fold cross-validation grouped by seed or group so twins and levels of one scene never straddle a split, penalty chosen inside the training fold.</li>
+    <li><strong>Selection.</strong> Every cell (block × pool) is chosen on a quantity that cannot leak the answer: honest-clip R² in experiment 1, the source family's R² in experiment 2.</li>
+  </ul>
+</section>
+
+<section class="stack">
+  <p class="eyebrow">Experiment 1 · §62</p>
+  <h2>The valid-collision subspace, read before contact</h2>
+  <div class="prose stack">
+    <p>For two smooth frictionless spheres, every legal outcome (Δv<sub>A</sub>, Δv<sub>B</sub>) lies on one line per scene, J·(−n/m<sub>A</sub>, +n/m<sub>B</sub>). The other three directions of outcome space are forbidden: a tangential impulse, and a common drift along or across the contact normal n. A drift is a momentum change. Each violating clip in this set is its honest twin plus a pure drift along n.</p>
+    <p><strong>Part A</strong> decodes the legal outcome from clips that end at frame k, with a readout trained on honest clips only, and asks how much of the prediction stays on the scene's line. <strong>Part B</strong> decodes the observed outcome from full clips, still with an honest-only readout, and asks how far violating clips land off the line and in which direction.</p>
+  </div>
+
+  <figure>
+    <div class="fig-head"><span class="fig-title">Legal outcome decoded from the first k frames</span>
+      <span class="legend"><span><i class="sw" style="background:var(--giant)"></i>VideoMAEv2-giant</span><span><i class="sw" style="background:var(--vjepa)"></i>V-JEPA2-L</span><span><i class="sw-dash"></i>observer that knows all but restitution</span></span></div>
+    <div class="chart" id="fig-r2"></div>
+    <figcaption><b>Fit rises at contact, not before.</b> Honest-clip R² of the decoded legal outcome at each truncation, best block, pool A.all+B.all. Before contact both models sit at 0.64–0.71; the dashed line is what a perfect observer reaches without knowing restitution.</figcaption>
+  </figure>
+
+  <div class="pair">
+    <figure>
+      <div class="fig-head"><span class="fig-title">How much the prediction stays on the valid line</span></div>
+      <div class="legend"><span><i class="sw-dot" style="background:var(--ink-2)"></i>p ≤ 0.01 vs shuffled errors</span><span><i class="sw-hollow"></i>not significant</span></div>
+      <div class="chart" id="fig-online"></div>
+      <figcaption><b>V-JEPA2 is structured from k = 19; the giant from k = 22.</b> On-line energy share of the decoded outcome minus the same for its own errors re-dealt across scenes (200 draws). Above zero means errors stay on each scene's valid line more than errors of that size would by chance.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-head"><span class="fig-title">Does the prediction know the restitution?</span></div>
+      <div class="legend"><span><i class="sw" style="background:var(--giant)"></i>giant</span><span><i class="sw" style="background:var(--vjepa)"></i>V-JEPA2</span></div>
+      <div class="chart" id="fig-e"></div>
+      <figcaption><b>Not until it is on screen.</b> Correlation between the restitution implied by the decoded outcome and the true one. Near zero at every k ≤ 20, as it must be: e is pinned per cell, not per material, so nothing before impact reveals it.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tablewrap"><table id="tab-a"></table></div>
+  <p class="note">On-line = median share of the decoded outcome's squared length lying on the legal line. Tangential = tangential impulse over total impulse. Drift = implied momentum change over transferred impulse. Each cell shows observed / shuffled; bold marks p ≤ 0.01. Twin Δ = largest relative activation difference between an honest clip and its violating twin, which must be ≈ 0 before contact.</p>
+
+  <h3>Part B: how violating collisions deviate</h3>
+  <div class="tablewrap"><table id="tab-b"></table></div>
+  <p class="note">Membership = distance of the outcome from its scene's legal line divided by its length. The paired test counts twin pairs where the violating clip scores higher; it is the null here, because shuffling whole groups does nothing on a balanced twin design. The decoded-outcome rows use readouts fit on honest clips only.</p>
+
+  <div class="pair">
+    <figure>
+      <div class="fig-head"><span class="fig-title">Detection across depth</span></div>
+      <div class="legend"><span><i class="sw" style="background:var(--giant)"></i>giant</span><span><i class="sw" style="background:var(--vjepa)"></i>V-JEPA2</span><span><i class="sw-dash"></i>chance</span></div>
+      <div class="chart" id="fig-depth"></div>
+      <figcaption><b>Built by the transformer, flat at the patch embedding.</b> Membership AUC (true masses) at every block of the selected pool A.post+B.post, against relative depth.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-head"><span class="fig-title">The decoded twin difference, against the true violation</span></div>
+      <div class="legend"><span><i class="sw-dot" style="background:var(--giant)"></i>giant</span><span><i class="sw-dot" style="background:var(--vjepa)"></i>V-JEPA2</span></div>
+      <div class="chart" id="fig-twin"></div>
+      <figcaption><b>Read as a drift, not as a different collision.</b> Medians over 497 pairs with 95% bootstrap intervals. The true difference is a pure drift along n; the decoded one points the same way, carries 35–49% of it, and puts nothing into the impulse or the restitution.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tablewrap"><table id="tab-cells"></table></div>
+
+  <div class="callout"><strong>What this does and does not show.</strong> Before contact the encoders know which outcomes are physically possible and, correctly, not which one will happen. After contact the edited aftermath is in the representation, so an honest-trained readout plus the masses can certify the violation. Nothing here shows the model applies conservation: its own pre-collision expectation barely moves (AUC 0.54 / 0.51), consistent with the earlier V-JEPA2 surprise result, which found no reaction to impossible momentum.</div>
+</section>
+
+<section class="stack">
+  <p class="eyebrow">Experiment 2 · §63</p>
+  <h2>Kinetic energy with the reduced mass varied</h2>
+  <div class="prose stack">
+    <p>Each group in <code>ke_factor_set</code> is one scene rendered at five kinetic energies, reached by one route. In <strong>family M</strong> both masses are scaled by c, so the reduced mass μ = m<sub>A</sub>m<sub>B</sub>/(m<sub>A</sub>+m<sub>B</sub>), the total KE and K<sub>rel</sub> = ½μv<sub>rel</sub>² all scale by c while the motion is the same video at every level. In <strong>family S</strong> both speeds are scaled instead. A model that holds KE as one quantity should read it the same way whichever route moved it.</p>
+  </div>
+  <div class="tablewrap"><table id="tab-design"></table></div>
+
+  <div class="tablewrap"><table id="tab-within"></table></div>
+  <p class="note">Within-group slope: predicted on true log KE after removing each group's mean, so only the level-to-level change counts. The reduced-mass readout uses the cell chosen on family S, so family M never picks its own cell. Material alone explains 58.5% of the within-group variance in M, so holding it fixed leaves a well-posed slope.</p>
+
+  <h3>The cross-route test</h3>
+  <div class="prose stack">
+    <p>Fit a KE readout on one family and apply it unchanged to the other. The within-group slope says what the readout encodes:</p>
+  </div>
+  <div class="tablewrap"><table>
+    <caption>Expected slope by code</caption>
+    <thead><tr><th>Direction</th><th>Energy</th><th>Momentum</th><th>Single factor</th></tr></thead>
+    <tbody>
+      <tr><td>Train on S (speed), apply to M (mass)</td><td>1</td><td>2</td><td>0 (speed code)</td></tr>
+      <tr><td>Train on M (mass), apply to S (speed)</td><td>1</td><td>0.5</td><td>0 (mass code)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><strong>The naive version is an identity.</strong> S groups sit at five mass levels and M groups at five speed levels, so each source family already contains the other route between groups. Since log K<sub>rel</sub> = log μ + 2 log v<sub>rel</sub> − log 2, any representation with decodable μ and v<sub>rel</sub> transfers at slope 1. Measured: raw transfer equals the transfer of μ and v<sub>rel</sub> decoded separately and added, to the second decimal. The real test is the <em>route-calibrated</em> readout, trained on group-demeaned source data so it sees one route only.</div>
+
+  <div class="pair">
+    <figure>
+      <div class="fig-head"><span class="fig-title">Train on speed, apply where only mass moves</span></div>
+      <div class="chart" id="fig-sm"></div>
+    </figure>
+    <figure>
+      <div class="fig-head"><span class="fig-title">Train on mass, apply where only speed moves</span></div>
+      <div class="chart" id="fig-ms"></div>
+    </figure>
+  </div>
+  <figure>
+    <div class="legend"><span><i class="sw-dot" style="background:var(--giant)"></i>giant</span><span><i class="sw-dot" style="background:var(--vjepa)"></i>V-JEPA2</span><span><i class="sw-dash"></i>slope each code predicts</span></div>
+    <figcaption><b>Only the identity reaches 1.</b> Within-group transfer slopes with 95% intervals. Route-calibrated intervals refit the source readout on resampled groups (100 draws). The material-held-fixed row only resamples the target groups, so its interval is too narrow. Ceiling = the same route-calibrated readout moved between two halves of its own family.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="fig-head"><span class="fig-title">Route-calibrated slope at every block</span>
+      <span class="legend"><span><i class="sw" style="background:var(--giant)"></i>giant</span><span><i class="sw" style="background:var(--vjepa)"></i>V-JEPA2</span><span>▲▼ off scale (value in tooltip)</span></span></div>
+    <div class="pair"><div class="chart" id="fig-curve-sm"></div><div class="chart" id="fig-curve-ms"></div></div>
+    <figcaption><b>Speed → mass scatters around zero; mass → speed holds near 0.2.</b> The route-calibrated slope recomputed at every block of the chosen pool (all.all). Single blocks reach 0.57 (giant) and 0.97 (V-JEPA2, block 3) among neighbours near zero, which is why no single cell is quoted.</figcaption>
+  </figure>
+
+  <div class="tablewrap"><table id="tab-transfer"></table></div>
+
+  <div class="callout"><strong>The open thread.</strong> Holding the material fixed lifts the speed-calibrated readout's response to mass to 0.42 / 0.46: material flips push it down, same-material mass increases push it up. Within one material a heavier ball is a bigger ball, so a frame-wide speed feature that grows with the area of moving pixels predicts this with no energy concept at all. This set cannot separate the two; an M family that changes mass through density alone, at fixed size, would.</div>
+</section>
+
+<section class="stack">
+  <h2>Files</h2>
+  <div class="files">
+    <div><code>scripts/momentum_valid_subspace.py</code><span>Experiment 1, Parts A and B</span></div>
+    <div><code>scripts/ke_reduced_mass.py</code><span>Experiment 2, transfer, identity check, ceilings, gates</span></div>
+    <div><code>scripts/_fast_cv.py</code><span>Grouped-CV ridge with one eigendecomposition per split; matches the library readout to ~1e-6</span></div>
+    <div><code>docs/artifacts/momentum_valid_subspace_*.json</code><span>Experiment 1 results per model</span></div>
+    <div><code>docs/artifacts/ke_reduced_mass_*.json</code><span>Experiment 2 results per model</span></div>
+    <div><code>outputs_cons_&lt;model&gt;/</code>, <code>outputs_ke_&lt;model&gt;/</code><span>Full-clip captures, 997 and 1000 clips</span></div>
+    <div><code>outputs_construnc_&lt;model&gt;_a100/</code><span>Truncation captures, k ∈ {10, 14, 17, 19, 20, 22, 25, 30, 38, 48} × 997 clips; kept apart from the other box's RTX 5090 set</span></div>
+  </div>
+  <p class="note">All paths are under <code>/workspace/meta/physics_interp_video_diffusion/</code>; write-up in <code>CLAUDE.md</code> §62 and §63.</p>
+</section>
+
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DATA = {"exp1":{"videomaev2-giant":{"rungs":[{"k":10,"r2":0.6355355021064184,"cell":"A.all+B.all @ block.22.resid_post","ceiling":0.9297565114746529,"online":0.7921827670886363,"online_sh":0.8305525294655492,"online_p":1.0,"tang":0.31586497456027746,"tang_sh":0.26022401716648813,"tang_p":1.0,"drift":0.915684174008567,"drift_sh":1.0333694839436265,"drift_p":0.004975124378109453,"corr_e":0.0862643530908607,"twin":0.004226664199410555},{"k":14,"r2":0.6580233388075777,"cell":"A.all+B.all @ block.17.resid_post","ceiling":0.9297565114746529,"online":0.8180190477416946,"online_sh":0.8303962783730684,"online_p":0.8606965174129353,"tang":0.2856356957808399,"tang_sh":0.25391449875165195,"tang_p":0.9850746268656716,"drift":0.8672132162875281,"drift_sh":1.0364343187007021,"drift_p":0.004975124378109453,"corr_e":0.03550551158673569,"twin":0.0016837111479373749},{"k":17,"r2":0.6650938199599603,"cell":"A.all+B.all @ block.17.resid_post","ceiling":0.9297565114746529,"online":0.8004928039540482,"online_sh":0.8248409330474472,"online_p":0.9751243781094527,"tang":0.2854118735322677,"tang_sh":0.2582272710781386,"tang_p":0.9701492537313433,"drift":0.8590635112067011,"drift_sh":1.0699446154868346,"drift_p":0.004975124378109453,"corr_e":0.04604763267336828,"twin":0.0014342574244390355},{"k":19,"r2":0.6751033899544355,"cell":"A.all+B.all @ block.17.resid_post","ceiling":0.9297565114746529,"online":0.8207487558660707,"online_sh":0.8202907550542313,"online_p":0.47761194029850745,"tang":0.2756128350512832,"tang_sh":0.2660974485010651,"tang_p":0.7512437810945274,"drift":0.9345587286507904,"drift_sh":1.0677771035960584,"drift_p":0.004975124378109453,"corr_e":0.02820458007226153,"twin":0.001397977574097506},{"k":20,"r2":0.6838486398078891,"cell":"A.all+B.all @ block.17.resid_post","ceiling":0.9297565114746529,"online":0.8352939919503872,"online_sh":0.8268091787002052,"online_p":0.21890547263681592,"tang":0.23655754373663196,"tang_sh":0.24739196190429813,"tang_p":0.16417910447761194,"drift":0.920725073928116,"drift_sh":1.0601381585821572,"drift_p":0.004975124378109453,"corr_e":0.03576562881930844,"twin":0.0017843500258459951},{"k":22,"r2":0.7686885282083301,"cell":"A.all+B.all @ block.22.resid_post","ceiling":0.9297565114746529,"online":0.8798025979848056,"online_sh":0.860891705661964,"online_p":0.01990049751243781,"tang":0.17754298022658438,"tang_sh":0.2058305368589018,"tang_p":0.009950248756218905,"drift":0.8325705732851112,"drift_sh":1.025373135716272,"drift_p":0.004975124378109453,"corr_e":0.25181052230568024,"twin":0.06375174789864173},{"k":25,"r2":0.8373979669416155,"cell":"A.all+B.all @ block.17.resid_post","ceiling":0.9297565114746529,"online":0.9154347335345316,"online_sh":0.8922434713635715,"online_p":0.004975124378109453,"tang":0.14922567472217713,"tang_sh":0.16329197386056404,"tang_p":0.04477611940298507,"drift":0.7500566339974231,"drift_sh":0.933871293348342,"drift_p":0.004975124378109453,"corr_e":0.4296297851078286,"twin":0.0792854445025276},{"k":30,"r2":0.87797161557646,"cell":"A.all+B.all @ block.18.resid_post","ceiling":0.9297565114746529,"online":0.9304581013969262,"online_sh":0.9133623602299485,"online_p":0.004975124378109453,"tang":0.11421630212130891,"tang_sh":0.12920155665422872,"tang_p":0.009950248756218905,"drift":0.7427282472799959,"drift_sh":0.8534288212244792,"drift_p":0.004975124378109453,"corr_e":0.6188841812320769,"twin":0.11921683352221463},{"k":38,"r2":0.9071836181938838,"cell":"A.all+B.all @ block.18.resid_post","ceiling":0.9297565114746529,"online":0.9434612638386717,"online_sh":0.9326577695521897,"online_p":0.009950248756218905,"tang":0.0913999783770678,"tang_sh":0.10432589963392667,"tang_p":0.004975124378109453,"drift":0.7178844339501973,"drift_sh":0.7770766950639539,"drift_p":0.01990049751243781,"corr_e":0.6998529104061739,"twin":0.19866083967661097},{"k":48,"r2":0.8921461576414904,"cell":"A.all+B.all @ block.18.resid_post","ceiling":0.9297565114746529,"online":0.9337518836121368,"online_sh":0.9260391317331406,"online_p":0.01990049751243781,"tang":0.10650164099587367,"tang_sh":0.11859886176831219,"tang_p":0.024875621890547265,"drift":0.7239022560795895,"drift_sh":0.8029234551984286,"drift_p":0.004975124378109453,"corr_e":0.636964160826458,"twin":0.26737396336261976}],"depth":[{"site":"embed.out","d":0.0,"r2_honest":0.4074971078719217,"auc":0.5139919517102616,"paired_fraction":0.4949698189134809},{"site":"block.0.resid_post","d":0.025,"r2_honest":0.4017499660884456,"auc":0.5139476861167002,"paired_fraction":0.5030181086519114},{"site":"block.1.resid_post","d":0.05,"r2_honest":0.4154265505979591,"auc":0.5120402414486922,"paired_fraction":0.4969818913480885},{"site":"block.2.resid_post","d":0.075,"r2_honest":0.4502342115097545,"auc":0.5131830985915493,"paired_fraction":0.5090543259557344},{"site":"block.3.resid_post","d":0.1,"r2_honest":0.48611722031364424,"auc":0.5173963782696177,"paired_fraction":0.5311871227364185},{"site":"block.4.resid_post","d":0.125,"r2_honest":0.49385737170577093,"auc":0.5168692152917505,"paired_fraction":0.5392354124748491},{"site":"block.5.resid_post","d":0.15,"r2_honest":0.5076737083736227,"auc":0.5210060362173038,"paired_fraction":0.5593561368209256},{"site":"block.6.resid_post","d":0.175,"r2_honest":0.5261181988928524,"auc":0.5167806841046277,"paired_fraction":0.5352112676056338},{"site":"block.7.resid_post","d":0.2,"r2_honest":0.5696499043030137,"auc":0.5258913480885312,"paired_fraction":0.5734406438631791},{"site":"block.8.resid_post","d":0.225,"r2_honest":0.6289506823153961,"auc":0.5280885311871227,"paired_fraction":0.5553319919517102},{"site":"block.9.resid_post","d":0.25,"r2_honest":0.6233378726843724,"auc":0.5418430583501006,"paired_fraction":0.5714285714285714},{"site":"block.10.resid_post","d":0.275,"r2_honest":0.6644344919487154,"auc":0.552933601609658,"paired_fraction":0.5754527162977867},{"site":"block.11.resid_post","d":0.3,"r2_honest":0.7189376466370456,"auc":0.5681327967806841,"paired_fraction":0.6036217303822937},{"site":"block.12.resid_post","d":0.325,"r2_honest":0.7561821320906166,"auc":0.5752313883299799,"paired_fraction":0.6338028169014085},{"site":"block.13.resid_post","d":0.35,"r2_honest":0.7769594664438843,"auc":0.5826156941649899,"paired_fraction":0.647887323943662},{"site":"block.14.resid_post","d":0.375,"r2_honest":0.7902758948471827,"auc":0.5906639839034206,"paired_fraction":0.6116700201207244},{"site":"block.15.resid_post","d":0.4,"r2_honest":0.8241244913701692,"auc":0.5989255533199195,"paired_fraction":0.6579476861167002},{"site":"block.16.resid_post","d":0.425,"r2_honest":0.8333699645962555,"auc":0.6169376257545272,"paired_fraction":0.6881287726358148},{"site":"block.17.resid_post","d":0.45,"r2_honest":0.8382948458792894,"auc":0.5998068410462777,"paired_fraction":0.6559356136820925},{"site":"block.18.resid_post","d":0.475,"r2_honest":0.8434890576647497,"auc":0.6215050301810865,"paired_fraction":0.6861167002012073},{"site":"block.19.resid_post","d":0.5,"r2_honest":0.8477675940139794,"auc":0.6216136820925553,"paired_fraction":0.6639839034205232},{"site":"block.20.resid_post","d":0.525,"r2_honest":0.8505145902516132,"auc":0.6245754527162978,"paired_fraction":0.6941649899396378},{"site":"block.21.resid_post","d":0.55,"r2_honest":0.8542413790167696,"auc":0.6301247484909457,"paired_fraction":0.6921529175050302},{"site":"block.22.resid_post","d":0.575,"r2_honest":0.8513955614134296,"auc":0.6172474849094567,"paired_fraction":0.6680080482897385},{"site":"block.23.resid_post","d":0.6,"r2_honest":0.8544166212532985,"auc":0.6138108651911469,"paired_fraction":0.6780684104627767},{"site":"block.24.resid_post","d":0.625,"r2_honest":0.8508026509122137,"auc":0.6076136820925553,"paired_fraction":0.6559356136820925},{"site":"block.25.resid_post","d":0.65,"r2_honest":0.8472519979800579,"auc":0.6093279678068411,"paired_fraction":0.647887323943662},{"site":"block.26.resid_post","d":0.675,"r2_honest":0.8562035898013917,"auc":0.628,"paired_fraction":0.6639839034205232},{"site":"block.27.resid_post","d":0.7,"r2_honest":0.8511368299625285,"auc":0.6135975855130785,"paired_fraction":0.6720321931589537},{"site":"block.28.resid_post","d":0.725,"r2_honest":0.8452311266711322,"auc":0.6129255533199195,"paired_fraction":0.676056338028169},{"site":"block.29.resid_post","d":0.75,"r2_honest":0.8429948174732819,"auc":0.6157062374245473,"paired_fraction":0.6861167002012073},{"site":"block.30.resid_post","d":0.775,"r2_honest":0.8420843338774564,"auc":0.6092032193158954,"paired_fraction":0.6659959758551308},{"site":"block.31.resid_post","d":0.8,"r2_honest":0.8356445555462173,"auc":0.5965150905432596,"paired_fraction":0.635814889336016},{"site":"block.32.resid_post","d":0.825,"r2_honest":0.8345536019013524,"auc":0.6046559356136821,"paired_fraction":0.635814889336016},{"site":"block.33.resid_post","d":0.85,"r2_honest":0.8343227992364062,"auc":0.6105191146881288,"paired_fraction":0.6539235412474849},{"site":"block.34.resid_post","d":0.875,"r2_honest":0.8307070143542129,"auc":0.6083018108651912,"paired_fraction":0.647887323943662},{"site":"block.35.resid_post","d":0.9,"r2_honest":0.8328056001465317,"auc":0.6188732394366198,"paired_fraction":0.6498993963782697},{"site":"block.36.resid_post","d":0.925,"r2_honest":0.8284513923385487,"auc":0.6073118712273642,"paired_fraction":0.6519114688128773},{"site":"block.37.resid_post","d":0.95,"r2_honest":0.8376379837765788,"auc":0.6210824949698189,"paired_fraction":0.6619718309859155},{"site":"block.38.resid_post","d":0.975,"r2_honest":0.836760283919523,"auc":0.6164144869215292,"paired_fraction":0.6680080482897385},{"site":"block.39.resid_post","d":1.0,"r2_honest":0.815989193524481,"auc":0.5944466800804828,"paired_fraction":0.6317907444668008}],"best_cell":"A.post+B.post @ block.26.resid_post","r2_honest":0.8562035898013917,"r2_viol":0.8260872590598546,"true":{"auc":1.0,"pos":497,"n":497,"p":2.443949090799684e-150,"cells":{"elastic_mixed":{"auc":1.0,"pos":197,"n":197,"p":4.9784122222889134e-60},"elastic_same":{"auc":1.0,"pos":50,"n":50,"p":8.881784197001252e-16},"inelastic_mixed":{"auc":1.0,"pos":200,"n":200,"p":6.223015277861142e-61},"inelastic_same":{"auc":1.0,"pos":50,"n":50,"p":8.881784197001252e-16}}},"dec":{"auc":0.628,"pos":330,"n":497,"p":1.1305843112497729e-13,"cells":{"elastic_mixed":{"auc":0.6385786802030456,"pos":135,"n":197,"p":1.0652967399355566e-07},"elastic_same":{"auc":0.556,"pos":32,"n":50,"p":0.03245432353613609},"inelastic_mixed":{"auc":0.6707,"pos":134,"n":200,"p":8.687934639681545e-07},"inelastic_same":{"auc":0.52,"pos":29,"n":50,"p":0.16111816017877345}}},"dec_m":{"auc":0.6291710261569416,"pos":331,"n":497,"p":5.6540532738877716e-14,"cells":{"elastic_mixed":{"auc":0.6391116751269036,"pos":134,"n":197,"p":2.3262514441513736e-07},"elastic_same":{"auc":0.5656,"pos":34,"n":50,"p":0.007673338916315053},"inelastic_mixed":{"auc":0.6682,"pos":134,"n":200,"p":8.687934639681545e-07},"inelastic_same":{"auc":0.5236,"pos":29,"n":50,"p":0.16111816017877345}}},"true_dec_m":{"auc":0.9590181086519115,"pos":478,"n":497,"p":2.5118388265488025e-116,"cells":{"elastic_mixed":{"auc":0.9593401015228427,"pos":189,"n":197,"p":2.5313329908550036e-46},"elastic_same":{"auc":0.9216,"pos":47,"n":50,"p":1.8541612689659814e-11},"inelastic_mixed":{"auc":0.9618,"pos":193,"n":200,"p":1.47417413997649e-48},"inelastic_same":{"auc":0.9876,"pos":49,"n":50,"p":4.529709940470639e-14}}},"mass_cell":"A.all+B.all @ block.21.resid_post","mass_r2":0.9877626721448683,"twin":{"cos":{"median":0.6125750880738196,"ci95":[0.5828974349003193,0.6507818700949463]},"along":{"median":0.4856220180822108,"ci95":[0.4526027018464711,0.5112812950268237]},"orth":{"median":0.6543470428667898,"ci95":[0.5783202849041444,0.702374018464807]},"drift_recovered":{"median":0.4894076633345391,"ci95":[0.4528491493044102,0.5500670953413686]},"impulse_change_rel":{"median":-0.0016503464878446857,"ci95":[-0.01687564046887536,0.008616780886093809]},"tangential_rel":{"median":0.006543993709713695,"ci95":[-0.009934886302313616,0.013914792273279126]},"drift_t_rel":{"median":-0.005051698460948394,"ci95":[-0.04921165876537976,0.03649626294007431]}},"gap":{"auc":0.5361891348088531,"paired":{"n":497,"positive":288,"fraction":0.579476861167002,"p_one_sided":0.00022793344828313464},"median_honest":0.6043103666394386,"median_violating":0.6240158400216393},"span":{"site":"block.26.resid_post","pool":"A.post+B.post","rank":4,"share_median":0.0025817378176501704,"null_mean":0.0011996319265536741,"null_p95":0.0013336580619476201,"ratio_to_null":2.152108292972026,"p":0.004975124378109453},"median_score":{"honest":0.261681564315144,"violating":0.36366680301069904},"e_shift":[-0.0019274979187563052,-0.028500337916417585,0.016466961244451454]},"vjepa2-vitl":{"rungs":[{"k":10,"r2":0.6581891895824038,"cell":"A.all+B.all @ block.14.resid_post","ceiling":0.9297565114746529,"online":0.8154856759387533,"online_sh":0.8474923266946459,"online_p":1.0,"tang":0.30081517960751636,"tang_sh":0.24449608293937553,"tang_p":1.0,"drift":0.7743530380814003,"drift_sh":0.9779717642628718,"drift_p":0.004975124378109453,"corr_e":0.08923082154079075,"twin":0.0009662778877600767},{"k":14,"r2":0.6783178372173125,"cell":"A.all+B.all @ block.23.resid_post","ceiling":0.9297565114746529,"online":0.8237769194749949,"online_sh":0.8311340926471309,"online_p":0.7263681592039801,"tang":0.27412784896401454,"tang_sh":0.2585598308504479,"tang_p":0.8706467661691543,"drift":0.8552582804690627,"drift_sh":1.0318026955420194,"drift_p":0.004975124378109453,"corr_e":0.010710352153579137,"twin":0.007266337241669433},{"k":17,"r2":0.684898115889979,"cell":"A.all+B.all @ block.16.resid_post","ceiling":0.9297565114746529,"online":0.8452976980533664,"online_sh":0.8362019152424167,"online_p":0.19402985074626866,"tang":0.245436352030663,"tang_sh":0.25054883651750837,"tang_p":0.3034825870646766,"drift":0.8478040052648654,"drift_sh":1.0214721148622612,"drift_p":0.004975124378109453,"corr_e":-0.021049829265877416,"twin":0.002020038852411498},{"k":19,"r2":0.7093962708608523,"cell":"A.all+B.all @ block.21.resid_post","ceiling":0.9297565114746529,"online":0.8678261877502871,"online_sh":0.8383478451926593,"online_p":0.004975124378109453,"tang":0.19340130856100507,"tang_sh":0.24212951538756722,"tang_p":0.004975124378109453,"drift":0.8049449684807184,"drift_sh":1.0226110872884933,"drift_p":0.004975124378109453,"corr_e":0.02869318013252219,"twin":0.0034028549682009377},{"k":20,"r2":0.7102664525031382,"cell":"A.all+B.all @ block.21.resid_post","ceiling":0.9297565114746529,"online":0.874586514004634,"online_sh":0.838668576438698,"online_p":0.004975124378109453,"tang":0.19246508858026198,"tang_sh":0.23676160940331017,"tang_p":0.004975124378109453,"drift":0.8425824885006215,"drift_sh":1.0280064751346298,"drift_p":0.004975124378109453,"corr_e":0.02867512287306182,"twin":0.0033600991546526324},{"k":22,"r2":0.7579217781742718,"cell":"A.all+B.all @ block.21.resid_post","ceiling":0.9297565114746529,"online":0.8878866253433564,"online_sh":0.8578350109010309,"online_p":0.004975124378109453,"tang":0.17337996210712586,"tang_sh":0.2106441563865761,"tang_p":0.004975124378109453,"drift":0.789431244728755,"drift_sh":0.9928992072188472,"drift_p":0.004975124378109453,"corr_e":0.09478282522477871,"twin":0.05526625229016955},{"k":25,"r2":0.829823787859563,"cell":"A.all+B.all @ block.21.resid_post","ceiling":0.9297565114746529,"online":0.9201124141186632,"online_sh":0.8885552724198356,"online_p":0.004975124378109453,"tang":0.13832641317804126,"tang_sh":0.17531056790128682,"tang_p":0.004975124378109453,"drift":0.7781629704827844,"drift_sh":0.914355422784505,"drift_p":0.004975124378109453,"corr_e":0.31393575600253343,"twin":0.07576014414035523},{"k":30,"r2":0.8795155327044261,"cell":"A.all+B.all @ block.16.resid_post","ceiling":0.9297565114746529,"online":0.9318065951951393,"online_sh":0.9155318489724966,"online_p":0.009950248756218905,"tang":0.11449886681680656,"tang_sh":0.12692500535215612,"tang_p":0.009950248756218905,"drift":0.761827799984937,"drift_sh":0.8568784760587657,"drift_p":0.004975124378109453,"corr_e":0.5393288174243596,"twin":0.06676012819317974},{"k":38,"r2":0.8979636006562097,"cell":"A.all+B.all @ block.16.resid_post","ceiling":0.9297565114746529,"online":0.9296258485370708,"online_sh":0.9221209952728466,"online_p":0.04477611940298507,"tang":0.08325794815881757,"tang_sh":0.10089700854246203,"tang_p":0.004975124378109453,"drift":0.7924448849999977,"drift_sh":0.8637952715609969,"drift_p":0.014925373134328358,"corr_e":0.7198891262761024,"twin":0.1132714420105126},{"k":48,"r2":0.9004091039586642,"cell":"A.all+B.all @ block.16.resid_post","ceiling":0.9297565114746529,"online":0.9367615804394129,"online_sh":0.9261295194327788,"online_p":0.004975124378109453,"tang":0.10259310914358635,"tang_sh":0.11127070866891182,"tang_p":0.07462686567164178,"drift":0.7653925926444594,"drift_sh":0.805884412765587,"drift_p":0.07462686567164178,"corr_e":0.7732361123983581,"twin":0.14388353508785182}],"depth":[{"site":"embed.out","d":0.0,"r2_honest":0.11340111509774375,"auc":0.5223903420523139,"paired_fraction":0.5231388329979879},{"site":"block.0.resid_post","d":0.041666666666666664,"r2_honest":0.1296259894361328,"auc":0.5319195171026156,"paired_fraction":0.5412474849094567},{"site":"block.1.resid_post","d":0.08333333333333333,"r2_honest":0.1703350611998563,"auc":0.5387042253521127,"paired_fraction":0.5633802816901409},{"site":"block.2.resid_post","d":0.125,"r2_honest":0.2584451564016853,"auc":0.5339557344064386,"paired_fraction":0.5492957746478874},{"site":"block.3.resid_post","d":0.16666666666666666,"r2_honest":0.3472458166313064,"auc":0.5391106639839034,"paired_fraction":0.5613682092555332},{"site":"block.4.resid_post","d":0.20833333333333334,"r2_honest":0.4336048087798233,"auc":0.5334527162977867,"paired_fraction":0.5573440643863179},{"site":"block.5.resid_post","d":0.25,"r2_honest":0.48396436739408444,"auc":0.5268088531187123,"paired_fraction":0.5513078470824949},{"site":"block.6.resid_post","d":0.2916666666666667,"r2_honest":0.5220613995495403,"auc":0.5279315895372233,"paired_fraction":0.5432595573440644},{"site":"block.7.resid_post","d":0.3333333333333333,"r2_honest":0.562474708550273,"auc":0.5485553319919517,"paired_fraction":0.5513078470824949},{"site":"block.8.resid_post","d":0.375,"r2_honest":0.6471545451477814,"auc":0.5353923541247485,"paired_fraction":0.5533199195171026},{"site":"block.9.resid_post","d":0.4166666666666667,"r2_honest":0.7091252473788281,"auc":0.5452997987927566,"paired_fraction":0.607645875251509},{"site":"block.10.resid_post","d":0.4583333333333333,"r2_honest":0.7450024475038829,"auc":0.5660965794768612,"paired_fraction":0.5935613682092555},{"site":"block.11.resid_post","d":0.5,"r2_honest":0.7826765437359765,"auc":0.590953722334004,"paired_fraction":0.6257545271629779},{"site":"block.12.resid_post","d":0.5416666666666666,"r2_honest":0.8108085915011398,"auc":0.602784708249497,"paired_fraction":0.6639839034205232},{"site":"block.13.resid_post","d":0.5833333333333334,"r2_honest":0.8134286865738578,"auc":0.5959476861167002,"paired_fraction":0.6619718309859155},{"site":"block.14.resid_post","d":0.625,"r2_honest":0.8136309531911403,"auc":0.5963822937625755,"paired_fraction":0.6177062374245473},{"site":"block.15.resid_post","d":0.6666666666666666,"r2_honest":0.8300882966872811,"auc":0.5848088531187122,"paired_fraction":0.647887323943662},{"site":"block.16.resid_post","d":0.7083333333333334,"r2_honest":0.8330044736668188,"auc":0.5753199195171026,"paired_fraction":0.6217303822937625},{"site":"block.17.resid_post","d":0.75,"r2_honest":0.8263402222125413,"auc":0.5776177062374246,"paired_fraction":0.6277665995975855},{"site":"block.18.resid_post","d":0.7916666666666666,"r2_honest":0.8212395162391067,"auc":0.5646116700201207,"paired_fraction":0.5975855130784709},{"site":"block.19.resid_post","d":0.8333333333333334,"r2_honest":0.8215506462144758,"auc":0.5659839034205232,"paired_fraction":0.6116700201207244},{"site":"block.20.resid_post","d":0.875,"r2_honest":0.8290594949414087,"auc":0.5597223340040242,"paired_fraction":0.5835010060362174},{"site":"block.21.resid_post","d":0.9166666666666666,"r2_honest":0.8269468770479097,"auc":0.5637142857142857,"paired_fraction":0.6156941649899397},{"site":"block.22.resid_post","d":0.9583333333333334,"r2_honest":0.8231334634264716,"auc":0.5635774647887324,"paired_fraction":0.6217303822937625},{"site":"block.23.resid_post","d":1.0,"r2_honest":0.8280142083890945,"auc":0.5809295774647887,"paired_fraction":0.6197183098591549}],"best_cell":"A.post+B.post @ block.16.resid_post","r2_honest":0.8330044736668188,"r2_viol":0.775874596678668,"true":{"auc":1.0,"pos":497,"n":497,"p":2.443949090799684e-150,"cells":{"elastic_mixed":{"auc":1.0,"pos":197,"n":197,"p":4.9784122222889134e-60},"elastic_same":{"auc":1.0,"pos":50,"n":50,"p":8.881784197001252e-16},"inelastic_mixed":{"auc":1.0,"pos":200,"n":200,"p":6.223015277861142e-61},"inelastic_same":{"auc":1.0,"pos":50,"n":50,"p":8.881784197001252e-16}}},"dec":{"auc":0.5753199195171026,"pos":309,"n":497,"p":3.177189783770852e-08,"cells":{"elastic_mixed":{"auc":0.5696954314720812,"pos":121,"n":197,"p":0.0008253693435676218},"elastic_same":{"auc":0.5896,"pos":33,"n":50,"p":0.016419568782134242},"inelastic_mixed":{"auc":0.58635,"pos":121,"n":200,"p":0.0018174739762649693},"inelastic_same":{"auc":0.5636,"pos":34,"n":50,"p":0.007673338916315053}}},"dec_m":{"auc":0.5755975855130785,"pos":310,"n":497,"p":1.903203251538084e-08,"cells":{"elastic_mixed":{"auc":0.5721065989847716,"pos":119,"n":197,"p":0.0021276120410020655},"elastic_same":{"auc":0.5936,"pos":34,"n":50,"p":0.007673338916315053},"inelastic_mixed":{"auc":0.586275,"pos":122,"n":200,"p":0.0011397192509028646},"inelastic_same":{"auc":0.5608,"pos":35,"n":50,"p":0.003300223983405459}}},"true_dec_m":{"auc":0.9753762575452716,"pos":486,"n":497,"p":2.5606750776770625e-128,"cells":{"elastic_mixed":{"auc":0.9772842639593908,"pos":193,"n":197,"p":3.0934140477657618e-52},"elastic_same":{"auc":0.9768,"pos":49,"n":50,"p":4.529709940470639e-14},"inelastic_mixed":{"auc":0.9763,"pos":197,"n":200,"p":8.29839709604311e-55},"inelastic_same":{"auc":0.9636,"pos":47,"n":50,"p":1.8541612689659814e-11}}},"mass_cell":"A.all+B.all @ block.10.resid_post","mass_r2":0.991811046332583,"twin":{"cos":{"median":0.5626066775371535,"ci95":[0.5186588064162362,0.5990195025486321]},"along":{"median":0.3725549524408655,"ci95":[0.33895351350579117,0.4227716161707448]},"orth":{"median":0.6083239652596827,"ci95":[0.5413666916659975,0.6693265669952946]},"drift_recovered":{"median":0.35088895923015667,"ci95":[0.31256288638377216,0.40518209738955213]},"impulse_change_rel":{"median":0.0017358466325068022,"ci95":[-0.009328221043475523,0.015608617491230886]},"tangential_rel":{"median":-0.006973343642103443,"ci95":[-0.01826441897366603,0.002127140277856658]},"drift_t_rel":{"median":0.006677530558985097,"ci95":[-0.03902926636001578,0.03315347115887947]}},"gap":{"auc":0.509046277665996,"paired":{"n":497,"positive":258,"fraction":0.5191146881287726,"p_one_sided":0.20972873633325798},"median_honest":0.5948335031454624,"median_violating":0.6108034381966326},"span":{"site":"block.16.resid_post","pool":"A.post+B.post","rank":4,"share_median":0.0026402348221328314,"null_mean":0.0016609316416873147,"null_p95":0.0018662971098926304,"ratio_to_null":1.5896107677560154,"p":0.004975124378109453},"median_score":{"honest":0.30129683223389275,"violating":0.3520900462844223},"e_shift":[0.00527998423449616,-0.013543971753308792,0.033778482222319495]}},"exp2":{"videomaev2-giant":{"within":{"S":{"cell":"all.all @ block.18.resid_post","r2":0.9887404795009059,"slope":0.9910386496050339,"ci":[0.9764462982862576,1.0060577055240245],"embed":0.40049333279536714},"M":{"cell":"all.all @ block.15.resid_post","r2":0.98837788141877,"slope":1.0009820347579619,"ci":[0.9876201451423957,1.015078520767538],"embed":0.44274580568056}},"rm":{"cell":"all.all @ block.18.resid_post","within":{"slope":1.0026808838768086,"ci95":[0.9899700949788747,1.0159688886641325],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.05025205163006093,"corr_within":0.9944539321926785,"n_groups":100,"covariate_r2_on_target":null},"within_partial_appearance":{"slope":1.003635003685216,"ci95":[0.9840383478669035,1.0255124480605857],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.08047314827787498,"corr_within":0.9944539321926785,"n_groups":100,"covariate_r2_on_target":0.5854939516129033},"mu_readout_within":{"slope":0.9981613149809672,"ci95":[0.9892544391879761,1.0069717278109211],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04990318339586796,"corr_within":0.9978993781103377,"n_groups":100,"covariate_r2_on_target":null}},"transfer":{"S->M":{"cell":"all.all @ block.18.resid_post","raw":{"slope":0.9942189732789637,"ci95":[0.9812155214636296,1.0075402650889151],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04991891054842992,"corr_within":0.9928115482355069,"n_groups":100,"covariate_r2_on_target":null},"krel_raw":{"slope":0.9481047623146698,"ci95":[0.9278264176647996,0.9689489375055775],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04835653245992517,"corr_within":0.9782707476797914,"n_groups":100,"covariate_r2_on_target":null},"composed":{"slope":0.9505660199238961,"ci95":[0.9305332205466944,0.9709456262132982],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04846852614083618,"corr_within":0.97885237235173,"n_groups":100,"covariate_r2_on_target":null},"route":{"slope":0.1604184633747799,"ci95":[0.14584169087325752,0.1752107946865739],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.013879967802395081,"corr_within":0.5601873648684466,"n_groups":100,"covariate_r2_on_target":null},"route_partial":{"slope":0.4171160787847813,"ci95":[0.3993817836384307,0.4349946246517798],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.023983155881507574,"corr_within":0.5601873648684466,"n_groups":100,"covariate_r2_on_target":0.5854939516129033},"ceiling":{"slope":0.9811234990957168,"ci95":[0.9650554447825955,0.9968983635791618],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.049034517943744,"corr_within":0.9949688769437782,"n_groups":100,"covariate_r2_on_target":null},"boot":{"median":0.15957233930964787,"ci95":[-0.08099262273193104,0.3732765237420063],"draws":100},"deep":{"median":-0.02032300681816375,"q25":-0.12151677429565613,"q75":0.04690208133196681,"n_sites":31},"curve":{"embed.out":-1.121980453526079,"block.0.resid_post":0.3922757812862008,"block.1.resid_post":0.571968867795147,"block.2.resid_post":0.16193105557398055,"block.3.resid_post":0.1471577983573842,"block.4.resid_post":0.03603543093460406,"block.5.resid_post":0.02283217564556219,"block.6.resid_post":-0.05143008250063721,"block.7.resid_post":-0.5833479645520424,"block.8.resid_post":-0.23702628791429176,"block.9.resid_post":-0.4595722229031471,"block.10.resid_post":-0.28050729821047804,"block.11.resid_post":-0.02764787178069812,"block.12.resid_post":-0.08809835086516644,"block.13.resid_post":-0.16620354045077357,"block.14.resid_post":-0.11031267583463848,"block.15.resid_post":-0.13607701177525436,"block.16.resid_post":-0.08673728284423926,"block.17.resid_post":-0.01031431505666741,"block.18.resid_post":0.1604184633747799,"block.19.resid_post":0.05367859014703415,"block.20.resid_post":0.05921775861607737,"block.21.resid_post":0.013206465222756574,"block.22.resid_post":0.07248689046075006,"block.23.resid_post":-0.007433073712331701,"block.24.resid_post":-0.10836434713823177,"block.25.resid_post":-0.0943137108896641,"block.26.resid_post":-0.002886942311656186,"block.27.resid_post":0.041336370471055484,"block.28.resid_post":0.10548404496756164,"block.29.resid_post":-0.1327208727566738,"block.30.resid_post":-0.08454486647647955,"block.31.resid_post":0.02106124946071684,"block.32.resid_post":0.05377485151105611,"block.33.resid_post":-0.02032300681816375,"block.34.resid_post":-0.006251649241606175,"block.35.resid_post":0.05246779219287815,"block.36.resid_post":-0.16456606692679301,"block.37.resid_post":-0.21998325582231937,"block.38.resid_post":-0.1414060457916518,"block.39.resid_post":0.07990877044644643}},"M->S":{"cell":"all.all @ block.15.resid_post","raw":{"slope":0.9885860724441768,"ci95":[0.9744910207600009,1.002318304095533],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04949530199039513,"corr_within":0.9951598285266352,"n_groups":100,"covariate_r2_on_target":null},"krel_raw":{"slope":0.9752513513532416,"ci95":[0.9474241716136023,1.0034158210738826],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04906811877734998,"corr_within":0.9820783812529823,"n_groups":100,"covariate_r2_on_target":null},"composed":{"slope":0.9752513513532415,"ci95":[0.947424171613602,1.0034158210738826],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04906811877734997,"corr_within":0.9820783812529826,"n_groups":100,"covariate_r2_on_target":null},"route":{"slope":0.2325475932697477,"ci95":[0.223447046317045,0.24157798403328906],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.011854191083886226,"corr_within":0.9693846356033632,"n_groups":100,"covariate_r2_on_target":null},"route_partial":{"slope":0.2325475932697477,"ci95":[0.223447046317045,0.24157798403328906],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.011854191083886226,"corr_within":0.9693846356033632,"n_groups":100,"covariate_r2_on_target":null},"ceiling":{"slope":0.9914176188797292,"ci95":[0.9819497732996292,1.0013101680284395],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04957340273170569,"corr_within":0.997255478774907,"n_groups":100,"covariate_r2_on_target":null},"boot":{"median":0.24004591550158622,"ci95":[0.17104474276847786,0.3213879775950588],"draws":100},"deep":{"median":0.22077670323165471,"q25":0.19474937321646008,"q75":0.24486693746657895,"n_sites":31},"curve":{"embed.out":0.005746466195060626,"block.0.resid_post":0.08331856052226375,"block.1.resid_post":0.11936112274705575,"block.2.resid_post":0.09125624966371423,"block.3.resid_post":0.1306788811558288,"block.4.resid_post":0.1211581943503322,"block.5.resid_post":0.19157711067785846,"block.6.resid_post":0.17645624835287846,"block.7.resid_post":0.17944366422909072,"block.8.resid_post":0.14036003923688456,"block.9.resid_post":0.1445204067940021,"block.10.resid_post":0.135919714596652,"block.11.resid_post":0.17833943856134438,"block.12.resid_post":0.18342317481520692,"block.13.resid_post":0.2114360932062334,"block.14.resid_post":0.2222131985800617,"block.15.resid_post":0.2325475932697477,"block.16.resid_post":0.19648089049422363,"block.17.resid_post":0.17250166533244835,"block.18.resid_post":0.2139879571352595,"block.19.resid_post":0.19521298374792107,"block.20.resid_post":0.1942857626849991,"block.21.resid_post":0.18841764223919655,"block.22.resid_post":0.20750429004466514,"block.23.resid_post":0.1995857577010029,"block.24.resid_post":0.22271047974367505,"block.25.resid_post":0.2191583774154051,"block.26.resid_post":0.16344336531729725,"block.27.resid_post":0.2438509068144466,"block.28.resid_post":0.253938649355778,"block.29.resid_post":0.24861556079630062,"block.30.resid_post":0.22077670323165471,"block.31.resid_post":0.255409549495922,"block.32.resid_post":0.2374984007010891,"block.33.resid_post":0.2242427225837108,"block.34.resid_post":0.25775736172007935,"block.35.resid_post":0.23050659637613422,"block.36.resid_post":0.28358783367483215,"block.37.resid_post":0.3085587335643051,"block.38.resid_post":0.24588296811871127,"block.39.resid_post":0.2521671930486612}}},"gates":{"mass_S->M":{"slope":0.9905149807378176,"ci95":[0.9822205116322804,0.9989447172021473],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04952075683648685,"corr_within":0.9978830337443366,"n_groups":100,"covariate_r2_on_target":null},"speed_M->S":{"slope":0.9591858600888742,"ci95":[0.9301456981919993,0.9877109414097234],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04833057436724533,"corr_within":0.9807688189716336,"n_groups":100,"covariate_r2_on_target":null}},"design":{"M":{"slope_log_mu_on_log_ke":1.0,"slope_log_vrel_on_log_ke":-1.9497688594153345e-33,"slope_log_p_on_log_ke":1.0,"max_abs_log_ke_rel_minus_log_ke_within":8.881784197001252e-16,"max_abs_identity_log_ke_rel":8.881784197001252e-16,"corr_within_log_radius_level":0.04433981751739313,"corr_within_n_metal_level":0.7651757651761486},"S":{"slope_log_mu_on_log_ke":1.744530029048673e-33,"slope_log_vrel_on_log_ke":0.4999999995588416,"slope_log_p_on_log_ke":0.5000000005927301,"max_abs_log_ke_rel_minus_log_ke_within":2.118429487385498e-07,"max_abs_identity_log_ke_rel":8.881784197001252e-16,"corr_within_log_radius_level":NaN,"corr_within_n_metal_level":NaN}}},"vjepa2-vitl":{"within":{"S":{"cell":"all.all @ block.15.resid_post","r2":0.9898300082972267,"slope":0.9870476282700955,"ci":[0.9692557026355791,1.0032719123538647],"embed":0.3747420485296161},"M":{"cell":"all.all @ block.15.resid_post","r2":0.9868475558838354,"slope":0.9968423425371431,"ci":[0.9803532943075602,1.0121440471062009],"embed":0.30909829501041697}},"rm":{"cell":"all.all @ block.15.resid_post","within":{"slope":0.9968423425371431,"ci95":[0.9803532943075602,1.0121440471062009],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.05014275919344828,"corr_within":0.9912750167855691,"n_groups":100,"covariate_r2_on_target":null},"within_partial_appearance":{"slope":0.98671536494491,"ci95":[0.9600136346744575,1.0122026900338963],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.07992703044446356,"corr_within":0.9912750167855691,"n_groups":100,"covariate_r2_on_target":0.5854939516129033},"mu_readout_within":{"slope":0.9940639962408191,"ci95":[0.9841874279902645,1.003447281219004],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.049890400572999094,"corr_within":0.9966217169658529,"n_groups":100,"covariate_r2_on_target":null}},"transfer":{"S->M":{"cell":"all.all @ block.15.resid_post","raw":{"slope":0.9785545406218454,"ci95":[0.9607511086372382,0.9955981072795821],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.049310544351679926,"corr_within":0.9887503017211052,"n_groups":100,"covariate_r2_on_target":null},"krel_raw":{"slope":1.004672349079255,"ci95":[0.9734839298770813,1.037170943704488],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.052284907098714126,"corr_within":0.968913898684633,"n_groups":100,"covariate_r2_on_target":null},"composed":{"slope":0.9956804764565457,"ci95":[0.9642770329756494,1.0287382963198335],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.05177009841878562,"corr_within":0.9687769227096868,"n_groups":100,"covariate_r2_on_target":null},"route":{"slope":-0.11116294325347463,"ci95":[-0.14094584322615117,-0.07791715548505178],"p_slope_gt_0":1.0,"null_sd":0.025716778865087463,"corr_within":-0.21735086253923946,"n_groups":100,"covariate_r2_on_target":null},"route_partial":{"slope":0.46134483050405484,"ci95":[0.43977309301682804,0.4834083380135476],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.0412710356562459,"corr_within":-0.21735086253923946,"n_groups":100,"covariate_r2_on_target":0.5854939516129033},"ceiling":{"slope":0.9741849363851472,"ci95":[0.9581341941815087,0.9899520543650875],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.048827616910642704,"corr_within":0.9935489021543676,"n_groups":100,"covariate_r2_on_target":null},"boot":{"median":-0.06943601560863236,"ci95":[-0.2726871837918711,0.15705908434799318],"draws":100},"deep":{"median":-0.052435906045047546,"q25":-0.14871691919111524,"q75":0.08497228870214626,"n_sites":19},"curve":{"embed.out":-3.3836995783935016,"block.0.resid_post":-5.805071389680045,"block.1.resid_post":-1.0497135200689418,"block.2.resid_post":0.6179008707857078,"block.3.resid_post":0.9695347994336919,"block.4.resid_post":-0.017713701349537384,"block.5.resid_post":-0.2575760877943671,"block.6.resid_post":-0.5242114217511107,"block.7.resid_post":-0.4243868298613269,"block.8.resid_post":0.2930328345289756,"block.9.resid_post":0.5750016509936838,"block.10.resid_post":0.08462556664950273,"block.11.resid_post":0.0393197391591762,"block.12.resid_post":0.0853190107547898,"block.13.resid_post":-0.06453484004003018,"block.14.resid_post":-0.06727177348977106,"block.15.resid_post":-0.11116294325347463,"block.16.resid_post":-0.1286292883527653,"block.17.resid_post":-0.2657296959920974,"block.18.resid_post":-0.16880455002946518,"block.19.resid_post":-0.04962802509696003,"block.20.resid_post":-0.052435906045047546,"block.21.resid_post":-0.0348690814083753,"block.22.resid_post":0.12855851833935947,"block.23.resid_post":0.35345990262035065}},"M->S":{"cell":"all.all @ block.15.resid_post","raw":{"slope":0.9823721810817829,"ci95":[0.9619442644905022,1.0017314703264892],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04922236137786075,"corr_within":0.9905186988243778,"n_groups":100,"covariate_r2_on_target":null},"krel_raw":{"slope":0.979125608237108,"ci95":[0.9430888505455409,1.0113622630768784],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04954539450976854,"corr_within":0.9765631788787508,"n_groups":100,"covariate_r2_on_target":null},"composed":{"slope":0.9791256082371079,"ci95":[0.9430888505455409,1.0113622630768784],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04954539450976854,"corr_within":0.9765631788787505,"n_groups":100,"covariate_r2_on_target":null},"route":{"slope":0.16894419465115781,"ci95":[0.15948321625465903,0.17820044696126042],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.00905236996981937,"corr_within":0.9285393853827596,"n_groups":100,"covariate_r2_on_target":null},"route_partial":{"slope":0.16894419465115781,"ci95":[0.15948321625465903,0.17820044696126042],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.00905236996981937,"corr_within":0.9285393853827596,"n_groups":100,"covariate_r2_on_target":null},"ceiling":{"slope":0.9904943037351391,"ci95":[0.9793303295317991,1.0015139657405385],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04961659454826722,"corr_within":0.9963841157498179,"n_groups":100,"covariate_r2_on_target":null},"boot":{"median":0.196437682411414,"ci95":[0.15002918763801865,0.25457303074089455],"draws":100},"deep":{"median":0.1584373259247671,"q25":0.10634147352675517,"q75":0.18725836028170817,"n_sites":19},"curve":{"embed.out":0.014927540868732315,"block.0.resid_post":0.03958790245807459,"block.1.resid_post":0.04162660507257919,"block.2.resid_post":0.10127160838752121,"block.3.resid_post":0.12447945537852964,"block.4.resid_post":0.14434202380723965,"block.5.resid_post":0.06267016617674565,"block.6.resid_post":0.09764275335867627,"block.7.resid_post":0.07982304956257953,"block.8.resid_post":0.09541676200745233,"block.9.resid_post":0.11504019369483408,"block.10.resid_post":0.18259282480924474,"block.11.resid_post":0.12074964051433609,"block.12.resid_post":0.07563075538445062,"block.13.resid_post":0.13671276770790422,"block.14.resid_post":0.15150835354453834,"block.15.resid_post":0.16894419465115781,"block.16.resid_post":0.23674570657763735,"block.17.resid_post":0.19300487658721388,"block.18.resid_post":0.19192389575417157,"block.19.resid_post":0.20557935660343393,"block.20.resid_post":0.1779648522787298,"block.21.resid_post":0.1655455991601236,"block.22.resid_post":0.1584373259247671,"block.23.resid_post":0.21083291225961426}}},"gates":{"mass_S->M":{"slope":0.9745951623025572,"ci95":[0.9654629554167441,0.9841460085590554],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.048909206999031785,"corr_within":0.9966107926170658,"n_groups":100,"covariate_r2_on_target":null},"speed_M->S":{"slope":0.9641938421387924,"ci95":[0.9251596008860001,0.9982014717302794],"p_slope_gt_0":0.0004997501249375312,"null_sd":0.04888719073559542,"corr_within":0.9740693023650918,"n_groups":100,"covariate_r2_on_target":null}},"design":{"M":{"slope_log_mu_on_log_ke":1.0,"slope_log_vrel_on_log_ke":-1.9497688594153345e-33,"slope_log_p_on_log_ke":1.0,"max_abs_log_ke_rel_minus_log_ke_within":8.881784197001252e-16,"max_abs_identity_log_ke_rel":8.881784197001252e-16,"corr_within_log_radius_level":0.04433981751739313,"corr_within_n_metal_level":0.7651757651761486},"S":{"slope_log_mu_on_log_ke":1.744530029048673e-33,"slope_log_vrel_on_log_ke":0.4999999995588416,"slope_log_p_on_log_ke":0.5000000005927301,"max_abs_log_ke_rel_minus_log_ke_within":2.118429487385498e-07,"max_abs_identity_log_ke_rel":8.881784197001252e-16,"corr_within_log_radius_level":NaN,"corr_within_n_metal_level":NaN}}}}};
+const MODELS = [
+  { key: "videomaev2-giant", name: "VideoMAEv2-giant", short: "giant", color: "var(--giant)" },
+  { key: "vjepa2-vitl", name: "V-JEPA2-L", short: "V-JEPA2", color: "var(--vjepa)" },
+];
+const NS = "http://www.w3.org/2000/svg";
+const f2 = v => (v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+const f3 = v => (v < 0 ? "−" : "") + Math.abs(v).toFixed(3);
+const fp = p => p < 0.001 ? p.toExponential(0).replace("e-", "×10⁻").replace(/(\d+)$/, d => d.split("").map(c => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c]).join("")) : p.toFixed(3);
+
+// ---------- tooltip ----------
+const tip = document.getElementById("tip");
+function showTip(evt, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = evt.clientX + 14, y = evt.clientY + 14;
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - 14;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip() { tip.hidden = true; }
+
+// ---------- svg helpers ----------
+function el(name, attrs, parent) {
+  const n = document.createElementNS(NS, name);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function text(parent, x, y, s, attrs) {
+  const t = el("text", Object.assign({ x: x, y: y }, attrs || {}), parent);
+  t.textContent = s; return t;
+}
+function scale(d0, d1, r0, r1) { return v => r0 + (v - d0) / (d1 - d0) * (r1 - r0); }
+function hit(g, x, y, html) {
+  const h = el("circle", { cx: x, cy: y, r: 11, fill: "transparent", class: "hit" }, g);
+  h.addEventListener("mouseenter", e => showTip(e, html));
+  h.addEventListener("mousemove", e => showTip(e, html));
+  h.addEventListener("mouseleave", hideTip);
+  return h;
+}
+
+// line chart: series [{name,color,points:[{x,y,tip,hollow}]}]
+function lineChart(id, o) {
+  const W = o.width || 900, H = o.height || 300, m = Object.assign({ l: 54, r: 112, t: 18, b: 42 }, o.margin || {});
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+  document.getElementById(id).appendChild(svg);
+  const x = scale(o.x[0], o.x[1], m.l, W - m.r), y = scale(o.y[0], o.y[1], H - m.b, m.t);
+  const g = el("g", {}, svg);
+  o.yTicks.forEach(v => {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: "var(--grid)", "stroke-width": 1 }, g);
+    text(g, m.l - 8, y(v) + 4, o.yFmt ? o.yFmt(v) : v, { "text-anchor": "end" });
+  });
+  o.xTicks.forEach(v => {
+    el("line", { x1: x(v), x2: x(v), y1: H - m.b, y2: H - m.b + 4, stroke: "var(--axis)" }, g);
+    text(g, x(v), H - m.b + 17, v, { "text-anchor": "middle" });
+  });
+  el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1 }, g);
+  if (o.xLabel) text(g, (m.l + W - m.r) / 2, H - 6, o.xLabel, { "text-anchor": "middle", class: "lab" });
+  if (o.yLabel) text(g, 12, m.t + 4, o.yLabel, { class: "lab" });
+  (o.vlines || []).forEach(v => {
+    el("line", { x1: x(v.x), x2: x(v.x), y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-dasharray": "3 3" }, g);
+    text(g, x(v.x) + 5, m.t + 10, v.label, { class: "lab" });
+  });
+  (o.hlines || []).forEach(v => {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v.y), y2: y(v.y), stroke: "var(--muted)", "stroke-dasharray": "5 4", "stroke-width": 1.5 }, g);
+    if (v.label) text(g, W - m.r + 6, y(v.y) + 4, v.label, { class: "lab" });
+  });
+  const clampLo = o.y[0], clampHi = o.y[1];
+  o.series.forEach(s => {
+    const pts = s.points.map(p => Object.assign({}, p, { cy: Math.max(clampLo, Math.min(clampHi, p.y)), off: p.y < clampLo ? -1 : p.y > clampHi ? 1 : 0 }));
+    el("path", { d: pts.map((p, i) => (i ? "L" : "M") + x(p.x) + " " + y(p.cy)).join(" "), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" }, g);
+    pts.forEach(p => {
+      const cx = x(p.x), cy = y(p.cy);
+      if (p.off) {
+        const d = p.off < 0 ? `M${cx - 5} ${cy - 7} L${cx + 5} ${cy - 7} L${cx} ${cy + 1} Z` : `M${cx - 5} ${cy + 7} L${cx + 5} ${cy + 7} L${cx} ${cy - 1} Z`;
+        el("path", { d: d, fill: s.color, stroke: "#ffffff", "stroke-width": 1.5 }, g);
+      } else {
+        el("circle", { cx: cx, cy: cy, r: 4.5, fill: p.hollow ? "#ffffff" : s.color, stroke: p.hollow ? s.color : "#ffffff", "stroke-width": p.hollow ? 2 : 1.5 }, g);
+      }
+      hit(g, cx, cy, `<b>${s.name}</b><br>${p.tip}`);
+    });
+    if (s.endLabel !== false) {
+      const last = pts[pts.length - 1];
+      text(g, x(last.x) + 9, y(last.cy) + 4 + (s.labelDy || 0), s.short || s.name, { class: "lab", style: "fill:" + s.color.replace("var(", "var(") });
+    }
+  });
+  return svg;
+}
+
+// dot + interval chart: rows [{label, items:[{model, est, lo, hi, tip}]}]
+function dotChart(id, o) {
+  const W = o.width || 560, rowH = 46, m = { l: o.labelW || 196, r: 22, t: 34, b: 30 };
+  const H = m.t + m.b + rowH * o.rows.length;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+  document.getElementById(id).appendChild(svg);
+  const x = scale(o.x[0], o.x[1], m.l, W - m.r);
+  const g = el("g", {}, svg);
+  o.ticks.forEach(v => {
+    el("line", { x1: x(v), x2: x(v), y1: m.t - 4, y2: H - m.b, stroke: "var(--grid)" }, g);
+    text(g, x(v), H - m.b + 16, f2(v).replace(".00", ""), { "text-anchor": "middle" });
+  });
+  (o.refs || []).forEach(r => {
+    el("line", { x1: x(r.x), x2: x(r.x), y1: m.t - 6, y2: H - m.b, stroke: "var(--muted)", "stroke-dasharray": "5 4", "stroke-width": 1.5 }, g);
+    text(g, x(r.x), m.t - 12, r.label, { "text-anchor": "middle", class: "lab" });
+  });
+  o.rows.forEach((row, i) => {
+    const y0 = m.t + i * rowH;
+    if (i) el("line", { x1: 8, x2: W - m.r, y1: y0, y2: y0, stroke: "var(--rule)" }, g);
+    const lines = row.label.split("\n");
+    lines.forEach((ln, j) => text(g, 8, y0 + rowH / 2 + 4 + (j - (lines.length - 1) / 2) * 14, ln, { class: j ? "" : "lab" }));
+    row.items.forEach((it, j) => {
+      const yy = y0 + rowH / 2 + (j ? 8 : -8);
+      const mdl = MODELS.find(md => md.key === it.model);
+      if (it.lo != null) el("line", { x1: x(Math.max(o.x[0], it.lo)), x2: x(Math.min(o.x[1], it.hi)), y1: yy, y2: yy, stroke: mdl.color, "stroke-width": 2, "stroke-linecap": "round" }, g);
+      const cx = x(Math.max(o.x[0], Math.min(o.x[1], it.est)));
+      el("circle", { cx: cx, cy: yy, r: 5, fill: mdl.color, stroke: "#ffffff", "stroke-width": 1.5 }, g);
+      hit(g, cx, yy, `<b>${mdl.name}</b><br>${row.label.replace("\n", " ")}<br>${it.tip}`);
+    });
+  });
+  return svg;
+}
+
+// ---------- Experiment 1 ----------
+const ks = DATA.exp1["vjepa2-vitl"].rungs.map(r => r.k);
+const ceiling = DATA.exp1["vjepa2-vitl"].rungs[0].ceiling;
+lineChart("fig-r2", {
+  aria: "R squared of the decoded legal outcome against frames seen, both models",
+  x: [9, 49], y: [0.55, 1.0], xTicks: ks, yTicks: [0.6, 0.7, 0.8, 0.9, 1.0], yFmt: v => v.toFixed(1),
+  xLabel: "frames seen, k", yLabel: "R²", vlines: [{ x: 20, label: "contact" }],
+  hlines: [{ y: ceiling, label: "ceiling " + ceiling.toFixed(2) }],
+  series: MODELS.map((md, i) => ({ name: md.name, short: md.short, color: md.color, labelDy: i ? 10 : -6,
+    points: DATA.exp1[md.key].rungs.map(r => ({ x: r.k, y: r.r2, tip: `k = ${r.k}: R² ${r.r2.toFixed(3)}<br>${r.cell}` })) })),
+});
+lineChart("fig-online", {
+  width: 560, height: 300, margin: { r: 70 },
+  aria: "On-line share minus shuffled reference against frames seen",
+  x: [9, 49], y: [-0.045, 0.045], xTicks: [10, 20, 30, 40, 48], yTicks: [-0.04, -0.02, 0, 0.02, 0.04], yFmt: v => (v > 0 ? "+" : "") + v.toFixed(2),
+  xLabel: "frames seen, k", yLabel: "on-line − shuffled", vlines: [{ x: 20, label: "contact" }],
+  hlines: [{ y: 0, label: "" }],
+  series: MODELS.map((md, i) => ({ name: md.name, short: md.short, color: md.color, labelDy: i ? 8 : -6,
+    points: DATA.exp1[md.key].rungs.map(r => ({ x: r.k, y: r.online - r.online_sh, hollow: r.online_p > 0.01,
+      tip: `k = ${r.k}: on-line ${r.online.toFixed(3)} vs shuffled ${r.online_sh.toFixed(3)}, p = ${r.online_p.toFixed(3)}` })) })),
+});
+lineChart("fig-e", {
+  width: 560, height: 300, margin: { r: 70 },
+  aria: "Correlation of implied restitution with true restitution against frames seen",
+  x: [9, 49], y: [-0.1, 0.85], xTicks: [10, 20, 30, 40, 48], yTicks: [0, 0.2, 0.4, 0.6, 0.8], yFmt: v => v.toFixed(1),
+  xLabel: "frames seen, k", yLabel: "corr(implied e, true e)", vlines: [{ x: 20, label: "contact" }],
+  series: MODELS.map((md, i) => ({ name: md.name, short: md.short, color: md.color, labelDy: i ? -8 : 10,
+    points: DATA.exp1[md.key].rungs.map(r => ({ x: r.k, y: r.corr_e, tip: `k = ${r.k}: corr ${f3(r.corr_e)}` })) })),
+});
+lineChart("fig-depth", {
+  width: 560, height: 300, margin: { r: 70 },
+  aria: "Membership AUC across relative depth",
+  x: [0, 1], y: [0.45, 0.7], xTicks: [0, 0.25, 0.5, 0.75, 1], yTicks: [0.45, 0.5, 0.55, 0.6, 0.65, 0.7], yFmt: v => v.toFixed(2),
+  xLabel: "relative depth (0 = patch embedding)", yLabel: "membership AUC",
+  hlines: [{ y: 0.5, label: "chance" }],
+  series: MODELS.map((md, i) => ({ name: md.name, short: md.short, color: md.color, labelDy: i ? 10 : -6,
+    points: DATA.exp1[md.key].depth.map(d => ({ x: d.d, y: d.auc, tip: `${d.site}<br>AUC ${d.auc.toFixed(3)} · honest R² ${d.r2_honest.toFixed(3)}` })) })),
+});
+const twinRows = [
+  ["Direction match\ncos(decoded, true)", "cos"],
+  ["Drift recovered\nshare of true drift", "drift_recovered"],
+  ["Read as impulse change\nper unit of drift", "impulse_change_rel"],
+  ["Tangential\nper unit of drift", "tangential_rel"],
+];
+dotChart("fig-twin", {
+  aria: "Decoded twin difference statistics with intervals",
+  x: [-0.1, 0.7], ticks: [-0.1, 0, 0.2, 0.4, 0.6], refs: [{ x: 0, label: "none" }],
+  rows: twinRows.map(([label, k]) => ({ label: label, items: MODELS.map(md => {
+    const v = DATA.exp1[md.key].twin[k];
+    return { model: md.key, est: v.median, lo: v.ci95[0], hi: v.ci95[1], tip: `median ${f3(v.median)} [${f3(v.ci95[0])}, ${f3(v.ci95[1])}]` };
+  }) })),
+});
+
+// Part A table
+(function () {
+  const t = document.getElementById("tab-a");
+  const cell = (o, s, p) => `<td class="${p <= 0.01 ? "sig" : ""}">${o.toFixed(3)} / ${s.toFixed(3)}</td>`;
+  let h = `<caption>Part A, every truncation: observed / shuffled</caption><thead><tr><th>Model · k</th><th>R²</th><th>On-line</th><th>Tangential</th><th>Drift</th><th>corr(e)</th><th>Twin Δ</th></tr></thead><tbody>`;
+  MODELS.forEach(md => DATA.exp1[md.key].rungs.forEach(r => {
+    h += `<tr class="${r.k === 20 ? "contact" : ""}"><td>${md.short} · k = ${r.k}${r.k <= 20 ? " (pre)" : ""}</td><td>${r.r2.toFixed(3)}</td>` +
+      cell(r.online, r.online_sh, r.online_p) + cell(r.tang, r.tang_sh, r.tang_p) + cell(r.drift, r.drift_sh, r.drift_p) +
+      `<td>${f3(r.corr_e)}</td><td class="dim">${(100 * r.twin).toFixed(1)}%</td></tr>`;
+  }));
+  t.innerHTML = h + "</tbody>";
+})();
+
+// Part B table
+(function () {
+  const t = document.getElementById("tab-b");
+  const g = DATA.exp1["videomaev2-giant"], v = DATA.exp1["vjepa2-vitl"];
+  const pr = d => `${d.pos}/${d.n}, p = ${fp(d.p)}`;
+  const rows = [
+    ["Readout cell (selected on honest R²)", g.best_cell, v.best_cell],
+    ["Honest R² / violating outcomes R²", `${g.r2_honest.toFixed(3)} / ${g.r2_viol.toFixed(3)}`, `${v.r2_honest.toFixed(3)} / ${v.r2_viol.toFixed(3)}`],
+    ["AUC, true outcome (ceiling)", g.true.auc.toFixed(3), v.true.auc.toFixed(3)],
+    ["<b>AUC, decoded outcome, true masses</b>", `<b>${g.dec.auc.toFixed(3)}</b>`, `<b>${v.dec.auc.toFixed(3)}</b>`],
+    ["Paired: violating twin further off", pr(g.dec), pr(v.dec)],
+    ["AUC, decoded outcome, model's own masses", `${g.dec_m.auc.toFixed(3)} (${g.dec_m.pos}/${g.dec_m.n})`, `${v.dec_m.auc.toFixed(3)} (${v.dec_m.pos}/${v.dec_m.n})`],
+    ["AUC, true outcome, model's own masses", g.true_dec_m.auc.toFixed(3), v.true_dec_m.auc.toFixed(3)],
+    ["Mass readout R² (log m_A, log m_B)", `${g.mass_r2.toFixed(3)}`, `${v.mass_r2.toFixed(3)}`],
+    ["Expectation gap vs k = 20 prediction: AUC", `${g.gap.auc.toFixed(3)} (${g.gap.paired.positive}/${g.gap.paired.n}, p = ${fp(g.gap.paired.p_one_sided)})`, `${v.gap.auc.toFixed(3)} (${v.gap.paired.positive}/${v.gap.paired.n}, p = ${fp(v.gap.paired.p_one_sided)})`],
+    ["Twin activation Δ in outcome-readout span", `${g.span.ratio_to_null.toFixed(1)}× random, p = ${g.span.p.toFixed(3)}`, `${v.span.ratio_to_null.toFixed(1)}× random, p = ${v.span.p.toFixed(3)}`],
+  ];
+  t.innerHTML = `<caption>Part B: violating vs honest, full clips</caption><thead><tr><th>Measure</th><th>VideoMAEv2-giant</th><th>V-JEPA2-L</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + "</tbody>";
+})();
+
+(function () {
+  const t = document.getElementById("tab-cells");
+  const names = { elastic_mixed: "Elastic, mixed materials", elastic_same: "Elastic, same material", inelastic_mixed: "Inelastic, mixed materials", inelastic_same: "Inelastic, same material" };
+  let h = `<caption>Part B by cell: decoded outcome with the model's own masses</caption><thead><tr><th>Cell</th><th>Pairs</th><th>giant AUC</th><th>giant paired</th><th>V-JEPA2 AUC</th><th>V-JEPA2 paired</th></tr></thead><tbody>`;
+  Object.keys(names).forEach(c => {
+    const a = DATA.exp1["videomaev2-giant"].dec_m.cells[c], b = DATA.exp1["vjepa2-vitl"].dec_m.cells[c];
+    h += `<tr><td>${names[c]}</td><td>${a.n}</td><td>${a.auc.toFixed(3)}</td><td class="${a.p <= 0.01 ? "sig" : ""}">${a.pos}/${a.n}, p = ${fp(a.p)}</td><td>${b.auc.toFixed(3)}</td><td class="${b.p <= 0.01 ? "sig" : ""}">${b.pos}/${b.n}, p = ${fp(b.p)}</td></tr>`;
+  });
+  t.innerHTML = h + "</tbody>";
+})();
+
+// ---------- Experiment 2 ----------
+(function () {
+  const d = DATA.exp2["videomaev2-giant"].design;
+  document.getElementById("tab-design").innerHTML = `<caption>What moves within a group (measured on the labels)</caption>
+    <thead><tr><th>Family</th><th>Δlog μ / Δlog KE</th><th>Δlog v_rel / Δlog KE</th><th>Δlog |p| / Δlog KE</th><th>corr(radius, level)</th><th>corr(#metal, level)</th></tr></thead><tbody>
+    <tr><td>M · both masses × c</td><td>${f3(d.M.slope_log_mu_on_log_ke)}</td><td>${f3(Math.abs(d.M.slope_log_vrel_on_log_ke) < 5e-4 ? 0 : d.M.slope_log_vrel_on_log_ke)}</td><td>${f3(d.M.slope_log_p_on_log_ke)}</td><td>${f2(d.M.corr_within_log_radius_level)}</td><td>${f2(d.M.corr_within_n_metal_level)}</td></tr>
+    <tr><td>S · both speeds × s</td><td>${f3(Math.abs(d.S.slope_log_mu_on_log_ke) < 5e-4 ? 0 : d.S.slope_log_mu_on_log_ke)}</td><td>${f3(d.S.slope_log_vrel_on_log_ke)}</td><td>${f3(d.S.slope_log_p_on_log_ke)}</td><td class="dim">constant</td><td class="dim">constant</td></tr></tbody>`;
+})();
+(function () {
+  const g = DATA.exp2["videomaev2-giant"], v = DATA.exp2["vjepa2-vitl"];
+  const ci = s => `${f3(s.slope)} [${f3(s.ci95[0])}, ${f3(s.ci95[1])}]`;
+  const rows = [
+    ["Log KE within S: R² (cell)", `${g.within.S.r2.toFixed(3)} (${g.within.S.cell.replace(".resid_post", "")})`, `${v.within.S.r2.toFixed(3)} (${v.within.S.cell.replace(".resid_post", "")})`],
+    ["Log KE within M: R² (cell)", `${g.within.M.r2.toFixed(3)} (${g.within.M.cell.replace(".resid_post", "")})`, `${v.within.M.r2.toFixed(3)} (${v.within.M.cell.replace(".resid_post", "")})`],
+    ["Patch embedding, best R² S / M", `${g.within.S.embed.toFixed(2)} / ${g.within.M.embed.toFixed(2)}`, `${v.within.S.embed.toFixed(2)} / ${v.within.M.embed.toFixed(2)}`],
+    ["<b>Within-M slope, only μ moves</b>", `<b>${ci(g.rm.within)}</b>`, `<b>${ci(v.rm.within)}</b>`],
+    ["Same, material count held fixed", ci(g.rm.within_partial_appearance), ci(v.rm.within_partial_appearance)],
+    ["Log μ readout, within-M slope", f3(g.rm.mu_readout_within.slope), f3(v.rm.mu_readout_within.slope)],
+  ];
+  document.getElementById("tab-within").innerHTML = `<caption>Within a route: KE reads at ceiling, including when only the reduced mass moves</caption><thead><tr><th>Measure</th><th>VideoMAEv2-giant</th><th>V-JEPA2-L</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + "</tbody>";
+})();
+
+function transferRows(dir) {
+  const spec = [
+    ["Raw transfer\nnot a test (identity)", t => ({ s: t.raw.slope, lo: t.raw.ci95[0], hi: t.raw.ci95[1] })],
+    ["μ and v_rel composed\nwhat the identity gives", t => ({ s: t.composed.slope, lo: t.composed.ci95[0], hi: t.composed.ci95[1] })],
+    ["Route-calibrated\nthe test", t => ({ s: t.boot.median, lo: t.boot.ci95[0], hi: t.boot.ci95[1] })],
+  ];
+  if (dir === "S->M") spec.push(["Route-calibrated\nmaterial held fixed", t => ({ s: t.route_partial.slope, lo: t.route_partial.ci95[0], hi: t.route_partial.ci95[1] })]);
+  spec.push(["Same-route ceiling\nsplit-half, own family", t => ({ s: t.ceiling.slope, lo: t.ceiling.ci95[0], hi: t.ceiling.ci95[1] })]);
+  return spec.map(([label, fn]) => ({ label: label, items: MODELS.map(md => {
+    const r = fn(DATA.exp2[md.key].transfer[dir]);
+    return { model: md.key, est: r.s, lo: r.lo, hi: r.hi, tip: `slope ${f3(r.s)} [${f3(r.lo)}, ${f3(r.hi)}]` };
+  }) }));
+}
+dotChart("fig-sm", { aria: "Transfer slopes, speed to mass", x: [-0.4, 2.15], ticks: [0, 0.5, 1, 1.5, 2],
+  refs: [{ x: 0, label: "speed" }, { x: 1, label: "energy" }, { x: 2, label: "momentum" }], rows: transferRows("S->M") });
+dotChart("fig-ms", { aria: "Transfer slopes, mass to speed", x: [-0.4, 2.15], ticks: [0, 0.5, 1, 1.5, 2],
+  refs: [{ x: 0, label: "mass" }, { x: 0.5, label: "momentum" }, { x: 1, label: "energy" }], rows: transferRows("M->S") });
+
+function curve(dir, id, title) {
+  lineChart(id, {
+    width: 560, height: 290, margin: { r: 70, t: 30 },
+    aria: "Route-calibrated slope across depth, " + title,
+    x: [0, 1], y: [-1.2, 1.2], xTicks: [0, 0.25, 0.5, 0.75, 1], yTicks: [-1, -0.5, 0, 0.5, 1], yFmt: v => (v > 0 ? "+" : "") + v,
+    xLabel: "relative depth", yLabel: title,
+    hlines: [{ y: 1, label: "energy" }, { y: 0, label: dir === "S->M" ? "speed" : "mass" }],
+    series: MODELS.map((md, i) => {
+      const c = DATA.exp2[md.key].transfer[dir].curve, sites = Object.keys(c);
+      return { name: md.name, short: md.short, color: md.color, endLabel: false,
+        points: sites.map((s, j) => ({ x: j / (sites.length - 1), y: c[s], tip: `${s}<br>slope ${f3(c[s])}` })) };
+    }),
+  });
+}
+curve("S->M", "fig-curve-sm", "speed-calibrated → mass");
+curve("M->S", "fig-curve-ms", "mass-calibrated → speed");
+
+(function () {
+  const ci = (s, lo, hi) => `${f3(s)} [${f3(lo)}, ${f3(hi)}]`;
+  let h = `<caption>Cross-route transfer, every check</caption><thead><tr><th>Direction · model</th><th>Raw</th><th>Composed μ + v_rel</th><th>Route-calibrated (source refit)</th><th>Blocks, depth ≥ 0.25: median [IQR]</th><th>Ceiling</th><th>Gate</th></tr></thead><tbody>`;
+  [["S->M", "S → M", "mass_S->M"], ["M->S", "M → S", "speed_M->S"]].forEach(([dir, lab, gate]) => MODELS.forEach(md => {
+    const t = DATA.exp2[md.key].transfer[dir], gt = DATA.exp2[md.key].gates[gate];
+    h += `<tr><td>${lab} · ${md.short}</td><td class="dim">${f3(t.raw.slope)}</td><td class="dim">${f3(t.composed.slope)}</td>` +
+      `<td class="sig">${ci(t.boot.median, t.boot.ci95[0], t.boot.ci95[1])}</td><td>${f3(t.deep.median)} [${f3(t.deep.q25)}, ${f3(t.deep.q75)}]</td>` +
+      `<td>${f3(t.ceiling.slope)}</td><td>${f3(gt.slope)}</td></tr>`;
+  }));
+  document.getElementById("tab-transfer").innerHTML = h + "</tbody>";
+})();
+</script>

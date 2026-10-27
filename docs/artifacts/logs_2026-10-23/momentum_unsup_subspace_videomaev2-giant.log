@@ -1,0 +1,15 @@
+[videomaev2-giant] 997 clips, 500 seeds, 41 sites, pools=['A.pre', 'A.post', 'A.all', 'B.pre', 'B.post', 'B.all', 'all.pre', 'all.post', 'all.all'], strata={'elastic': 497, 'inelastic': 500}, arms={'legacy': 997}, dim=1408
+  rungs [10, 14, 17, 19, 20, 22, 25], 41 shared sites, loaded in 2493s
+  497 twin pairs, 500 honest / 497 violating
+  656 cells fit in 2553s
+  k=10    all.post @ block.16.resid_post recon R2 +0.672  r_pa [5, 4, 6, 3, 3]  maha(pa) AUC 0.551 paired 278/497 p=4.6e-03  r0 0.557  eucl(pa) 0.533  PC1~e 0.670  twin-in-U 0.414 (rand 0.054)  grid-max 0.604 vs null95 0.567
+  k=14    all.post @ block.16.resid_post recon R2 +0.689  r_pa [6, 4, 2, 2, 5]  maha(pa) AUC 0.554 paired 290/497 p=1.1e-04  r0 0.561  eucl(pa) 0.534  PC1~e 0.592  twin-in-U 0.404 (rand 0.054)  grid-max 0.614 vs null95 0.571
+  k=17    all.post @ block.16.resid_post recon R2 +0.700  r_pa [6, 4, 5, 2, 6]  maha(pa) AUC 0.558 paired 292/497 p=5.5e-05  r0 0.565  eucl(pa) 0.535  PC1~e 0.775  twin-in-U 0.457 (rand 0.071)  grid-max 0.610 vs null95 0.568
+  k=19    all.post @ block.14.resid_post recon R2 +0.708  r_pa [1, 5, 1, 2, 5]  maha(pa) AUC 0.547 paired 283/497 p=1.1e-03  r0 0.553  eucl(pa) 0.536  PC1~e 0.632  twin-in-U 0.224 (rand 0.023)  grid-max 0.618 vs null95 0.574
+  k=20    all.post @ block.16.resid_post recon R2 +0.714  r_pa [6, 3, 2, 2, 5]  maha(pa) AUC 0.560 paired 291/497 p=8.0e-05  r0 0.567  eucl(pa) 0.544  PC1~e 0.537  twin-in-U 0.303 (rand 0.039)  grid-max 0.600 vs null95 0.570
+  k=22    all.post @ block.16.resid_post recon R2 +0.745  r_pa [2, 6, 2, 2, 5]  maha(pa) AUC 0.563 paired 299/497 p=3.4e-06  r0 0.569  eucl(pa) 0.554  PC1~e 0.659  twin-in-U 0.211 (rand 0.023)  grid-max 0.620 vs null95 0.572
+  k=25    all.post @ block.16.resid_post recon R2 +0.783  r_pa [2, 5, 6, 5, 5]  maha(pa) AUC 0.561 paired 300/497 p=2.2e-06  r0 0.564  eucl(pa) 0.556  PC1~e 0.541  twin-in-U 0.404 (rand 0.071)  grid-max 0.604 vs null95 0.569
+  UNCOND  A.post+B.post @ embed.out    recon R2 +0.000  r_pa [0, 0, 0, 0, 0]  maha(pa) AUC 0.533 paired 267/497 p=5.3e-02  r0 0.533  eucl(pa) 0.488  PC1~e 0.545  twin-in-U 0.006 (rand 0.007)  grid-max 0.592 vs null95 0.575
+
+artifact -> /workspace/meta/physics_interp_video_diffusion/docs/artifacts/momentum_unsup_subspace_videomaev2-giant.json
+  total 2568s

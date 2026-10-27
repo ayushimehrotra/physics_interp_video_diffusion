@@ -1,0 +1,18 @@
+[vjepa2-vitl] 1000 clips, 200 seeds, 25 sites, pools=['A.pre', 'A.post', 'A.all', 'B.pre', 'B.post', 'B.all', 'all.pre', 'all.post', 'all.all'], strata={'elastic': 1000, 'inelastic': 0}, arms={'legacy': 1000}, dim=1024
+  design M: dlog mu/dlogKE 1.000  dlog v_rel/dlogKE -0.000  dlog|p|/dlogKE 1.000  corr(radius, level) +0.044  corr(#metal, level) +0.765
+  design S: dlog mu/dlogKE 0.000  dlog v_rel/dlogKE 0.500  dlog|p|/dlogKE 0.500  corr(radius, level) +nan  corr(#metal, level) +nan
+  within S: best all.all @ block.15.resid_post  R2 0.990  within-group slope 0.987 [0.969, 1.003] corr 0.993 p 0.0005
+  within M: best all.all @ block.15.resid_post  R2 0.987  within-group slope 0.997 [0.980, 1.012] corr 0.991 p 0.0005
+  reduced-mass readout (M, cell from S): slope 0.997 [0.980, 1.012] p 0.0005;  partial on appearance 0.987 [0.960, 1.012];  log mu itself 0.994
+  transfer S->M @ all.all block.15.resid_post:
+      raw 0.979 [0.961, 0.996]   K_rel raw 1.005 vs composed from mu, v_rel 0.996  (identity check)
+      ROUTE-CALIBRATED -0.111 [-0.141, -0.078] p 1.0000  ceiling 0.974 [0.958, 0.990]  -> -0.11 of ceiling, nearest code 'speed'  expected {'energy': 1.0, 'momentum': 2.0, 'speed': 0.0}
+      source-refit bootstrap -0.069 [-0.273, 0.157]   over blocks (depth>=0.25): median -0.052 IQR [-0.149, 0.085]  max 0.970
+  transfer M->S @ all.all block.15.resid_post:
+      raw 0.982 [0.962, 1.002]   K_rel raw 0.979 vs composed from mu, v_rel 0.979  (identity check)
+      ROUTE-CALIBRATED 0.169 [0.159, 0.178] p 0.0005  ceiling 0.990 [0.979, 1.002]  -> 0.17 of ceiling, nearest code 'mass'  expected {'energy': 1.0, 'momentum': 0.5, 'mass': 0.0}
+      source-refit bootstrap 0.196 [0.150, 0.255]   over blocks (depth>=0.25): median 0.158 IQR [0.106, 0.187]  max 0.237
+  gate mass_S->M: within-group slope 0.975 [0.965, 0.984] p 0.0005
+  gate speed_M->S: within-group slope 0.964 [0.925, 0.998] p 0.0005
+
+artifact -> /root/results/ke_reduced_mass_vjepa2-vitl.json

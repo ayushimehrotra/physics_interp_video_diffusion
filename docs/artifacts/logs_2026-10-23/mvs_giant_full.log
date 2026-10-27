@@ -1,0 +1,23 @@
+[videomaev2-giant] PART A — valid subspace from pre-collision rungs (/root/out/outputs_construnc_videomaev2-giant/activations)
+  k=10 n=997 best A.all+B.all @ block.22.resid_post R2 0.636 (ceiling w/o e 0.930)  on-line 0.792 [shuffled 0.831, p 1.000]  tang 0.316 [0.260]  rel-drift 0.916 [1.033]  corr(e_impl,e) +0.086  twin diff 4.2e-03  (35s)
+  k=14 n=997 best A.all+B.all @ block.17.resid_post R2 0.658 (ceiling w/o e 0.930)  on-line 0.818 [shuffled 0.830, p 0.861]  tang 0.286 [0.254]  rel-drift 0.867 [1.036]  corr(e_impl,e) +0.036  twin diff 1.7e-03  (34s)
+  k=17 n=997 best A.all+B.all @ block.17.resid_post R2 0.665 (ceiling w/o e 0.930)  on-line 0.800 [shuffled 0.825, p 0.975]  tang 0.285 [0.258]  rel-drift 0.859 [1.070]  corr(e_impl,e) +0.046  twin diff 1.4e-03  (34s)
+  k=19 n=997 best A.all+B.all @ block.17.resid_post R2 0.675 (ceiling w/o e 0.930)  on-line 0.821 [shuffled 0.820, p 0.478]  tang 0.276 [0.266]  rel-drift 0.935 [1.068]  corr(e_impl,e) +0.028  twin diff 1.4e-03  (33s)
+  k=20 n=997 best A.all+B.all @ block.17.resid_post R2 0.684 (ceiling w/o e 0.930)  on-line 0.835 [shuffled 0.827, p 0.219]  tang 0.237 [0.247]  rel-drift 0.921 [1.060]  corr(e_impl,e) +0.036  twin diff 1.8e-03  (34s)
+  k=22 n=997 best A.all+B.all @ block.22.resid_post R2 0.769 (ceiling w/o e 0.930)  on-line 0.880 [shuffled 0.861, p 0.020]  tang 0.178 [0.206]  rel-drift 0.833 [1.025]  corr(e_impl,e) +0.252  twin diff 6.4e-02  (37s)
+  k=25 n=997 best A.all+B.all @ block.17.resid_post R2 0.837 (ceiling w/o e 0.930)  on-line 0.915 [shuffled 0.892, p 0.005]  tang 0.149 [0.163]  rel-drift 0.750 [0.934]  corr(e_impl,e) +0.430  twin diff 7.9e-02  (37s)
+  k=30 n=997 best A.all+B.all @ block.18.resid_post R2 0.878 (ceiling w/o e 0.930)  on-line 0.930 [shuffled 0.913, p 0.005]  tang 0.114 [0.129]  rel-drift 0.743 [0.853]  corr(e_impl,e) +0.619  twin diff 1.2e-01  (37s)
+  k=38 n=997 best A.all+B.all @ block.18.resid_post R2 0.907 (ceiling w/o e 0.930)  on-line 0.943 [shuffled 0.933, p 0.010]  tang 0.091 [0.104]  rel-drift 0.718 [0.777]  corr(e_impl,e) +0.700  twin diff 2.0e-01  (36s)
+  k=48 n=997 best A.all+B.all @ block.18.resid_post R2 0.892 (ceiling w/o e 0.930)  on-line 0.934 [shuffled 0.926, p 0.020]  tang 0.107 [0.119]  rel-drift 0.724 [0.803]  corr(e_impl,e) +0.637  twin diff 2.7e-01  (37s)
+[videomaev2-giant] PART B — violating deviation on full clips (/root/out/outputs_cons_videomaev2-giant/momentum_probe/activations)
+  997 clips, 500 seeds, 41 sites, pools=['A.pre', 'A.post', 'A.all', 'B.pre', 'B.post', 'B.all', 'all.pre', 'all.post', 'all.all'], strata={'elastic': 497, 'inelastic': 500}, arms={'legacy': 997}, dim=1408
+  497 twin pairs
+
+artifact -> /root/results/momentum_valid_subspace_videomaev2-giant.json
+
+  best A.post+B.post @ block.26.resid_post  R2 honest 0.856  violating-observed 0.826
+  membership AUC 0.628  paired 330/497 p=1.1e-13  (true-outcome ceiling 1.000)
+  model-only (decoded masses, R2 0.988 @ A.all+B.all @ block.21.resid_post): AUC 0.629 paired 331/497 p=5.7e-14; true outcome + decoded masses AUC 0.959
+  twin diff: cos +0.613  along +0.486  drift recovered +0.489  impulse change -0.002
+  expectation gap vs k=20: AUC 0.536  paired 288/497 p=0.00023
+  twin activation diff in outcome-readout span: 2.58e-03 vs null 1.20e-03 (x2.2, p=0.005)

@@ -1,0 +1,23 @@
+[vjepa2-vitl] PART A — valid subspace from pre-collision rungs (/root/out/outputs_construnc_vjepa2-vitl/activations)
+  k=10 n=997 best A.all+B.all @ block.14.resid_post R2 0.658 (ceiling w/o e 0.930)  on-line 0.815 [shuffled 0.847, p 1.000]  tang 0.301 [0.244]  rel-drift 0.774 [0.978]  corr(e_impl,e) +0.089  twin diff 9.7e-04  (22s)
+  k=14 n=997 best A.all+B.all @ block.23.resid_post R2 0.678 (ceiling w/o e 0.930)  on-line 0.824 [shuffled 0.831, p 0.726]  tang 0.274 [0.259]  rel-drift 0.855 [1.032]  corr(e_impl,e) +0.011  twin diff 7.3e-03  (21s)
+  k=17 n=997 best A.all+B.all @ block.16.resid_post R2 0.685 (ceiling w/o e 0.930)  on-line 0.845 [shuffled 0.836, p 0.194]  tang 0.245 [0.251]  rel-drift 0.848 [1.021]  corr(e_impl,e) -0.021  twin diff 2.0e-03  (20s)
+  k=19 n=997 best A.all+B.all @ block.21.resid_post R2 0.709 (ceiling w/o e 0.930)  on-line 0.868 [shuffled 0.838, p 0.005]  tang 0.193 [0.242]  rel-drift 0.805 [1.023]  corr(e_impl,e) +0.029  twin diff 3.4e-03  (21s)
+  k=20 n=997 best A.all+B.all @ block.21.resid_post R2 0.710 (ceiling w/o e 0.930)  on-line 0.875 [shuffled 0.839, p 0.005]  tang 0.192 [0.237]  rel-drift 0.843 [1.028]  corr(e_impl,e) +0.029  twin diff 3.4e-03  (22s)
+  k=22 n=997 best A.all+B.all @ block.21.resid_post R2 0.758 (ceiling w/o e 0.930)  on-line 0.888 [shuffled 0.858, p 0.005]  tang 0.173 [0.211]  rel-drift 0.789 [0.993]  corr(e_impl,e) +0.095  twin diff 5.5e-02  (22s)
+  k=25 n=997 best A.all+B.all @ block.21.resid_post R2 0.830 (ceiling w/o e 0.930)  on-line 0.920 [shuffled 0.889, p 0.005]  tang 0.138 [0.175]  rel-drift 0.778 [0.914]  corr(e_impl,e) +0.314  twin diff 7.6e-02  (21s)
+  k=30 n=997 best A.all+B.all @ block.16.resid_post R2 0.880 (ceiling w/o e 0.930)  on-line 0.932 [shuffled 0.916, p 0.010]  tang 0.114 [0.127]  rel-drift 0.762 [0.857]  corr(e_impl,e) +0.539  twin diff 6.7e-02  (23s)
+  k=38 n=997 best A.all+B.all @ block.16.resid_post R2 0.898 (ceiling w/o e 0.930)  on-line 0.930 [shuffled 0.922, p 0.045]  tang 0.083 [0.101]  rel-drift 0.792 [0.864]  corr(e_impl,e) +0.720  twin diff 1.1e-01  (23s)
+  k=48 n=997 best A.all+B.all @ block.16.resid_post R2 0.900 (ceiling w/o e 0.930)  on-line 0.937 [shuffled 0.926, p 0.005]  tang 0.103 [0.111]  rel-drift 0.765 [0.806]  corr(e_impl,e) +0.773  twin diff 1.4e-01  (22s)
+[vjepa2-vitl] PART B — violating deviation on full clips (/root/out/outputs_cons_vjepa2-vitl/momentum_probe/activations)
+  997 clips, 500 seeds, 25 sites, pools=['A.pre', 'A.post', 'A.all', 'B.pre', 'B.post', 'B.all', 'all.pre', 'all.post', 'all.all'], strata={'elastic': 497, 'inelastic': 500}, arms={'legacy': 997}, dim=1024
+  497 twin pairs
+
+artifact -> /root/results/momentum_valid_subspace_vjepa2-vitl.json
+
+  best A.post+B.post @ block.16.resid_post  R2 honest 0.833  violating-observed 0.776
+  membership AUC 0.575  paired 309/497 p=3.2e-08  (true-outcome ceiling 1.000)
+  model-only (decoded masses, R2 0.992 @ A.all+B.all @ block.10.resid_post): AUC 0.576 paired 310/497 p=1.9e-08; true outcome + decoded masses AUC 0.975
+  twin diff: cos +0.563  along +0.373  drift recovered +0.351  impulse change +0.002
+  expectation gap vs k=20: AUC 0.509  paired 258/497 p=0.21
+  twin activation diff in outcome-readout span: 2.64e-03 vs null 1.66e-03 (x1.6, p=0.005)
