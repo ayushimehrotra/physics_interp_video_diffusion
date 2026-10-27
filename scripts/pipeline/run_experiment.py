@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -287,7 +288,12 @@ def run_capture(cfg, args, info) -> int:
                 payload["meta"] = np.frombuffer(
                     json.dumps(meta, default=str).encode(), dtype=np.uint8
                 )
-                np.savez_compressed(out_root / f"{scene.name}.npz", **payload)
+                # Write then rename: resume skips any existing .npz, so a write
+                # killed midway must never leave one behind.
+                part = out_root / f"{scene.name}.npz.partial"
+                with open(part, "wb") as fh:
+                    np.savez_compressed(fh, **payload)
+                os.replace(part, out_root / f"{scene.name}.npz")
                 info.log(f"    -> {out_root / (scene.name + '.npz')}")
             except Exception:
                 failures.append((scene.name, traceback.format_exc()))
