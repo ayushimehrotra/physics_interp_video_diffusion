@@ -11,8 +11,11 @@ reference, and its correlation with the cross-seed cosine of the scenes'
 physical legal directions. Q3 boundary — the nearest impossible arm's residual
 from a line through the legal arms against a held-out legal arm's. §56h b —
 is the PC2 score a smooth function of e: leave-one-out R^2 of a quadratic over
-the legal arms, against a permutation null. Restitution is read from
-restitution_realised throughout.
+the legal arms, against a permutation null. §56i — the population centroid
+curve: centre each seed on its legal arms, average across seeds per e, and ask
+whether the centroids survive the averaging (retention vs 1/sqrt(S)) and predict
+a held-out seed's residuals (LOSO R^2, raw / line / cubic in e), against an
+e-shuffled-within-seed null. Restitution is read from restitution_realised throughout.
 """
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))  # noqa: E401,E702
 import _momentum_path  # noqa: F401
@@ -79,6 +82,57 @@ def boundary(X, e):
             "e_heldout": float(e[held]), "e_impossible": float(e[near])}
 
 
+def _population_stats(R, e):
+    """R [S, E, d] seed-centred residuals on a shared e grid. Retention: |centroid| over the
+    rms per-seed residual, ~1/sqrt(S) if the seeds' e-offsets point in unrelated directions.
+    LOSO R^2: a held-out seed's residuals predicted by the other seeds' centroids, raw and
+    through a degree-1 and degree-3 curve in e."""
+    S = len(R)
+    cen = R.mean(0)
+    retention = float(np.mean(np.linalg.norm(cen, axis=1) / np.sqrt((R ** 2).sum(2).mean(0))))
+    tot = float((R ** 2).sum())
+    res = {"raw": 0.0, "line": 0.0, "cubic": 0.0}
+    for s in range(S):
+        c = (cen * S - R[s]) / (S - 1)
+        res["raw"] += float(((R[s] - c) ** 2).sum())
+        for name, deg in (("line", 1), ("cubic", 3)):
+            res[name] += float(((R[s] - eval_curve(polyfit_curve(e, c, deg), e)) ** 2).sum())
+    return retention, {k: 1 - v / tot for k, v in res.items()}
+
+
+def population_curve(X, lads, valid, rng, draws):
+    """§56i — the mentor's centroid design. Legal arms only, so every seed shares one e grid
+    and the seed mean is the same mixture of arms; null shuffles e within each seed."""
+    grids = [np.round(L.e[L.e <= 1 + 1e-9], 2) for L in lads if valid[L.idx].all()]
+    if not grids:
+        return None
+    common = sorted(set.intersection(*(set(g) for g in grids)))
+    if len(common) < 4:
+        return None
+    R = []
+    for L in lads:
+        if not valid[L.idx].all():
+            continue
+        er = np.round(L.e, 2)
+        rows = [L.idx[np.flatnonzero(er == c)[0]] for c in common]
+        Xs = X[rows].astype(np.float64)
+        R.append(Xs - Xs.mean(0))
+    R = np.stack(R)
+    e = np.array(common)
+    ret, r2 = _population_stats(R, e)
+    null_ret, null_r2 = [], []
+    for _ in range(draws):
+        Rp = np.stack([r[rng.permutation(len(e))] for r in R])
+        a, b = _population_stats(Rp, e)
+        null_ret.append(a)
+        null_r2.append(b["cubic"])
+    return {"n_seeds": len(R), "e_grid": common, "retention": ret,
+            "retention_null_median": float(np.median(null_ret)), "retention_iid_reference": 1 / np.sqrt(len(R)),
+            "p_retention": float((1 + np.sum(np.array(null_ret) >= ret)) / (1 + draws)),
+            "loso_r2": r2, "loso_r2_cubic_null_median": float(np.median(null_r2)),
+            "p_loso_cubic": float((1 + np.sum(np.array(null_r2) >= r2["cubic"])) / (1 + draws))}
+
+
 def main():
     p = cli.base_parser(__doc__, site=False)
     p.set_defaults(pools=["all.post"])
@@ -143,15 +197,21 @@ def main():
                     "pc2_loo_r2_null_median": float(np.median(loo_null)) if loo_null else float("nan"),
                     "pc2_loo_frac_seeds_positive": float(np.mean(np.array(loo) > 0)) if loo else float("nan"),
                     "pc2_loo_frac_seeds_above_null": float(np.mean(np.array(loo) > np.array(loo_null))) if loo else float("nan"),
+                    "population": population_curve(X, lads, valid, rng, max(args.null_draws // 2, 20)),
                 }
                 rows.append(row)
+                pop = row["population"] or {}
                 la = row["legal_arms"] or {}
                 print(f"  {site:24s} {row['all_arms']['participation_ratio']:6.2f} {la.get('participation_ratio', float('nan')):6.2f} "
                       f"{row['all_arms']['spearman_pc1_e']:5.2f} {row['all_arms']['offline_residual']:7.2f} "
                       f"{row['cross_seed_abs_cos']:10.3f} {row['cross_seed_over_null']:6.1f} "
                       f"{row['corr_with_physical_direction_cos']:+9.2f} "
                       f"{(row['q3_boundary'] or {}).get('gap', float('nan')):+7.2f} "
-                      f"{row['pc2_loo_r2_median']:10.2f} {row['pc2_loo_frac_seeds_above_null']:5.2f}")
+                      f"{row['pc2_loo_r2_median']:10.2f} {row['pc2_loo_frac_seeds_above_null']:5.2f}"
+                      + (f"  | pop ret {pop['retention']:.3f} (null {pop['retention_null_median']:.3f}, p {pop['p_retention']:.3f})"
+                         f" LOSO R2 raw/line/cubic {pop['loso_r2']['raw']:+.3f}/{pop['loso_r2']['line']:+.3f}/"
+                         f"{pop['loso_r2']['cubic']:+.3f} (null {pop['loso_r2_cubic_null_median']:+.3f}, p {pop['p_loso_cubic']:.3f})"
+                         if pop else ""))
             rec["pools"][pool] = rows
         out["models"][name] = rec
     cli.write_artifact(out, args.out, "elasticity_manifold.json")

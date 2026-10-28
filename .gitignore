@@ -33,3 +33,5 @@ datasets/*/*_seed*/
 datasets/*/*.npz
 # Rendered clips in the KE factor set (named <family><group>_k<level>, e.g. M000_k+0)
 datasets/*/[MS][0-9][0-9][0-9]_k*/
+# Rendered clips in the restitution ladders (named s<seed>_<arm>, e.g. s09500_e0.5)
+datasets/*/s[0-9][0-9][0-9][0-9][0-9]_*/

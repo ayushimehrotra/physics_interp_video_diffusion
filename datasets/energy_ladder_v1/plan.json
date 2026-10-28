@@ -1,0 +1,3708 @@
+{
+ "set": "energy_ladder_v1",
+ "kind": "ladder",
+ "seed_offset": 9500,
+ "jobs": [
+  {
+   "clip_id": "s09500_e0.2",
+   "seed": 9500,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09500_e0.3333",
+   "seed": 9500,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09500_e0.5",
+   "seed": 9500,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09500_e0.6667",
+   "seed": 9500,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09500_e0.8",
+   "seed": 9500,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09500_honest",
+   "seed": 9500,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09500_e1.25",
+   "seed": 9500,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09500_e1.5",
+   "seed": 9500,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09500_e2",
+   "seed": 9500,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09500_e3",
+   "seed": 9500,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09500_e5",
+   "seed": 9500,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9500",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09501_e0.2",
+   "seed": 9501,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09501_e0.3333",
+   "seed": 9501,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09501_e0.5",
+   "seed": 9501,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09501_e0.6667",
+   "seed": 9501,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09501_e0.8",
+   "seed": 9501,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09501_honest",
+   "seed": 9501,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09501_e1.25",
+   "seed": 9501,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09501_e1.5",
+   "seed": 9501,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09501_e2",
+   "seed": 9501,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09501_e3",
+   "seed": 9501,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09501_e5",
+   "seed": 9501,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9501",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09502_e0.2",
+   "seed": 9502,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09502_e0.3333",
+   "seed": 9502,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09502_e0.5",
+   "seed": 9502,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09502_e0.6667",
+   "seed": 9502,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09502_e0.8",
+   "seed": 9502,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09502_honest",
+   "seed": 9502,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09502_e1.25",
+   "seed": 9502,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09502_e1.5",
+   "seed": 9502,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09502_e2",
+   "seed": 9502,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09502_e3",
+   "seed": 9502,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09502_e5",
+   "seed": 9502,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9502",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09503_e0.2",
+   "seed": 9503,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09503_e0.3333",
+   "seed": 9503,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09503_e0.5",
+   "seed": 9503,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09503_e0.6667",
+   "seed": 9503,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09503_e0.8",
+   "seed": 9503,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09503_honest",
+   "seed": 9503,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09503_e1.25",
+   "seed": 9503,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09503_e1.5",
+   "seed": 9503,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09503_e2",
+   "seed": 9503,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09503_e3",
+   "seed": 9503,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09503_e5",
+   "seed": 9503,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9503",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09504_e0.2",
+   "seed": 9504,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09504_e0.3333",
+   "seed": 9504,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09504_e0.5",
+   "seed": 9504,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09504_e0.6667",
+   "seed": 9504,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09504_e0.8",
+   "seed": 9504,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09504_honest",
+   "seed": 9504,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09504_e1.25",
+   "seed": 9504,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09504_e1.5",
+   "seed": 9504,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09504_e2",
+   "seed": 9504,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09504_e3",
+   "seed": 9504,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09504_e5",
+   "seed": 9504,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9504",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09505_e0.2",
+   "seed": 9505,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09505_e0.3333",
+   "seed": 9505,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09505_e0.5",
+   "seed": 9505,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09505_e0.6667",
+   "seed": 9505,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09505_e0.8",
+   "seed": 9505,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09505_honest",
+   "seed": 9505,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09505_e1.25",
+   "seed": 9505,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09505_e1.5",
+   "seed": 9505,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09505_e2",
+   "seed": 9505,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09505_e3",
+   "seed": 9505,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09505_e5",
+   "seed": 9505,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9505",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09506_e0.2",
+   "seed": 9506,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09506_e0.3333",
+   "seed": 9506,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09506_e0.5",
+   "seed": 9506,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09506_e0.6667",
+   "seed": 9506,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09506_e0.8",
+   "seed": 9506,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09506_honest",
+   "seed": 9506,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09506_e1.25",
+   "seed": 9506,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09506_e1.5",
+   "seed": 9506,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09506_e2",
+   "seed": 9506,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09506_e3",
+   "seed": 9506,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09506_e5",
+   "seed": 9506,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9506",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09507_e0.2",
+   "seed": 9507,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09507_e0.3333",
+   "seed": 9507,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09507_e0.5",
+   "seed": 9507,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09507_e0.6667",
+   "seed": 9507,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09507_e0.8",
+   "seed": 9507,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09507_honest",
+   "seed": 9507,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09507_e1.25",
+   "seed": 9507,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09507_e1.5",
+   "seed": 9507,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09507_e2",
+   "seed": 9507,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09507_e3",
+   "seed": 9507,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09507_e5",
+   "seed": 9507,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9507",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09508_e0.2",
+   "seed": 9508,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09508_e0.3333",
+   "seed": 9508,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09508_e0.5",
+   "seed": 9508,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09508_e0.6667",
+   "seed": 9508,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09508_e0.8",
+   "seed": 9508,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09508_honest",
+   "seed": 9508,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09508_e1.25",
+   "seed": 9508,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09508_e1.5",
+   "seed": 9508,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09508_e2",
+   "seed": 9508,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09508_e3",
+   "seed": 9508,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09508_e5",
+   "seed": 9508,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9508",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09509_e0.2",
+   "seed": 9509,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09509_e0.3333",
+   "seed": 9509,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09509_e0.5",
+   "seed": 9509,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09509_e0.6667",
+   "seed": 9509,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09509_e0.8",
+   "seed": 9509,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09509_honest",
+   "seed": 9509,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09509_e1.25",
+   "seed": 9509,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09509_e1.5",
+   "seed": 9509,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09509_e2",
+   "seed": 9509,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09509_e3",
+   "seed": 9509,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09509_e5",
+   "seed": 9509,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9509",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09510_e0.2",
+   "seed": 9510,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09510_e0.3333",
+   "seed": 9510,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09510_e0.5",
+   "seed": 9510,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09510_e0.6667",
+   "seed": 9510,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09510_e0.8",
+   "seed": 9510,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09510_honest",
+   "seed": 9510,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09510_e1.25",
+   "seed": 9510,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09510_e1.5",
+   "seed": 9510,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09510_e2",
+   "seed": 9510,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09510_e3",
+   "seed": 9510,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09510_e5",
+   "seed": 9510,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9510",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09511_e0.2",
+   "seed": 9511,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09511_e0.3333",
+   "seed": 9511,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09511_e0.5",
+   "seed": 9511,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09511_e0.6667",
+   "seed": 9511,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09511_e0.8",
+   "seed": 9511,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09511_honest",
+   "seed": 9511,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09511_e1.25",
+   "seed": 9511,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09511_e1.5",
+   "seed": 9511,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09511_e2",
+   "seed": 9511,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09511_e3",
+   "seed": 9511,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09511_e5",
+   "seed": 9511,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9511",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09512_e0.2",
+   "seed": 9512,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09512_e0.3333",
+   "seed": 9512,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09512_e0.5",
+   "seed": 9512,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09512_e0.6667",
+   "seed": 9512,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09512_e0.8",
+   "seed": 9512,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09512_honest",
+   "seed": 9512,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09512_e1.25",
+   "seed": 9512,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09512_e1.5",
+   "seed": 9512,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09512_e2",
+   "seed": 9512,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09512_e3",
+   "seed": 9512,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09512_e5",
+   "seed": 9512,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9512",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09513_e0.2",
+   "seed": 9513,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09513_e0.3333",
+   "seed": 9513,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09513_e0.5",
+   "seed": 9513,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09513_e0.6667",
+   "seed": 9513,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09513_e0.8",
+   "seed": 9513,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09513_honest",
+   "seed": 9513,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09513_e1.25",
+   "seed": 9513,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09513_e1.5",
+   "seed": 9513,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09513_e2",
+   "seed": 9513,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09513_e3",
+   "seed": 9513,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09513_e5",
+   "seed": 9513,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9513",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09514_e0.2",
+   "seed": 9514,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09514_e0.3333",
+   "seed": 9514,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09514_e0.5",
+   "seed": 9514,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09514_e0.6667",
+   "seed": 9514,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09514_e0.8",
+   "seed": 9514,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09514_honest",
+   "seed": 9514,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09514_e1.25",
+   "seed": 9514,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09514_e1.5",
+   "seed": 9514,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09514_e2",
+   "seed": 9514,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09514_e3",
+   "seed": 9514,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09514_e5",
+   "seed": 9514,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9514",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09515_e0.2",
+   "seed": 9515,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09515_e0.3333",
+   "seed": 9515,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09515_e0.5",
+   "seed": 9515,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09515_e0.6667",
+   "seed": 9515,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09515_e0.8",
+   "seed": 9515,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09515_honest",
+   "seed": 9515,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09515_e1.25",
+   "seed": 9515,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09515_e1.5",
+   "seed": 9515,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09515_e2",
+   "seed": 9515,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09515_e3",
+   "seed": 9515,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09515_e5",
+   "seed": 9515,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9515",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09516_e0.2",
+   "seed": 9516,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09516_e0.3333",
+   "seed": 9516,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09516_e0.5",
+   "seed": 9516,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09516_e0.6667",
+   "seed": 9516,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09516_e0.8",
+   "seed": 9516,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09516_honest",
+   "seed": 9516,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09516_e1.25",
+   "seed": 9516,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09516_e1.5",
+   "seed": 9516,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09516_e2",
+   "seed": 9516,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09516_e3",
+   "seed": 9516,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09516_e5",
+   "seed": 9516,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9516",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09517_e0.2",
+   "seed": 9517,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09517_e0.3333",
+   "seed": 9517,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09517_e0.5",
+   "seed": 9517,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09517_e0.6667",
+   "seed": 9517,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09517_e0.8",
+   "seed": 9517,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09517_honest",
+   "seed": 9517,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09517_e1.25",
+   "seed": 9517,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09517_e1.5",
+   "seed": 9517,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09517_e2",
+   "seed": 9517,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09517_e3",
+   "seed": 9517,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09517_e5",
+   "seed": 9517,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9517",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09518_e0.2",
+   "seed": 9518,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09518_e0.3333",
+   "seed": 9518,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09518_e0.5",
+   "seed": 9518,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09518_e0.6667",
+   "seed": 9518,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09518_e0.8",
+   "seed": 9518,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09518_honest",
+   "seed": 9518,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09518_e1.25",
+   "seed": 9518,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09518_e1.5",
+   "seed": 9518,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09518_e2",
+   "seed": 9518,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09518_e3",
+   "seed": 9518,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09518_e5",
+   "seed": 9518,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9518",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  },
+  {
+   "clip_id": "s09519_e0.2",
+   "seed": 9519,
+   "arm": "e0.2",
+   "restitution": 0.2,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e0.2",
+    "--edit-restitution",
+    "0.2"
+   ]
+  },
+  {
+   "clip_id": "s09519_e0.3333",
+   "seed": 9519,
+   "arm": "e0.3333",
+   "restitution": 0.3333333333333333,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e0.3333",
+    "--edit-restitution",
+    "0.3333333333333333"
+   ]
+  },
+  {
+   "clip_id": "s09519_e0.5",
+   "seed": 9519,
+   "arm": "e0.5",
+   "restitution": 0.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e0.5",
+    "--edit-restitution",
+    "0.5"
+   ]
+  },
+  {
+   "clip_id": "s09519_e0.6667",
+   "seed": 9519,
+   "arm": "e0.6667",
+   "restitution": 0.6666666666666666,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e0.6667",
+    "--edit-restitution",
+    "0.6666666666666666"
+   ]
+  },
+  {
+   "clip_id": "s09519_e0.8",
+   "seed": 9519,
+   "arm": "e0.8",
+   "restitution": 0.8,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e0.8",
+    "--edit-restitution",
+    "0.8"
+   ]
+  },
+  {
+   "clip_id": "s09519_honest",
+   "seed": 9519,
+   "arm": "honest",
+   "restitution": 1.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "honest"
+   ]
+  },
+  {
+   "clip_id": "s09519_e1.25",
+   "seed": 9519,
+   "arm": "e1.25",
+   "restitution": 1.25,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e1.25",
+    "--edit-restitution",
+    "1.25"
+   ]
+  },
+  {
+   "clip_id": "s09519_e1.5",
+   "seed": 9519,
+   "arm": "e1.5",
+   "restitution": 1.5,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e1.5",
+    "--edit-restitution",
+    "1.5"
+   ]
+  },
+  {
+   "clip_id": "s09519_e2",
+   "seed": 9519,
+   "arm": "e2",
+   "restitution": 2.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e2",
+    "--edit-restitution",
+    "2.0"
+   ]
+  },
+  {
+   "clip_id": "s09519_e3",
+   "seed": 9519,
+   "arm": "e3",
+   "restitution": 3.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e3",
+    "--edit-restitution",
+    "3.0"
+   ]
+  },
+  {
+   "clip_id": "s09519_e5",
+   "seed": 9519,
+   "arm": "e5",
+   "restitution": 5.0,
+   "restitution_simulated": 1.0,
+   "args": [
+    "--restitution",
+    "1.0",
+    "--seed-group",
+    "9519",
+    "--arm-tag",
+    "e5",
+    "--edit-restitution",
+    "5.0"
+   ]
+  }
+ ],
+ "chord_position_physics": null
+}
