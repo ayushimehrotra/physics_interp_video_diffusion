@@ -103,22 +103,24 @@ def _population_stats(R, e):
 def population_curve(X, lads, valid, rng, draws):
     """§56i — the mentor's centroid design. Legal arms only, so every seed shares one e grid
     and the seed mean is the same mixture of arms; null shuffles e within each seed."""
-    grids = [np.round(L.e[L.e <= 1 + 1e-9], 2) for L in lads if valid[L.idx].all()]
-    if not grids:
+    # Realised e drifts from the planned arm by up to ~7% in some seeds, so arms are matched by
+    # rank within each seed and placed at the median realised e across seeds.
+    legal = [L for L in lads if valid[L.idx].all()]
+    n = [int((L.e <= 1 + 1e-9).sum()) for L in legal]
+    if not n or max(n) < 4:
         return None
-    common = sorted(set.intersection(*(set(g) for g in grids)))
-    if len(common) < 4:
-        return None
-    R = []
-    for L in lads:
-        if not valid[L.idx].all():
+    k = max(set(n), key=n.count)
+    R, E = [], []
+    for L, m in zip(legal, n):
+        if m != k:
             continue
-        er = np.round(L.e, 2)
-        rows = [L.idx[np.flatnonzero(er == c)[0]] for c in common]
+        rows = L.idx[np.argsort(L.e)[:k]]
+        E.append(np.sort(L.e)[:k])
         Xs = X[rows].astype(np.float64)
         R.append(Xs - Xs.mean(0))
     R = np.stack(R)
-    e = np.array(common)
+    e = np.median(np.stack(E), 0)
+    common = [float(x) for x in e]
     ret, r2 = _population_stats(R, e)
     null_ret, null_r2 = [], []
     for _ in range(draws):

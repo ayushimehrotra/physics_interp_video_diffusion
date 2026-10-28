@@ -178,7 +178,7 @@ def load_clipset(root: str | Path, *, step: int | None = None, sites: Iterable[s
                 if arr.ndim == 3:
                     if step is None:
                         raise ValueError(f"{path.name} has a step axis {arr.shape}; pass step=")
-                    arr = arr[step]
+                    arr = arr[min(step, len(arr) - 1)]   # vae.latent has no noise axis
                 per_site.setdefault(site, []).append(arr.astype(np.float32))
         if pools is None:
             pools = list(meta["pools"])

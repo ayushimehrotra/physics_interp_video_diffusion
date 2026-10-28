@@ -88,28 +88,38 @@ or the code still resolves through the index below.
 | 62 | [`docs/physics/momentum.md`](docs/physics/momentum.md) |
 | 63 | [`docs/physics/kinetic_energy.md`](docs/physics/kinetic_energy.md) |
 | 64 | [`docs/physics/momentum.md`](docs/physics/momentum.md) |
+| 56i | [`docs/physics/elasticity.md`](docs/physics/elasticity.md) |
 | 47–61 | the register (other GPU box) — not in this notebook; see [`docs/register_gap.md`](docs/register_gap.md) |
 
 Nearly every obvious next step has already been tried. Read the relevant file before
 proposing new work — the ones that failed mostly failed for *structural* reasons that no
 amount of engineering fixes.
 
-## RESUME — 2026-10-27 (RTX 4090 pod, stopped mid-capture)
+## RESUME — 2026-10-28 (RTX 4090 pod)
 
-* **CogVideoX-2b single-step-noise capture on `conservation_set_1000` is PAUSED at
-  684/1000** (residuals + region-to-region attention, ~35 s/clip, ~3 h left). After a
-  restart run `bash /workspace/envs/rebuild_envs.sh` (venvs, git dir, HF cache), then
-  re-run the same command; it skips finished clips:
-  ```bash
-  HF_HOME=/root/hf_cache HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python \
-      scripts/pipeline/run_experiment.py configs/momentum_probe.yaml --mode capture \
-      --model cogvideox-2b --inversion-method noise --record-attention \
-      --dataset-dir datasets/conservation_set_1000 -o outputs/consnoise_cogvideox-2b --keep-going
-  ```
-  Three clips fail by design (the truncated seed255/262/264). Then probe |Δp|:
-  `scripts/momentum/delta_p_norm_probe.py --outputs outputs/consnoise_cogvideox-2b`.
-* Branch `refactor-layout` is **not pushed**; the git dir is restored from
-  `/workspace/envs/git-dirs.tar`, so re-tar it before every stop.
+* **§56i — THE POPULATION RESTITUTION CURVE EXISTS ON CogVideoX-2b ONLY IN EARLY BLOCKS,
+  AND IT IS A LINE.** Step 1 of the mentor's manifold-steering plan, on `energy_ladder_v1`
+  (20 seeds x 6 legal + 5 impossible arms, identical pre-contact frames). Centre each seed,
+  average per `e`: blocks 1-6 keep 60-73% of the e-offset (null 0.20) and predict a held-out
+  seed's ladder at LOSO R2 up to **0.59** (block 3, t = 300-500; VAE latent 0.36; null
+  -0.03). From block ~15 retention falls to chance and R2 to ~0 — e is still ordered within
+  every seed, but in a scene-specific direction that averaging cancels. Raw / line / cubic
+  agree to +-0.01 everywhere: **the cubic adds nothing.** Full write-up and steering plan in
+  [`docs/physics/elasticity.md`](docs/physics/elasticity.md) §56i. **Nothing has been steered.**
+* **Next, in order:** (1) unsteered feasibility on `CogVideoX1.5-5B-I2V` (downloaded to
+  `/workspace/models/CogVideoX1.5-5B-I2V`, SHA-256 verified) — first frame of 10-20
+  `conservation_set_1000` clips, does it produce a plausible collision; (2) capture
+  `energy_ladder_v1` on it and redo §56i; (3) steer per Kneifl et al. (arXiv 2610.03154),
+  measure realised `e` from pixels. CogVideoX-2b cannot show a steered clip (§7).
+* The `conservation_set_1000` consnoise capture (the 2026-10-27 resume) **finished** —
+  `outputs/consnoise_cogvideox-2b`, 997 usable clips. The |Δp| probe on it
+  (`scripts/momentum/delta_p_norm_probe.py`) belongs to the parallel agent's line.
+* Box traps hit this session: **/workspace is geesefs** — a 31 GB download through it
+  caused ENOMEM in a concurrent render; `sed -i` and chmod fail (use Python to edit);
+  nine parallel numpy jobs need `OMP_NUM_THREADS` capped or they run ~10x slower.
+  Kubric must be installed from a copy under `/root` (egg-info EPERM on geesefs).
+* Branch `refactor-layout` is pushed to `main` on GitHub (`gh` is installed and logged in).
+  The git dir is still restored from `/workspace/envs/git-dirs.tar` — re-tar before a stop.
 
 ## UPDATE — 2026-10-23 (A100 box, VideoMAEv2-giant + V-JEPA2-L, new 1000-clip sets)
 
