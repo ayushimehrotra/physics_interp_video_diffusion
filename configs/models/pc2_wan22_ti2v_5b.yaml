@@ -1,13 +1,13 @@
 # PC2 positive control (spec §4.4): Wan2.2-TI2V-5B + a rank-32 LoRA fine-tuned on the PC training render set.
-# Evaluation: the Wan2.2-TI2V-5B adapter at its OFFICIAL settings (inherited) with `lora` applied.
+# Evaluation: the Wan2.2-TI2V-5B adapter at its OFFICIAL settings (inherited) with `lora` merged in.
+# Training uses the inherited `prompt` (the one the adapter evaluates with).
 #   train: scripts/10_train_positive_control.py --config configs/models/pc2_wan22_ti2v_5b.yaml
 defaults: wan22_ti2v_5b.yaml
 name: pc2-wan2.2-ti2v-5b
 positive_control: pc2
 lora:
-  path: ${env:PHYSLAW_MODELS,/root/models}/pc2-wan2.2-ti2v-5b/lora   # stage 10 output (diffusers/peft format)
+  path: ${env:PHYSLAW_MODELS,/root/models}/pc2-wan2.2-ti2v-5b/lora   # stage 10 output (PEFT format)
   scale: 1.0
-prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
 
 # Training recipe: RigidBench (arXiv 2608.15555, App. "fine-tuning"): Wan2.2-TI2V-5B, LoRA rank 32 / alpha 32 on
 # q,k,v,o,ffn.0,ffn.2 of every block, lr 1e-4, 250 warmup steps, 5,000-step horizon, effective batch 128

@@ -11,8 +11,8 @@
 Output dir: the config's ``local_path`` (or --out):
   PC1  pc1.pt          eval weights (EMA target encoder + predictor; physlaw.models.positive_control.PC1Adapter)
        train_state.pt  online model, EMA encoder, optimizer, step (resume)
-  PC2  lora/           pytorch_lora_weights.safetensors (diffusers/peft format; the Wan adapter loads it via
-                       ``lora: {path, scale}``), lora_step<N>/ snapshots every save_every steps
+  PC2  lora/           adapter_model.safetensors + adapter_config.json (PEFT format; the Wan adapter merges
+                       it via ``lora: {path, scale}``), lora_step<N>/ snapshots every save_every steps
        train_state.pt  LoRA weights, optimizer, step (resume); prompt_embeds.pt (cached text embedding)
   both curves.json (train loss; PC1 also the held-out prediction error), curves.png, timing in curves.json
 Resumable: an existing train_state.pt is resumed; --force starts over. --steps overrides train.steps
@@ -262,7 +262,8 @@ def train_pc2(cfg, out: Path, a):
         pipe = WanPipeline(tokenizer=AutoTokenizer.from_pretrained(src, subfolder="tokenizer"), text_encoder=te,
                            vae=None, scheduler=None, transformer=None)
         with torch.no_grad():
-            pe, _ = pipe.encode_prompt(cfg["prompt"], do_classifier_free_guidance=False, device=dev)
+            pe, _ = pipe.encode_prompt(cfg["prompt"], do_classifier_free_guidance=False, max_sequence_length=512,
+                                       device=dev)          # 512: WanPipeline.__call__ default
         atomic_save({"prompt": cfg["prompt"], "embeds": pe.cpu()}, pe_f)
         del te, pipe
         torch.cuda.empty_cache()
@@ -300,8 +301,13 @@ def train_pc2(cfg, out: Path, a):
     it = batches(ds, tr, tr["seed"] + step)
 
     def save_lora(d: Path):
-        sd = {k: v.to(bf16) for k, v in get_peft_model_state_dict(tf).items()}
-        WanPipeline.save_lora_weights(d, transformer_lora_layers=sd, safe_serialization=True)
+        """PEFT format: adapter_model.safetensors + adapter_config.json (r, lora_alpha, targets)."""
+        from safetensors.torch import save_file
+        d.mkdir(parents=True, exist_ok=True)
+        sd = {f"base_model.model.{k}": v.to(bf16).contiguous() for k, v in get_peft_model_state_dict(tf).items()}
+        save_file(sd, d / "adapter_model.safetensors.tmp")
+        os.replace(d / "adapter_model.safetensors.tmp", d / "adapter_model.safetensors")
+        tf.peft_config["default"].save_pretrained(d)
 
     steps = a.steps or tr["steps"]
     t0, t_data, n_done = time.time(), 0.0, 0
