@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Stage 2 — data acceptance tests (spec §2.3) + a validation report and contact sheet.
+"""Stage 2 — data acceptance tests (spec §2.4) + a validation report and contact sheet, any family.
 
     /root/envs/kubric_venv/bin/python scripts/02_validate_data.py --data data/f1
+    ... --data data/f7          # every family dir, nuisance variants included
 
 Runs tests/test_data.py against the directory, then writes
 <data>/_validation/report.json (per-twin statistics) and contact_sheet.png
@@ -24,6 +25,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def stats(data: Path) -> dict:
+    """Per-twin statistics; collision families add the F1 summary metrics. Render cost in s/frame."""
     per = collections.defaultdict(lambda: collections.defaultdict(list))
     groups = sorted(p for p in data.iterdir() if (p / "_GROUP_COMPLETE").exists())
     rej = collections.Counter()
@@ -34,20 +36,31 @@ def stats(data: Path) -> dict:
                 continue
             L = json.loads((t / "labels.json").read_text())
             pl = L["physlaw"]
+            key = (pl.get("subfamily") + "/" if pl.get("subfamily") else "") + pl["twin"]
             for k in ("momentum_residual", "ke_ratio", "restitution_realised", "deflection_ratio_b_over_a"):
-                per[pl["twin"]][k].append(pl["summary"][k])
-            per[pl["twin"]]["energy_physical"].append(float(pl["energy_physical"]))
-            per[pl["twin"]]["render_seconds"].append(pl["render_seconds"])
+                if k in pl.get("summary", {}):
+                    per[key][k].append(pl["summary"][k])
+            per[key]["energy_physical"].append(float(pl["energy_physical"]))
+            per[key]["violation_magnitude"].append(float(pl.get("violation_magnitude", 0.0)))
+            per[key]["render_seconds"].append(pl["render_seconds"])
+            if pl.get("frame_sha256_16") and pl["render_seconds"] > 0:
+                full = pl["twin_index"] == 0 or pl.get("pre_segment", "0") not in per["_seen"][g.name]
+                n = len(L["per_frame"]) - (0 if full else pl["first_post_contact_frame"])
+                per["_render"]["seconds_per_frame"].append(pl["render_seconds"] / max(n, 1))
+            per["_seen"][g.name].append(pl.get("pre_segment", "0"))
             if pl["twin_index"] == 0:
                 for r in L["sampling_attempts"]["rejections"]:
                     rej[r["reason"].split("_at_")[0][:70]] += 1
-        per["_group"]["seconds"].append(gr["seconds"])
-        per["_group"]["contact_frame"].append(gr["contact_frame"])
+        per["_group"]["seconds"].append(gr.get("seconds", 0.0))
+        per["_group"]["first_post_contact_frame"].append(gr["first_post_contact_frame"])
         per["_group"]["split_" + gr["split"]].append(1)
+        if (gr.get("physics_check") or {}).get("max_err_m") is not None:
+            per["_group"]["physics_check_max_err_m"].append(gr["physics_check"]["max_err_m"])
+    per.pop("_seen", None)
     q = lambda v: {"n": len(v), "min": float(np.min(v)), "median": float(np.median(v)),
                    "max": float(np.max(v)), "mean": float(np.mean(v))}
     return {"n_groups": len(groups), "rejections": dict(rej),
-            "twins": {t: {k: q(v) for k, v in d.items()} for t, d in per.items()}}
+            "twins": {t: {k: q(v) for k, v in d.items() if v} for t, d in per.items()}}
 
 
 def contact_sheet(data: Path, out: Path, n_groups: int = 4) -> None:
@@ -100,10 +113,12 @@ def main():
     print(json.dumps({k: rep[k] for k in ("n_groups", "rejections", "tests_passed")}, indent=1))
     for t, d in rep["twins"].items():
         if t.startswith("_"):
+            print(f"  {t:24s} " + "  ".join(f"{k} med {v['median']:.3g}" for k, v in d.items()))
             continue
-        print(f"  {t:18s} |dp|/|p| med {d['momentum_residual']['median']:.3g}  KE ratio med "
-              f"{d['ke_ratio']['median']:.3f} (max {d['ke_ratio']['max']:.3f})  e {d['restitution_realised']['median']:.3f}"
-              f"  energy_physical {d['energy_physical']['mean']:.2f}  render {d['render_seconds']['median']:.0f}s")
+        extra = (f"|dp|/|p| med {d['momentum_residual']['median']:.3g}  KE ratio med {d['ke_ratio']['median']:.3f}"
+                 f"  e {d['restitution_realised']['median']:.3f}  ") if "momentum_residual" in d else ""
+        print(f"  {t:24s} {extra}violation {d['violation_magnitude']['median']:.3g}  "
+              f"energy_physical {d['energy_physical']['mean']:.2f}  render {d['render_seconds']['median']:.0f}s")
     try:
         contact_sheet(data, vdir / "contact_sheet.png")
         print(f"contact sheet: {vdir / 'contact_sheet.png'}")

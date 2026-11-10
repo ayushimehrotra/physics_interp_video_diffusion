@@ -357,7 +357,8 @@ def physics_check(sc: FAM.Scene, step_rate: int = 960) -> dict:
         statics = [s for s in sc.statics if tw.statics is None or s.name in tw.statics]
         # the rendered band sits 0.5 mm proud of the floor (no z-fighting); flush for the physics
         boxes = [(s.half, (s.position[0], s.position[1], -s.half[2]) if s.name == "band" else s.position,
-                  s.quaternion, mu if s.name in ("band", "slab") else s.friction) for s in statics]
+                  s.quaternion, mu if s.name in ("band", "slab") and "mu" in tw.constants else s.friction)
+                 for s in statics]
         # Coplanar floor + band split the contacts and halve the friction, and the check starts
         # with the body wholly on the band: the band alone is the support there.
         if sc.look.get("floor", True) and not any(s.name == "band" for s in statics):
@@ -375,12 +376,20 @@ def physics_check(sc: FAM.Scene, step_rate: int = 960) -> dict:
                 col = pb.createCollisionShape(pb.GEOM_SPHERE, radius=b.size, physicsClientId=cid)
             elif b.shape == "cube":
                 col = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=[b.size] * 3, physicsClientId=cid)
-            else:
+            else:   # Bullet cylinders run along local z; ours along y: rotate by -90 deg about x
                 col = pb.createCollisionShape(pb.GEOM_CYLINDER, radius=b.size, height=2 * b.length, physicsClientId=cid)
             q = tr.q[f0]
-            bid = pb.createMultiBody(m[b.name], col, -1, tr.p[f0].tolist(), (q[1], q[2], q[3], q[0]), physicsClientId=cid)
+            xyzw = (q[1], q[2], q[3], q[0])
+            if b.shape in ("cylinder", "tube"):
+                xyzw = pb.multiplyTransforms([0, 0, 0], xyzw, [0, 0, 0],
+                                             pb.getQuaternionFromEuler([-math.pi / 2, 0, 0]))[1]
+            bid = pb.createMultiBody(m[b.name], col, -1, tr.p[f0].tolist(), xyzw, physicsClientId=cid)
             pb.changeDynamics(bid, -1, linearDamping=0, angularDamping=0, lateralFriction=1.0,
                               restitution=e_floor, rollingFriction=0, spinningFriction=0, physicsClientId=cid)
+            if b.shape in ("cylinder", "tube"):   # Bullet's own inertia is a solid cylinder's
+                I = b.inertia / b.mass * m[b.name]
+                It = m[b.name] * (3 * b.size ** 2 + (2 * b.length) ** 2) / 12
+                pb.changeDynamics(bid, -1, localInertiaDiagonal=[It, It, I], physicsClientId=cid)
             pb.resetBaseVelocity(bid, tr.v[f0].tolist(), tr.w[f0].tolist(), physicsClientId=cid)
             ids[b.name] = bid
         n_sub = step_rate // fps
@@ -429,16 +438,18 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
     import kubric as kb
     from kubric.renderer import Blender
     W, H = sc.camera.resolution
+    top = abs(sc.camera.rotation()[2][2]) > 0.9
+    # Side views see the background above the horizon: darker than the lit floor so the floor reads.
+    bg = (0.30, 0.30, 0.32) if top else (0.08, 0.09, 0.11)
     scene = kb.Scene(frame_start=0, frame_end=sc.twins[next(iter(sc.twins))].tracks[sc.bodies[0].name].p.shape[0] - 1,
                      frame_rate=sc.fps, step_rate=sc.fps * 5, resolution=(W, H), gravity=(0.0, 0.0, -sc.gravity),
-                     background=kb.Color(0.30, 0.30, 0.32, 1.0), ambient_illumination=kb.Color(0.04, 0.04, 0.04, 1.0))
+                     background=kb.Color(*bg, 1.0), ambient_illumination=kb.Color(0.04, 0.04, 0.04, 1.0))
     renderer = Blender(scene, scratch, use_denoising=denoise, adaptive_sampling=True, samples_per_pixel=spp)
     renderer.blender_scene.view_settings.view_transform = "Standard"
     camera = kb.PerspectiveCamera(name="camera", focal_length=sc.camera.focal_mm, sensor_width=sc.camera.sensor_w_mm,
                                   position=sc.camera.position, quaternion=sc.camera.blender_quaternion())
     scene += camera
     scene.camera = camera
-    top = abs(sc.camera.rotation()[2][2]) > 0.9
     scene += kb.DirectionalLight(name="sun", position=(5.0, -4.0, 14.0) if top else (-6.0, -12.0, 14.0),
                                  look_at=(0.0, 0.0, 0.0), intensity=3.0)
     floor = None
@@ -460,10 +471,16 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
             o = kb.Sphere(scale=b.size, **kw)
         elif b.shape == "cube":
             o = kb.Cube(scale=(b.size,) * 3, **kw)
-        else:
-            raise NotImplementedError(f"shape {b.shape}")
+        else:                                       # cylinder / tube: generated mesh (F10)
+            from physlaw.data.families.f10_rolling import mesh_obj
+            path = Path(scratch) / f"mesh_{b.name}.obj"
+            mesh_obj(b, path)
+            o = kb.FileBasedObject(render_filename=str(path), simulation_filename=None,
+                                   render_import_kwargs={"forward_axis": "Y", "up_axis": "Z"}, **kw)
         scene += o
         objs[b.name] = o
+        if sc.look.get("checker_bodies"):           # rotation must be visible (rolling)
+            checker(o, renderer, b.look["color"], 6.0, 0.45)
     return {"scene": scene, "renderer": renderer, "camera": camera, "objs": objs, "statics": statics, "floor": floor}
 
 
@@ -508,19 +525,23 @@ def apply_look(h: dict, sc: FAM.Scene, look: dict) -> FAM.Camera:
 
 def floor_texture(floor, renderer, fl: dict) -> None:
     floor.material.color = __import__("kubric").Color(*fl["color"], 1.0)
-    if not fl["checker"]:
-        return
-    mat = floor.material.linked_objects[renderer]
+    if fl["checker"]:
+        # object coords span [-1, 1] over the 80 m floor: scale = squares per 2 units
+        checker(floor, renderer, fl["color"], 80.0 / fl["checker_scale"], fl["checker_contrast"])
+
+
+def checker(obj, renderer, color, scale: float, contrast: float) -> None:
+    """Object-space checker on a Kubric object's material (moves and turns with the object)."""
+    mat = obj.material.linked_objects[renderer]
     nt = mat.node_tree
     bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
     tex = nt.nodes.new("ShaderNodeTexChecker")
     coord = nt.nodes.new("ShaderNodeTexCoord")
     nt.links.new(coord.outputs["Object"], tex.inputs["Vector"])
-    # object coords span [-1, 1] over the 80 m floor: scale = squares per 2 units
-    tex.inputs["Scale"].default_value = 80.0 / fl["checker_scale"]
-    c = np.asarray(fl["color"])
+    tex.inputs["Scale"].default_value = scale
+    c = np.asarray(color, float)
     tex.inputs["Color1"].default_value = (*c, 1.0)
-    tex.inputs["Color2"].default_value = (*(c * (1 - fl["checker_contrast"])), 1.0)
+    tex.inputs["Color2"].default_value = (*(c * (1 - contrast)), 1.0)
     nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
 
 

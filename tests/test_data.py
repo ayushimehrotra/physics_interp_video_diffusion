@@ -188,6 +188,17 @@ def test_family_laws(group):
         assert FAM.acceptance(FAM.View.from_labels(labels(t))) == [], t.name
 
 
+def test_law_inputs(group):
+    """io.law_inputs gives (pre, post, ctx) around the event for every twin (the eval laws' input)."""
+    from physlaw.data.io import law_inputs
+    for t in twins(group):
+        pre, post, ctx = law_inputs(labels(t))
+        n = len(labels(t)["physlaw"]["objects"])
+        assert pre["v"].shape == post["v"].shape == (n, 3)
+        assert pre["t_s"] <= ctx["event_time_s"] + 1e-9 <= post["t_s"] + 1e-9
+        assert {"g", "fps", "masses", "legal", "violated_law"} <= set(ctx)
+
+
 def test_f8_slope_twins_share_h(group):
     if family(group) != "f8":
         pytest.skip("f8 only")

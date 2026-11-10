@@ -1,0 +1,10 @@
+# F10. Rolling (spec §2.3, P2; physlaw/data/families/f10_rolling.py): solid cylinder vs tube, released
+# together down one incline. Spec gate (eval side): report L0 only if angular velocity is not decodable.
+defaults: _master.yaml
+family: f10
+seed_offset: 1000000
+n_groups: 150
+subfamilies: {rolling: 150}
+nuisance_frac: 0.2
+acceptance:
+  physics_check_tol: 0.05

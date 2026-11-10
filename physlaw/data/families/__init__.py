@@ -39,7 +39,9 @@ from typing import Any, Callable
 import numpy as np
 
 G = 9.81
-FAMILY_MODULES = {"f6": "f6_friction", "f7": "f7_freefall", "f8": "f8_ramp"}
+# F9 (pendulum) is not built: Kubric's PyBullet view creates every body with useMaximalCoordinates=True,
+# and pybullet then refuses every constraint (point2point, revolute, fixed); see docs/STATUS.md.
+FAMILY_MODULES = {"f6": "f6_friction", "f7": "f7_freefall", "f8": "f8_ramp", "f10": "f10_rolling"}
 
 
 def family_module(family: str):
@@ -68,8 +70,10 @@ class Body:
             return 4.0 / 3.0 * math.pi * self.size ** 3
         if self.shape == "cube":
             return (2.0 * self.size) ** 3
-        if self.shape in ("cylinder", "tube"):
+        if self.shape == "cylinder":
             return math.pi * self.size ** 2 * 2.0 * self.length
+        if self.shape == "tube":       # wall from 0.9 r to r (families.f10_rolling.TUBE_INNER)
+            return math.pi * self.size ** 2 * (1 - 0.81) * 2.0 * self.length
         raise ValueError(self.shape)
 
     @property
@@ -79,7 +83,7 @@ class Body:
     @property
     def inertia(self) -> float:
         """Moment of inertia about a centroidal axis (the rolling axis for cylinders; thin-walled tube)."""
-        k = {"sphere": 0.4 * self.size ** 2, "cylinder": 0.5 * self.size ** 2, "tube": self.size ** 2,
+        k = {"sphere": 0.4 * self.size ** 2, "cylinder": 0.5 * self.size ** 2, "tube": 0.5 * 1.81 * self.size ** 2,
              "cube": (2.0 * self.size) ** 2 / 6.0}[self.shape]
         return k * self.mass
 
@@ -450,13 +454,15 @@ class View:
     t_event: float
     k: int                        # first post-event frame
     masses: dict
+    w: dict = field(default_factory=dict)
 
     @staticmethod
     def from_scene(sc: "Scene", tw: Twin) -> "View":
         return View(sc.family, sc.subfamily, tw.name, tw.legal, tw.violated_law, tw.violation_magnitude,
                     {n: t.p for n, t in tw.tracks.items()}, {n: t.v for n, t in tw.tracks.items()},
-                    {**sc.constants, **tw.constants, "g": sc.gravity}, tw.record, sc.fps, sc.t_event,
-                    sc.first_post, sc.masses(tw))
+                    {**sc.constants, **tw.constants, "g": sc.gravity, "sizes": {b.name: b.size for b in sc.bodies}},
+                    tw.record, sc.fps, sc.t_event, sc.first_post, sc.masses(tw),
+                    {n: t.w for n, t in tw.tracks.items()})
 
     @staticmethod
     def from_labels(L: dict) -> "View":
@@ -467,7 +473,7 @@ class View:
                     pl["violation_magnitude"], {n: arr("position", n) for n in names},
                     {n: arr("velocity", n) for n in names}, pl["constants"], pl.get("edit") or {},
                     pl["constants"]["fps"], pl["event_time_s"], pl["first_post_contact_frame"],
-                    {n: pl["objects"][n]["mass"] for n in names})
+                    {n: pl["objects"][n]["mass"] for n in names}, {n: arr("angular_velocity", n) for n in names})
 
     def accel(self, n: str, f0: int, f1: int) -> np.ndarray:
         """Finite-difference acceleration over frame pairs (f, f+1), f in [f0, f1)."""

@@ -183,7 +183,7 @@ def _bounce(rng, cfg, fmt):
     T, fps = fmt["num_frames"], fmt["fps"]
     t = frame_times(fmt)
     tc = event_time(rng, fmt, aligned=False)
-    kr = int(round((tc - rng.uniform(0.55, 0.85)) * fps))
+    kr = int(round((tc - rng.uniform(0.6, 1.0)) * fps))
     tr_ = kr / fps
     tf = tc - tr_
     r = float(rng.uniform(*RADIUS))
