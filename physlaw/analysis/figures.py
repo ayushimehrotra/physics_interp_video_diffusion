@@ -78,10 +78,11 @@ def draw(rows: list[dict], results: Path, out: Path, log=print) -> list[str]:
     # 1 L0 vs L1
     pts = [(r["model"], r["l0"]["mean_r2"], _l1_score(r)[0]) for r in rows
            if r["family"] == "f1" and r.get("l0") and _l1_score(r)[0] is not None]
-    if pts:
+    if len(pts) >= 2:
         fig, ax = plt.subplots(figsize=(5, 4))
         _scatter(ax, pts, colors)
         ax.axhline(0, color=MUTED, linewidth=0.8)
+        ax.set_xlim(0, 1.05); ax.set_ylim(-1.05, 1.05)
         _style(ax, "1. States decodable, laws weak (F1)", "L0 mean R²", _l1_score(by[pts[0][0], "f1"])[1])
         save(fig, "fig1_l0_vs_l1")
 
@@ -152,9 +153,10 @@ def draw(rows: list[dict], results: Path, out: Path, log=print) -> list[str]:
             y = k / n if n else None
         if x is not None and y is not None:
             pts5.append((r["model"], x, y))
-    if pts5:
+    if len(pts5) >= 2:                   # a correlation across models needs at least two
         fig, ax = plt.subplots(figsize=(5, 4))
         _scatter(ax, pts5, colors)
+        ax.set_xlim(-1.05, 1.05); ax.set_ylim(-1.05, 1.05)
         _style(ax, "5. Internal vs output adherence", "L1 score", "output score (track A S_outcome, else B measurable)")
         save(fig, "fig5_internal_vs_output")
 
@@ -176,23 +178,25 @@ def draw(rows: list[dict], results: Path, out: Path, log=print) -> list[str]:
 
     # 7 objectives, 8 positive control: the same per-score dot plot, models grouped by objective
     def dotplot(sel, name, title):
-        ms = [r for r in rows if r["family"] == "f1" and sel(r)]
+        ms = [r for r in rows if r["family"] == "f1" and sel(r) and keys(r)]
         ks = sorted(set().union(*[keys(r) for r in ms])) if ms else []
         if len(ms) < 2 or not ks:
             return
-        fig, ax = plt.subplots(figsize=(7, 0.35 * len(ks) + 1.5))
+        fig, ax = plt.subplots(figsize=(9, 0.35 * len(ks) + 1.5))
         objs = sorted({objective(r["model"]) for r in ms})
-        for r in ms:
-            kv = keys(r)
-            c = SERIES[objs.index(objective(r["model"]))]
-            ax.scatter([kv.get(k, np.nan) for k in ks], range(len(ks)), s=48, color=c, edgecolor="white", linewidth=2,
-                       zorder=3, label=f"{r['model']} ({objective(r['model'])})")
+        seen: dict = {}
+        for r in ms:                     # colour = objective, marker = model within it
+            kv, o = keys(r), objective(r["model"])
+            mk = "osD^v"[seen.setdefault(o, []).__len__() % 5]
+            seen[o].append(r["model"])
+            ax.scatter([kv.get(k, np.nan) for k in ks], range(len(ks)), s=48, color=SERIES[objs.index(o)], marker=mk,
+                       edgecolor="white", linewidth=1.5, zorder=3, label=f"{r['model']} ({o})")
         ax.set_yticks(range(len(ks)), ks)
-        ax.legend(fontsize=7, frameon=False, loc="lower right")
+        ax.legend(fontsize=7, frameon=False, loc="upper left", bbox_to_anchor=(1.01, 1))
         _style(ax, title, "score", "")
         save(fig, name)
     dotplot(lambda r: objective(r["model"]) in ("predictive", "reconstruction", "denoising"), "fig7_objectives",
-            "7. Objective: predictive vs reconstruction vs denoising (F1)")
+            "7. Training objective (F1)")
     if any(objective(r["model"]) == "positive control" for r in rows):
         dotplot(lambda r: objective(r["model"]) != "control", "fig8_positive_control", "8. Positive control vs large models (F1)")
     log(f"[figures] drew {made or 'nothing'} -> {out}")

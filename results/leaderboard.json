@@ -1,0 +1,123 @@
+{
+ "columns": [
+  "l0",
+  "l1",
+  "l2",
+  "l2b",
+  "encoded_unused",
+  "l3",
+  "l4",
+  "outputs_trackA",
+  "outputs_trackB"
+ ],
+ "rows": [
+  {
+   "model": "cogvideox-2b",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.9663886636739569,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_outcome.conserve_e1": -0.0781641134874369,
+    "S_momentum.conserve_e1": 0.041991605512994024,
+    "S_outcome.conserve_e015": -1.0,
+    "S_momentum.conserve_e015": 0.04229909968342754,
+    "variant": "median over 12 spaces (frame_mm)"
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.453125,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.37209302325581395,
+    "mom_violate_e015 vs conserve_e015": 0.546875,
+    "energy_create vs conserve_e015": 0.609375,
+    "conserve_e1 vs conserve_e015": 0.515625,
+    "_distance": "clean_mse_obj",
+    "_covariates": "speed+copy_last"
+   },
+   "outputs_trackA": {
+    "measurable.conserve_e1": "1/64",
+    "S_outcome.conserve_e1": -0.6060643696679278,
+    "measurable.conserve_e015": "1/64",
+    "S_outcome.conserve_e015": -1.0,
+    "gate_passed": false
+   }
+  },
+  {
+   "model": "untrained-vitl",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.3326701426261028,
+    "n_targets": 20
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.5,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.5116279069767442,
+    "mom_violate_e015 vs conserve_e015": 0.515625,
+    "energy_create vs conserve_e015": 0.546875,
+    "conserve_e1 vs conserve_e015": 0.5,
+    "_distance": "mse_obj",
+    "_covariates": "speed+copy_last"
+   }
+  },
+  {
+   "model": "videomaev2-giant",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.885615927528824,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_outcome.conserve_e1": -0.6564971581434158,
+    "S_momentum.conserve_e1": 0.17983256401377024,
+    "S_momentum.conserve_e015": 0.19093374618363224,
+    "variant": "frame_mm"
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.421875,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.46511627906976744,
+    "mom_violate_e015 vs conserve_e015": 0.5,
+    "energy_create vs conserve_e015": 0.5625,
+    "conserve_e1 vs conserve_e015": 0.4375,
+    "_distance": "fut_mse_obj",
+    "_covariates": "speed+copy_last"
+   }
+  },
+  {
+   "model": "vjepa2-vitl",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.9115340476454039,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_outcome.conserve_e1": 0.26227792210174417,
+    "S_momentum.conserve_e1": 0.4251109913500749,
+    "S_outcome.conserve_e015": -1.0,
+    "S_momentum.conserve_e015": 0.4017064431362447,
+    "variant": "frame_mm"
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.71875,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.7674418604651163,
+    "mom_violate_e015 vs conserve_e015": 0.734375,
+    "energy_create vs conserve_e015": 0.59375,
+    "conserve_e1 vs conserve_e015": 0.46875,
+    "_distance": "mse_obj",
+    "_covariates": "speed+copy_last"
+   }
+  },
+  {
+   "model": "wan2.2-i2v-a14b",
+   "family": "f1",
+   "outputs_trackB": {
+    "measurable.strict": "0/22",
+    "measurable.loose": "8/22",
+    "res_momentum.loose": 0.9979379419914324,
+    "res_energy.loose": 0.0,
+    "res_com.loose": 0.7229671942106927,
+    "res_angular_momentum.loose": 0.31999552200266757,
+    "no_violation.loose": "0/22"
+   }
+  }
+ ]
+}

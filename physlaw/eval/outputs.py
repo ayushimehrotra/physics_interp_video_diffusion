@@ -414,7 +414,7 @@ def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000) -> 
     all_laws = sorted({l for v in laws.values() for l in v}) if isinstance(laws, dict) else list(laws)
     out = {"n_groups": len({r["group"] for r in gen_rows}), "laws": all_laws, "twins": {}}
     keys = ("r_p", "r_E", "E_out", *TRAJ_KEYS, *(f"res_{l}" for l in all_laws))
-    for t in sorted({r["twin"] for r in real_rows}, key=lambda x: (x not in LEGAL, x)):
+    for t in sorted({r["twin"] for r in real_rows}, key=lambda x: (LEGAL.index(x) if x in LEGAL else len(LEGAL), x)):
         G = [{**r, **scored(r, t)} if r["measurable"] else r for r in gen_rows]
         R = [{**r, **scored(r, t)} if r["measurable"] else r for r in real_rows if r["twin"] == t]
         Gm, Rm = [r for r in G if r["measurable"]], [r for r in R if r["measurable"]]

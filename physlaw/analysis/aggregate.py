@@ -7,7 +7,8 @@ Columns and where each comes from (first match wins):
                legacy outcome / momentum S of the leak-free ``frame_mm`` variant (DiTs: median over (SNR, layer) spaces,
                no selection)
   L2           motion-adjusted win rate per contrast (covariates speed + copy-last, first available distance of
-               PRIMARY_DISTANCES); l2.json ``primary`` if the file names one
+               PRIMARY_DISTANCES, fixed a priori: object-region MSE of the model's own prediction / clean-context loss);
+               l2.json ``primary`` if the file names one
   L2b          AUC per contrast (l2b.json); encoded-but-unused = (AUC - 0.5) - (L2 adjusted win - 0.5)
   L3           Galilean invariance error per target and boost level (f4), mass-independence slope of the forecast
                (f6/f7), transfer gaps
@@ -22,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-PRIMARY_DISTANCES = ("mse_obj", "l1_obj", "loss_obj", "mse_all", "l1_all")
+PRIMARY_DISTANCES = ("mse_obj", "clean_mse_obj", "fut_mse_obj", "l1_obj", "mse_all", "clean_mse_all", "fut_mse_all")
 COVARIATES = ("speed+copy_last", "post_speed", "copy_last")
 LEGAL = ("conserve_e1", "conserve_e015")
 
@@ -140,7 +141,7 @@ def _out_b(d):
 
 
 READERS = {"l0": _l0, "l1": _l1, "l2": _l2, "l2b": _l2b, "l3": _l3, "l4": _l4,
-           "outputs_trackA": _out_a, "outputs": _out_a, "outputs_trackB": _out_b}
+           "outputs_trackA": _out_a, "outputs_trackB": _out_b}
 COLUMNS = ("l0", "l1", "l2", "l2b", "encoded_unused", "l3", "l4", "outputs_trackA", "outputs_trackB")
 
 
@@ -151,12 +152,9 @@ def collect(results: Path) -> list[dict]:
         for name, fn in READERS.items():
             f = fam_dir / f"{name}.json"
             if f.exists():
-                key = "outputs_trackA" if name == "outputs" else name
-                if key in row:              # outputs_trackA.json supersedes the pre-2026-11-10 outputs.json
-                    continue
                 v = fn(json.loads(f.read_text()))
                 if v:
-                    row[key] = v
+                    row[name] = v
         if row.get("l2b") and row.get("l2"):
             row["encoded_unused"] = {c: (a - 0.5) - (row["l2"][c] - 0.5) for c, a in row["l2b"].items()
                                      if _num(row["l2"].get(c)) is not None}
