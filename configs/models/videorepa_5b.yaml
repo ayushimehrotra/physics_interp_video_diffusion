@@ -1,0 +1,14 @@
+# VideoREPA-5B (spec §4.2 group 3, P0; github.com/aHapBean/VideoREPA, NeurIPS 2025): the released LoRA
+# (HF aHapBean/VideoREPA, VideoREPA_5B/pytorch_lora_weights.safetensors, rank 128) on CogVideoX-5B, fused as the official
+# inference/generate.py does: load_lora_weights + fuse_lora(lora_scale = lora_alpha / lora_rank = 64 / 128). Its
+# CogVideoXTransformer3DModelAlign only adds an alignment projector for training; the denoiser output is unchanged.
+# Settings identical to cogvideox_5b.yaml (generate.py: 480 x 720, 49 frames, 50 steps, guidance 6, DPM trailing,
+# dynamic CFG, VAE tiling, bf16).
+defaults: cogvideox_5b.yaml
+name: videorepa-5b
+lora:
+  hf_id: aHapBean/VideoREPA
+  revision: 5438a0208c973fa5bec7d74486694f03e72ec939
+  path: ${env:PHYSLAW_MODELS,/root/models}/VideoREPA/VideoREPA_5B/pytorch_lora_weights.safetensors
+  scale: 0.5
+  sha256: f2d45a9a04c178eb53bae6f0ace42869d69e48e643565fec955125ac51a44127

@@ -10,6 +10,7 @@ positive_control: pc1
 hf_id: null                  # trained here; not a hub checkpoint
 revision: null
 local_path: ${env:PHYSLAW_MODELS,/root/models}/pc1-vits   # stage 10 output: pc1.pt (eval), train_state.pt, curves
+sha256: null                 # V-JEPA 2 pins do not apply; pc1.pt is this repo's own training output
 dtype: float32
 layers: [0, 2, 4, 6, 8, 10, 11]
 arch:

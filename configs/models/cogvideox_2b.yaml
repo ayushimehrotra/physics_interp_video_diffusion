@@ -24,3 +24,9 @@ prompt: "A static camera looks straight down at a flat grey floor. Two balls rol
 forecast_layers: [6, 15, 24]          # captured during sampling at the steps nearest each encode SNR
 surprise: {n_draws: 2}                # x encode SNR timesteps; noise draws identical across twins
 noise_seed: 0
+# Weight pins (spec §4.3): zai-org/CogVideoX-2b@1137dacfc2c9c012bed6a0793f4ecf2ca8e7ba01; verified by physlaw.models.registry.
+sha256:
+  text_encoder/model-00001-of-00002.safetensors: 4f2751ceeb2a96edd693e539dc5d6bba0b8d3814f49a9b3798403a0cec4b2e3d
+  text_encoder/model-00002-of-00002.safetensors: f63154532130422309532ff56f11945fbea8266c958e3133e8e5aef85c6293c7
+  transformer/diffusion_pytorch_model.safetensors: 8fbb6a5e67c70885a8ed8e33df144ac61253e45977be5035fa18cfdf77d386c7
+  vae/diffusion_pytorch_model.safetensors: a410e48d988c8224cef392b68db0654485cfd41f345f4a3a81d3e6b765bb995e

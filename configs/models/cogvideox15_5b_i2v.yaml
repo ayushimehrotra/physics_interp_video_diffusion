@@ -29,3 +29,13 @@ prompt: "A static camera looks straight down at a flat grey floor. Two balls rol
 forecast_layers: [10, 21, 32]
 surprise: {n_draws: 2}
 noise_seed: 0
+# Weight pins (spec §4.3): zai-org/CogVideoX1.5-5B-I2V@46c90528707aebbe69066390b4fe7e7d24c9c2a4; verified by physlaw.models.registry.
+sha256:
+  text_encoder/model-00001-of-00004.safetensors: 8e0e98242fed1de128a73ee6fee174aa30186c66f7d70811c8ebf67d72067f38
+  text_encoder/model-00002-of-00004.safetensors: 7309a33cd1780b20e3d84b2e14585d7a64ccea45079aecc86c507e381e00ed14
+  text_encoder/model-00003-of-00004.safetensors: d278bf7cb4de9957cb67d8a92dc9273f88186f0c90e0f2a3de13882217d9a95c
+  text_encoder/model-00004-of-00004.safetensors: 69afce9a62402b82095baa1dfef572be92dfd9a4062693d49a5948e4d27585a5
+  transformer/diffusion_pytorch_model-00001-of-00003.safetensors: e4d392921dd79e0e7adbef45f2c88a21dfe9aeb8688a9dd6e757275b2e4c1bca
+  transformer/diffusion_pytorch_model-00002-of-00003.safetensors: 052af05f6d91fcb5bc7cb85805c507fc3c476b2bc01a1b2475a384cff03a7854
+  transformer/diffusion_pytorch_model-00003-of-00003.safetensors: 03f3b8812a540aca85a15fb06909cfd36b7b1f3bc638042cf8f6899d38043787
+  vae/diffusion_pytorch_model.safetensors: a410e48d988c8224cef392b68db0654485cfd41f345f4a3a81d3e6b765bb995e

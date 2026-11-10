@@ -1,0 +1,49 @@
+# Wan2.1-I2V-14B-480P (spec §4.2 group 5, P1): output track B generator (frame 0 + minimal prompt -> clip), WanI2VAdapter.
+# Weights NOT downloaded on the 2026-11 machine (sha256 pins = the Hub's LFS hashes); the code path is exercised by
+# Wan2.2's WanImageToVideoPipeline. OFFICIAL settings, github.com/Wan-Video/Wan2.1: generate.py i2v defaults (40 steps,
+# sample_shift 3.0 for 832*480, 81 frames), shared_config (16 fps, guide_scale 5.0), wan/configs/wan_i2v_14B.py
+# (negative prompt = "镜头晃动，" + the shared one). 480P model: F1's 832 x 480 frame needs no resize.
+name: wan2.1-i2v-14b
+kind: generator
+output_track: B
+hf_id: Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+revision: b184e23a8a16b20f108f727c902e769e873ffc73
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-I2V-14B-480P-Diffusers
+dtype: bfloat16
+official:
+  height: 480
+  width: 832
+  num_frames: 81
+  fps: 16
+  num_inference_steps: 40
+  guidance_scale: 5.0
+  scheduler: UniPCMultistepScheduler
+  flow_shift: 3.0
+  negative_prompt: "镜头晃动，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+input:
+  center_on_contact: false
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}
+prompt_template: minimal   # physlaw.models.dit.minimal_prompt
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-I2V-14B-480P-Diffusers@b184e23a8a16b20f108f727c902e769e873ffc73 (Hub LFS sha256, not downloaded); verified by physlaw.models.registry.
+sha256:
+  image_encoder/model.safetensors: f5c0bbf4f43f319a80335387d371742333807589c5bb4130a1a2a5d4abf6bf72
+  text_encoder/model-00001-of-00005.safetensors: c0ef3a140898e228a3520c9adec60743d2e8e5b3d229651bb37f1a3921919f99
+  text_encoder/model-00002-of-00005.safetensors: 481c7b2b39771c44df6dd8d13ee12ed072d731b4a650bd092885d4d52db229ad
+  text_encoder/model-00003-of-00005.safetensors: f93148bcc04052a169e1e49bfcf6125df6cf9bf243cb9c627da75266cf8e35c3
+  text_encoder/model-00004-of-00005.safetensors: a451792c739c05bca4606190cc2dd16731411bac03b4cf6aacc5767321f857c9
+  text_encoder/model-00005-of-00005.safetensors: 7e76e18d224531b8197a46231cb53daf7f2f6ca707130252becf933026ac4eea
+  transformer/diffusion_pytorch_model-00001-of-00014.safetensors: b4602c35fa0519750a42c03e3f296c02d542291e344c4d702522cddbd1711f13
+  transformer/diffusion_pytorch_model-00002-of-00014.safetensors: 1cb4cbb7f3437995d73dd430a3072199ff246f8858b517a2e9c79dea7851302a
+  transformer/diffusion_pytorch_model-00003-of-00014.safetensors: a3883790719aceb84739eaf31d3ca2b1888f9b99d325c59bce65197100e2080c
+  transformer/diffusion_pytorch_model-00004-of-00014.safetensors: 670827570d41b40e9898eeaf29b787074fd4315fe143017593b43e88e5736fdf
+  transformer/diffusion_pytorch_model-00005-of-00014.safetensors: c0b79116cec6a4715814177bcff74ac8d58960623b892cdd03850516a9b9eb09
+  transformer/diffusion_pytorch_model-00006-of-00014.safetensors: f4e9d59722d8ca75f6f5a04ad9f46af9c9afc24544f8fd02406d8304512ce579
+  transformer/diffusion_pytorch_model-00007-of-00014.safetensors: 75615923dbaaf21e606fceead6e264e601f5ff520e7469e9e72b456199d18597
+  transformer/diffusion_pytorch_model-00008-of-00014.safetensors: fb89b408716cae8a59750f99c79a49afe781f01a0bc735b95431418c5fdad4dd
+  transformer/diffusion_pytorch_model-00009-of-00014.safetensors: 8278860d50fdc7f742ce60341b6c2fad12a719e420957c8164fc7358d4504889
+  transformer/diffusion_pytorch_model-00010-of-00014.safetensors: 86f4c9bf482b87b9b6c931c734b283c0f7327ab2ba15afc5a3c924decc5b5293
+  transformer/diffusion_pytorch_model-00011-of-00014.safetensors: 9107b2123676231e456c90d6a19d77aad814b13939c9201ea8669c7a5669e7d3
+  transformer/diffusion_pytorch_model-00012-of-00014.safetensors: 668374699d704a57a21905276f74627b3a2d79f674a64dc09196774f5b287d1f
+  transformer/diffusion_pytorch_model-00013-of-00014.safetensors: b9abef6af4f824d4dcdc06c55c3fa3ecbba6fe8f834136ccfc4922a8656d14ae
+  transformer/diffusion_pytorch_model-00014-of-00014.safetensors: b2cf8333afb3155fe35fbb31dc3fa5a0be80d6bbed021e40ee8dd0ecc478952d
+  vae/diffusion_pytorch_model.safetensors: d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793

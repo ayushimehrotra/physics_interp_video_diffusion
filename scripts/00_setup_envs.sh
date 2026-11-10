@@ -35,5 +35,17 @@ if [ ! -x "$ENVS/physics_venv/bin/python" ]; then
       --extra-index-url https://download.pytorch.org/whl/cu128 -r "$HERE/envs/physics_venv_freeze.txt"
 fi
 "$ENVS/physics_venv/bin/python" -c "import torch; print('physics venv OK, torch', torch.__version__, torch.cuda.is_available())"
+# Cosmos-Predict2.5 (output track A) only: its own venv, with the dependencies NVIDIA's cosmos-predict2.5
+# scripts/diffusers_inference.py pins (torch 2.10, transformers 4.57.1, cosmos-guardrail, diffusers with
+# Cosmos2_5_PredictBasePipeline = 0.39.0). physics_venv keeps diffusers 0.35.1, so no other model's outputs change.
+#   PHYSLAW_COSMOS=1 bash scripts/00_setup_envs.sh ; then run stage 07 with $ENVS/cosmos_venv/bin/python
+if [ -n "${PHYSLAW_COSMOS:-}" ] && [ ! -x "$ENVS/cosmos_venv/bin/python" ]; then
+  uv venv -q --python 3.12 "$ENVS/cosmos_venv"
+  uv pip install --python "$ENVS/cosmos_venv/bin/python" --index-strategy unsafe-best-match \
+      --extra-index-url https://download.pytorch.org/whl/cu128 torch==2.10.0 torchvision transformers==4.57.1 \
+      diffusers==0.39.0 "cosmos-guardrail @ git+https://github.com/codeJRV/cosmos-guardrail" accelerate \
+      imageio==2.37.0 imageio-ffmpeg==0.6.0 pyyaml==6.0.2 pillow scipy opencv-python-headless pytest
+  "$ENVS/cosmos_venv/bin/python" -c "import diffusers; from diffusers import Cosmos2_5_PredictBasePipeline; print('cosmos venv OK, diffusers', diffusers.__version__)"
+fi
 # Model weights: plain files under ${PHYSLAW_MODELS:-/root/models} (one root for all models).
 echo "models: ${PHYSLAW_MODELS:-/root/models}; set HF_HUB_OFFLINE=1"
