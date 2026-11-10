@@ -11,8 +11,9 @@ STATUS); its results are **not** carried over — see [`docs/prior_work/README.m
 
 ```
 configs/{data,models,eval}/   YAML; data/_master.yaml holds the render format
-physlaw/data/                 generate.py (twin groups), twins.py (edit algebra), kubric_scene.py
-                              (vendored Kubric scene), collision_physics.py, splits.py, schema/
+physlaw/data/                 generate.py (twin groups, every family), twins.py (F1-F4 edit algebra),
+                              kubric_scene.py (vendored two-sphere scene), families/ (F6-F8, F10
+                              closed form), nuisance.py, io.py (law_inputs), splits.py, schema/
 physlaw/models/               base.py (ModelAdapter, TokenGridSpec, frame sampling) + adapters
 physlaw/tokens/               project.py (masks -> token ROIs), pool.py
 physlaw/probes/               ridge.py (grouped nested CV, grid-max nulls), observer.py
@@ -32,7 +33,11 @@ KUBRIC_USE_GPU=1 /root/envs/kubric_venv/bin/python scripts/01_generate_data.py \
     --config configs/data/f1_collisions.yaml --workers 8            # -> data/f1/
 #   pilot: --n-groups 8 --out data/f1_pilot ; physics only: --no-render
 
-# Stage 2: spec §2.3 acceptance tests + report + contact sheet
+# Any other family: configs/data/f{2,3,4,6,7,8,10}_*.yaml (-> data/<family>/, nuisance variants
+# in data/<family>/<group>_nuisance/). PC1 training set (legal clips, 256x256, disjoint seeds):
+#   ... scripts/01_generate_data.py --config configs/data/pc1_train.yaml   # -> data/pc1/<family>/
+
+# Stage 2: spec §2.4 acceptance tests + report + contact sheet (any family dir)
 /root/envs/kubric_venv/bin/python scripts/02_validate_data.py --data data/f1
 
 # Unit tests (no GPU, no data)
@@ -40,9 +45,11 @@ KUBRIC_USE_GPU=1 /root/envs/kubric_venv/bin/python scripts/01_generate_data.py \
 ```
 
 Data layout: `data/<family>/<family>_<seed>/<twin>/{video.mp4, masks.npz, labels.json, _COMPLETE}`,
-plus `_GROUP_COMPLETE` per group and `_runlog.jsonl` per family. Labels: old generator's full
-per-frame physics plus a `physlaw` block (family, twin, group ID, split, contact frame, camera
-K and extrinsics, masses/radii/densities, pre/post velocities, edit record, raw-frame hashes).
+plus `_GROUP_COMPLETE` per group and `_runlog.jsonl` per family. Labels: per-frame physics plus a
+`physlaw` block (family, twin, group ID, split, event, pre_segment, legal/violated_law/magnitude,
+constants, pre/post state, camera K and extrinsics, objects, edit record, raw-frame hashes); the
+fields are documented in `physlaw/data/schema/labels.schema.json` (`physlaw-labels-2`; the frozen
+F1 render is `-1`). `physlaw.data.io.law_inputs(labels)` returns the (pre, post, ctx) of the laws.
 
 ## Disk estimate
 
