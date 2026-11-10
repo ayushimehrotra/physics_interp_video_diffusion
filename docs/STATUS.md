@@ -455,3 +455,21 @@ fixed-frame-20 pooling.
   lanes overlapped on screen.
 * PC1 set, `data_pc1/{f1,f7,f8}/` (1 group each, 256x256 squashed, 16 spp, legal twins only; seeds
   5000000 / 5400000 / 5500000): 7 clips, tests pass (masks match the anisotropic K).
+
+**What the mentor runs at scale** (Kubric venv, `KUBRIC_USE_GPU=1`; check `render_device` = `OPTIX: ...`
+in the labels; resumable, `--workers` 4-8 per GPU as measured for F1 on the H100):
+
+```bash
+cd physlaw && export KUBRIC_USE_GPU=1 PY=/root/envs/kubric_venv/bin/python
+for c in f2_restitution f3_hidden_mass f4_galilean f6_friction f7_freefall f8_ramp f10_rolling; do
+  $PY scripts/01_generate_data.py --config configs/data/$c.yaml --workers 6     # -> data/<family>/
+  $PY scripts/02_validate_data.py --data data/${c%%_*}
+done
+$PY scripts/01_generate_data.py --config configs/data/pc1_train.yaml --workers 8  # -> data/pc1/<family>/
+$PY -m pytest -q -p no:cacheprovider tests/test_twins.py                          # 8 s, no GPU
+```
+
+Sizes (spec §2.3): F2 100 x 11 clips, F3 300 x 5, F4 200 x 6, F6 800 groups (300 flat + 300 incline
+x 2, 200 slides x 3), F7 700 (300 projectile x 4, 200 drop x 3, 200 bounce x 3), F8 250 x 5, F10 150 x 3;
+plus nuisance variants for ~20% of seeds. PC1: F1 1500 x 2, F2 273 x 11, F3 600 x 5, F4 500 x 6,
+F7 1500 x 2, F8 1000 x 3 (>= 3,000 legal clips per family).
