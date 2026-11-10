@@ -40,7 +40,7 @@ train:
   seed: 42
 
 data:                        # the PC training render set, as configs/models/positive_control.yaml
-  root: data/pc1_train
+  root: data/pc1
   code_path_test: false
   families: [f1, f2, f3, f4, f7, f8]
   exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]

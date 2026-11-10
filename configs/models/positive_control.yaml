@@ -23,7 +23,7 @@ arch:
 
 data:
   # PC training render set (wp-data): legal clips only, seeds disjoint from the evaluation twins.
-  root: data/pc1_train        # <root>/<family>/<group>/<twin>/ as data/f1
+  root: data/pc1              # <root>/<family>/<group>/<twin>/ (configs/data/pc1_train.yaml writes it)
   code_path_test: false      # true only for runs on stand-in data (labelled in curves and plot)
   families: [f1, f2, f3, f4, f7, f8]
   exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]
