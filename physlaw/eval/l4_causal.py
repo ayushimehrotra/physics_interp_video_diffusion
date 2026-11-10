@@ -274,7 +274,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
     missing = [g for g in groups if force or not (work / f"{g}.npz").exists()]
     if missing:
         from physlaw.models.registry import load_adapter
-        m = load_adapter(mcfg)
+        m = load_adapter(mcfg, device=cfg.get("device", "cuda"))
         run_interventions(m, mcfg, data_dir, missing, twins_of, plans, layer, alphas, work,
                           bool(cfg.get("generate_readout", True)), force, log)
         del m

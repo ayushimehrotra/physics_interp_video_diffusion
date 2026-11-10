@@ -120,7 +120,7 @@ def main():
         keys = [{"group": Path(j[1]).parent.name, "twin": Path(j[1]).name} for j in jobs]
     else:
         mp4s = sorted(gen.glob("*/gen_seed*.mp4"))
-        jobs = [(str(p), str(data / p.parent.name / O.LEGAL[0]), fps, hw, gates,
+        jobs = [(str(p), str(data / p.parent.name / O.legal_twins(data / p.parent.name)[0]), fps, hw, gates,
                  str(p.parent) if a.review and out == gen else (str(out) if a.review else None),
                  f"{p.parent.name}_seed{p.stem.split('seed')[1]}") for p in mp4s]
         keys = [{"group": p.parent.name, "seed": int(p.stem.split("seed")[1])} for p in mp4s]

@@ -4,7 +4,7 @@
     # track A (§6.2): continue the REAL pre-event context through the adapter's generate()
     HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python scripts/07_generate_outputs.py --track a \\
         --model configs/models/cogvideox_2b.yaml --data data/f1
-    # track B (§6.3): frame 0 + the minimal prompt through the model's official diffusers I2V pipeline
+    # track B (§6.3): frame 0 + the minimal prompt through the generator adapter (output_track: B)
     HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python scripts/07_generate_outputs.py --track b \\
         --model configs/models/wan22_i2v_a14b.yaml --data data/f1
 
@@ -14,17 +14,16 @@ Track A, into cache/<model>/<family>/<group>/gen_seed<s>.mp4 (stage 4 already wr
   3. only if measurable >= track_a.gate.min_pass_rate (or --force): seeds 0..seeds_per_clip-1 for every group.
   The continuation depends only on the shared pre-event context, so one video per (group, seed) serves every twin.
 Track B, into cache/<model>/<family>_trackB/<group>/gen_seed<s>.mp4 (+ _gen.jsonl): seeds track_b.seeds for the
-  first track_b.n_groups groups. Frame 0 is identical across a group's twins. The pipeline class comes from the
-  checkpoint's model_index.json, the call settings from the model config's ``official`` block (only the keys the
-  pipeline accepts), the VAE dtype from ``vae_dtype``; the prompt is the family's minimal prompt.
+  first track_b.n_groups groups, through the adapter's generate() from frame 0 (models with ``output_track: B``, e.g.
+  physlaw.models.wan.WanI2VAdapter: the official I2V pipeline). Frame 0 is identical across a group's twins.
+Prompts: the model config's ``prompt_template`` (physlaw.models.dit.PROMPTS, from pre-event labels; track B default
+  minimal); without one, track A uses the adapter's own prompt.
 Resumable: existing videos are skipped. --out writes elsewhere (test runs).
 """
 from __future__ import annotations
 
 import argparse
-import inspect
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -60,11 +59,11 @@ def track_a(mcfg, data, out, cfg, force):
         if m is None:
             from physlaw.models.registry import load_adapter
             m = load_adapter(mcfg)
-        c = load_clip(data / gid / O.LEGAL[0])
+        c = load_clip(data / gid / O.legal_twins(data / gid)[0])
         fr, k = m.input_frames(c.labels), m.context_frames(c.labels)
-        if hasattr(m, "set_prompt") and cfg.get("prompt") == "minimal":
-            from physlaw.models.cogvideox import minimal_prompt
-            m.set_prompt(minimal_prompt(c.labels))
+        if mcfg.get("prompt_template"):              # per-clip prompt from pre-event labels (physlaw.models.dit)
+            from physlaw.models.dit import PROMPTS
+            m.set_prompt(PROMPTS[mcfg["prompt_template"]](c.labels))
         x = m.to_tensor(c.frames[fr])
         for s in todo:
             write_mp4(out / gid / f"gen_seed{s}.mp4", m.generate(x, k, seed=s), m.fps)
@@ -87,62 +86,25 @@ def track_a(mcfg, data, out, cfg, force):
     print(f"[07] track A: generated {n} videos in {(time.time() - t0) / 60:.1f} min")
 
 
-def load_i2v_pipeline(mcfg):
-    """The checkpoint's own diffusers pipeline (class from model_index.json), components straight to the GPU."""
-    import diffusers
-    import torch
-    path = os.environ.get("PHYSLAW_I2V_PATH") or mcfg["local_path"]
-    idx = json.loads((Path(path) / "model_index.json").read_text())
-    kw = {}
-    if mcfg.get("vae_dtype"):                       # e.g. Wan: transformers bf16, VAE fp32 (model card)
-        vae_cls = getattr(diffusers, idx["vae"][1])
-        kw["vae"] = vae_cls.from_pretrained(path, subfolder="vae", torch_dtype=getattr(torch, mcfg["vae_dtype"]))
-    pipe = getattr(diffusers, idx["_class_name"]).from_pretrained(
-        path, torch_dtype=getattr(torch, mcfg.get("dtype", "bfloat16")), **kw).to("cuda")
-    pipe.set_progress_bar_config(disable=True)
-    return pipe, path
-
-
-def generate_i2v(pipe, mcfg, frame0, prompt, seed):
-    """One official I2V generation from frame 0 -> uint8 [T, H, W, 3]. Size: ``max_area`` at the frame's aspect,
-    rounded to the VAE x patch multiple (the Wan card's rule), else the official height x width."""
-    import numpy as np
-    import torch
-    from PIL import Image
-    off = dict(mcfg["official"])
-    if "max_area" in off:
-        mod = pipe.vae_scale_factor_spatial * pipe.transformer.config.patch_size[1]
-        ar = frame0.shape[0] / frame0.shape[1]
-        off["height"] = round(np.sqrt(off["max_area"] * ar)) // mod * mod
-        off["width"] = round(np.sqrt(off["max_area"] / ar)) // mod * mod
-    img = Image.fromarray(frame0)
-    if img.size != (off["width"], off["height"]):
-        img = img.resize((off["width"], off["height"]), Image.BICUBIC)
-    accepted = set(inspect.signature(pipe.__call__).parameters)
-    kw = {k: v for k, v in off.items() if k in accepted}
-    vid = pipe(image=img, prompt=prompt, output_type="np", generator=torch.Generator("cuda").manual_seed(seed),
-               **kw).frames[0]
-    return (np.clip(vid, 0, 1) * 255).round().astype(np.uint8), (off["height"], off["width"])
-
-
-def track_b(mcfg, data, out, cfg, seeds, n_groups):
+def track_b(mcfg, data, out, seeds, n_groups):
     from physlaw.data.io import load_clip
-    from physlaw.models.cogvideox import minimal_prompt
+    from physlaw.models.dit import PROMPTS
+    from physlaw.models.registry import load_adapter
     jobs = [(g, s) for s in seeds for g in groups_of(data)[:n_groups] if not (out / g / f"gen_seed{s}.mp4").exists()]
     if not jobs:
         print("[07] track B: nothing to do")
         return
     t0 = time.time()
-    pipe, path = load_i2v_pipeline(mcfg)
-    print(f"[07] track B: {mcfg.name} loaded from {path} in {time.time() - t0:.0f}s; {len(jobs)} clips", flush=True)
+    m = load_adapter(mcfg)
+    print(f"[07] track B: {mcfg.name} loaded in {time.time() - t0:.0f}s; {len(jobs)} clips", flush=True)
     for gid, seed in jobs:
-        c = load_clip(data / gid / O.LEGAL[0], masks=False)
-        prompt = minimal_prompt(c.labels)
+        c = load_clip(data / gid / O.legal_twins(data / gid)[0], masks=False)
+        prompt = PROMPTS[mcfg.get("prompt_template", "minimal")](c.labels)
+        m.set_prompt(prompt)
         t1 = time.time()
-        u8, hw = generate_i2v(pipe, mcfg, c.frames[0], prompt, seed)
-        write_mp4(out / gid / f"gen_seed{seed}.mp4", u8, mcfg["official"]["fps"])
-        rec = {"group": gid, "seed": seed, "prompt": prompt, "size": list(hw), "seconds": round(time.time() - t1, 1),
-               "model_path": path, "revision": mcfg.get("revision")}
+        write_mp4(out / gid / f"gen_seed{seed}.mp4", m.generate(c.frames[:1], 1, seed=seed), m.fps)
+        rec = {"group": gid, "seed": seed, "prompt": prompt, "seconds": round(time.time() - t1, 1),
+               "model": mcfg.name, "revision": mcfg.get("revision")}
         with open(out / "_gen.jsonl", "a") as fh:
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
         print(f"[07] {gid} seed{seed} {rec['seconds']}s", flush=True)
@@ -163,11 +125,15 @@ def main():
     mcfg, ecfg = load_config(a.model), load_config(a.eval, a.set)
     data = resolve_path(a.data)
     if a.track == "a":
+        if mcfg.get("output_track") == "B":
+            sys.exit(f"[07] {mcfg.name} is a track B generator (frame 0 -> clip): use --track b")
         out = Path(a.out) if a.out else REPO / "cache" / mcfg.name / data.name
         out.mkdir(parents=True, exist_ok=True)
         track_a(mcfg, data, out, ecfg["track_a"], a.force)
     else:
         cfg = ecfg["track_b"]
+        if mcfg.get("output_track") != "B":
+            sys.exit(f"[07] {mcfg.name} is not a track B generator (output_track: B in its config)")
         out = Path(a.out) if a.out else REPO / "cache" / mcfg.name / f"{data.name}_trackB"
         out.mkdir(parents=True, exist_ok=True)
         if a.seeds and "-" in a.seeds:
@@ -175,7 +141,7 @@ def main():
             seeds = list(range(lo, hi + 1))
         else:
             seeds = [int(s) for s in a.seeds.split(",")] if a.seeds else list(cfg["seeds"])
-        track_b(mcfg, data, out, cfg, seeds, a.n or int(cfg["n_groups"]))
+        track_b(mcfg, data, out, seeds, a.n or int(cfg["n_groups"]))
 
 
 if __name__ == "__main__":

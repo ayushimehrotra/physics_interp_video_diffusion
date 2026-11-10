@@ -111,3 +111,45 @@ def test_aggregate_leaves_unrun_levels_blank(tmp_path):
     assert "l1" not in rows[0] and "l3" not in rows[0]
     md = (tmp_path / "leaderboard.md").read_text()
     assert "| m1 |" in md and "mean_r2 +0.60" in md
+
+
+def _side_clip(g=9.81, n_master=60, fps=48, vx=2.0, vz=3.0):
+    """A ball (r = 0.3 m) on a parabola in the y = 0 plane, seen by a side camera 20 m away (50 px / m)."""
+    from types import SimpleNamespace
+    W, H, f, C = 832, 480, 1000.0, np.array([0.0, -20.0, 4.3])
+    R = np.array([[1.0, 0, 0], [0, 0, -1.0], [0, 1.0, 0]])
+    E = np.eye(4); E[:3, :3] = R; E[:3, 3] = -R @ C
+    K = np.array([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]])
+    t = np.arange(n_master) / fps
+    P = np.stack([-3 + vx * t, 0 * t, 6 + vz * t - 0.5 * g * t ** 2], 1)
+    uv = (P - C) @ R.T @ K.T
+    uv = uv[:, :2] / uv[:, 2:]
+    yy, xx = np.mgrid[:H, :W]
+    frames = np.full((n_master, H, W, 3), 160, np.uint8)
+    masks = np.zeros((n_master, H, W), np.uint8)
+    for i, (u, v) in enumerate(uv):
+        d = (xx - u) ** 2 + (yy - v) ** 2 <= 15 ** 2
+        frames[i][d] = (200, 40, 40)
+        masks[i][d] = 1
+    labels = {"physlaw": {"family": "f7", "subfamily": "projectile", "first_post_contact_frame": 30,
+                          "objects": {"A": {"mass": 1.0, "radius": 0.3, "segmentation_id": 1}},
+                          "constants": {"g": 9.81, "fps": fps},
+                          "camera": {"K": K.tolist(), "world_to_camera": E.tolist(), "resolution": [W, H]}},
+              "per_frame": [{"A": {"position": p.tolist(), "pixel": q.tolist()}} for p, q in zip(P, uv)]}
+    return SimpleNamespace(labels=labels, frames=frames, masks=masks)
+
+
+def test_backproject_and_trajectory_readout_recover_g():
+    c = _side_clip()
+    pf = c.labels["per_frame"][7]["A"]
+    w = O.backproject(np.array([pf["pixel"][1], pf["pixel"][0]]), c.labels, 480, 832, 20.0)
+    assert np.allclose(w, pf["position"], atol=1e-6)
+    r = O.readout_traj(c.frames[::3], c, 16.0)
+    assert r["measurable"], r
+    assert r["g_ratio"] == pytest.approx(1.0, abs=0.05) and r["g_post_over_true"] == pytest.approx(1.0, abs=0.05)
+    assert r["vx_ratio"] == pytest.approx(1.0, abs=0.02)
+    from physlaw.eval.laws import gravity
+    pre, post = ({k: np.asarray(v) for k, v in r[s].items()} for s in ("state_pre", "state_post"))
+    assert gravity.residual(pre, post, r["ctx"]) < 0.05
+    fast = _side_clip(g=1.5 * 9.81)          # a clip whose whole arc has g x 1.5: the readout sees it
+    assert O.readout_traj(fast.frames[::3], fast, 16.0)["g_post_over_true"] == pytest.approx(1.5, abs=0.08)

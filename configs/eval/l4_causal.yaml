@@ -11,3 +11,4 @@ controls: {random_dir: 2, random_subspace: 2, pc_matched: 1}   # draws per contr
 max_groups: null                   # first N groups only (test runs)
 generate_readout: true             # generators: read each steered video out with the track B readout (steering)
 bootstrap: {n: 1000}
+device: cuda

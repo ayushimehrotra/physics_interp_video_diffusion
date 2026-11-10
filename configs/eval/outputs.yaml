@@ -1,10 +1,10 @@
 # Output-level evaluation (spec §6). Stages: 07 generate, 08 track + read out, 09 score.
 level: outputs
 families: [f1, f7, f8]
-# Laws scored on a measured outcome, per family (physlaw.eval.laws names).
+# Laws scored on a measured outcome, per family (physlaw.eval.laws names); a dict = per sub-family.
 laws:
   f1: [momentum, energy, com, angular_momentum]
-  f7: [gravity, axis_independence, mass_independence, bounce]
+  f7: {projectile: [gravity, axis_independence], drop: [gravity, mass_independence], bounce: [bounce]}
   f8: [ramp_energy]
 bootstrap: {n: 2000}
 # Track A (§6.2): continue the real pre-event context with the adapter's generate().
@@ -12,8 +12,8 @@ track_a:
   seeds_per_clip: 4
   # feasibility gate: seed-0 generations of the first n_clips groups; below min_pass_rate measurable, no extra seeds
   gate: {n_clips: 20, min_pass_rate: 0.5}
-  prompt: config          # config: the adapter's own prompt; minimal: the family's minimal prompt (set_prompt)
-# Track B (§6.3): frame 0 + the minimal prompt, the model's official I2V pipeline; strict and loose gates (stage 8).
+# Track B (§6.3): frame 0 + the minimal prompt through the generator's adapter (output_track: B); strict and loose
+# gates (stage 8).
 track_b:
   n_groups: 20
   seeds: [0]

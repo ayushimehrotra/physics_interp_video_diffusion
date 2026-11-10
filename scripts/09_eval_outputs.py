@@ -51,7 +51,7 @@ def md_track_a(res) -> list[str]:
 
 
 def md_track_b(res) -> list[str]:
-    keys = ["e", "r_momentum", "ke_ratio", *(f"res_{l}" for l in res["laws"])]
+    keys = ["e", "r_momentum", "ke_ratio", *O.TRAJ_KEYS, *(f"res_{l}" for l in res["laws"])]
     rows = []
     for gate, d in res["gates"].items():
         rows += [f"## Gate: {gate}", "",
@@ -81,7 +81,7 @@ def main():
     mcfg, ecfg = load_config(a.model), load_config(a.eval, a.set)
     data = resolve_path(a.data)
     fam = data.name.split("_")[0]
-    laws = list(ecfg["laws"].get(fam, []))
+    laws = ecfg["laws"].get(fam, [])                   # a list, or {subfamily: list}
     rd = Path(a.readouts) if a.readouts else REPO / "cache" / mcfg.name / (data.name if a.track == "a" else f"{data.name}_trackB")
     out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -107,7 +107,7 @@ def main():
     name = f"outputs_track{a.track.upper()}"
     (out_dir / f"{name}.json").write_text(json.dumps(res, indent=1, default=float))
     text = "\n".join([f"# Output track {a.track.upper()} - {mcfg.name} on {data.name}", "",
-                      f"Readouts: `{rd}`; laws: {', '.join(laws) or 'none'}", ""] + md) + "\n"
+                      f"Readouts: `{rd}`; laws: {laws or 'none'}", ""] + md) + "\n"
     (out_dir / f"{name}.md").write_text(text)
     print(text)
 
