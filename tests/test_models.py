@@ -170,6 +170,22 @@ def test_ti2v_clean_context_is_native_i2v():
     assert torch.allclose(lat.permute(0, 2, 1, 3, 4), ref, atol=1e-4)
 
 
+def test_wan_i2v_generate_from_frame0():
+    from diffusers import WanImageToVideoPipeline
+    from physlaw.models.wan import WanI2VAdapter
+    t = tiny_wan(True)
+    p = t.pipe
+    i2v = WanImageToVideoPipeline(tokenizer=None, text_encoder=None, image_encoder=None, image_processor=None,
+                                  transformer=p.transformer, vae=p.vae, scheduler=p.scheduler, expand_timesteps=True)
+    m = type("TinyI2V", (WanI2VAdapter,), {"_encode_text": _fake_text})(_wan_cfg(True), i2v, "cpu")
+    a = twins()[0]
+    v = m.generate(a, 1, seed=0)
+    assert v.shape == (9, 32, 32, 3) and v.dtype == np.uint8
+    assert np.array_equal(v, m.generate(m.to_tensor(a), 1, seed=0))     # uint8 frames or the input tensor
+    with pytest.raises(NotImplementedError):
+        m.encode(a)
+
+
 def test_wan_no_cfg_single_pass():
     m = tiny_wan(True, guidance=None)
     assert m.neg_embeds is None and not m._cfg_on()
