@@ -183,7 +183,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, l2_summary: dict | None = None, wo
             rec.update(best_cell_quick=best, null_max_q95=float(np.quantile(null_max, 0.95)),
                        p_corrected=float((1 + np.sum(null_max >= cells[best]["quick"])) / (len(null_max) + 1)))
         l2 = (l2_summary or {}).get(key)
-        if l2 is not None:
+        if l2 is not None and "score" in l2:
             rec["l2_adj_win_heldout"] = l2["score"]
             rec["encoded_but_unused"] = (rec["overall"]["score"] - 0.5) - (l2["score"] - 0.5)
         out["contrasts"][key] = rec
@@ -200,7 +200,9 @@ def table(res: dict) -> str:
     rows = [f"n_groups = {res['n_groups']} ({pr['note']}; ~{pr['test_groups_per_fold']:.0f} test groups per fold); "
             f"variants searched = {pr['n_cells']} (layers x 2 pools); {pr['n_permutations']} within-group label-swap "
             f"permutations, max over the grid; layer selected on half the groups, AUC on the other half "
-            f"({2 * pr['selection_splits']} evaluations).", "",
+            f"({2 * pr['selection_splits']} evaluations). L2b is NOT motion-adjusted: a probe can separate twins by how much "
+            "the balls move, so read each AUC against the legal-vs-legal reference row (two legal outcomes, different "
+            "motion) and the ROI mask floor; the encoded-but-unused index inherits that confound.", "",
             "| contrast | n groups | held-out AUC, overall (selected cell) | frame pool AUC (layer) | ROI pool AUC (layer) | "
             "ROI mask floor | p_corr (Holm) | L2 adj. win (held-out) | encoded-but-unused |",
             "|---|---|---|---|---|---|---|---|---|"]
