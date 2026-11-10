@@ -195,6 +195,10 @@ def fit_select(Xc: dict, Y: np.ndarray, groups: np.ndarray, rows: np.ndarray, al
     """Choose (cell, alpha) by grouped inner CV on ``rows`` only; refit there. Returns (cell, predict(X) fn, inner R²)."""
     Y = Y.reshape(len(Y), -1)
     g = groups[rows]
+    if len(set(g)) < 2:                      # no CV possible (tiny test sets): first cell, middle penalty
+        c, a = next(iter(Xc)), alphas[len(alphas) // 2]
+        m = _SVDRidge(Xc[c][rows], Y[rows], True)
+        return c, (lambda X, m=m, a=a: m.predict(X, a)), float("nan")
     folds = grouped_kfold(g, min(k, len(set(g))), seed + 10_000)
     best = (-np.inf, None, None)
     for c, X in Xc.items():
@@ -438,6 +442,9 @@ def transfer(recs, labels, A, pools, layers, cfg, family: str, log=print) -> dic
     return out
 
 
+MIN_GROUPS = 4
+
+
 def run(cache_dir: Path, data_dir: Path, cfg, mcfg, log=print) -> dict:
     family = data_dir.name.split("_")[0]
     todo = list(cfg["analyses"].get(family, []))
@@ -448,8 +455,12 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, log=print) -> dict:
     out = {"family": family, "n_clips": len(recs), "fold_seeds": int(cfg["fold_seeds"]), "k_folds": int(cfg["probe"]["k_folds"])}
     if cfg.get("stand_in"):
         out["stand_in"] = cfg["stand_in"]
+    n_groups = len({r["group"] for r in recs})
     for an in todo:
-        if an == "galilean":
+        if n_groups < MIN_GROUPS:                      # grouped CV with inner selection needs a few groups
+            out[an] = {"skipped": f"{n_groups} groups < {MIN_GROUPS}"}
+            log(f"[L3] {an}: skipped ({out[an]['skipped']})")
+        elif an == "galilean":
             out["galilean"] = galilean(recs, labels, A, pools, layers, cfg, cache_dir, data_dir, log)
         elif an == "mass_independence":
             out["mass_independence"] = mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family, log)
@@ -464,8 +475,11 @@ def table(res: dict) -> str:
     rows = []
     if res.get("stand_in"):
         rows += [f"**Stand-in run:** {res['stand_in']}", ""]
+    for an in ("galilean", "mass_independence", "transfer"):
+        if "skipped" in res.get(an, {}):
+            rows += [f"{an}: skipped ({res[an]['skipped']})", ""]
     g = res.get("galilean")
-    if g:
+    if g and "skipped" not in g:
         rows += ["## Galilean invariance", "", f"Clips per boost level: {g['levels']}; cells searched: {g['n_cells']}", "",
                  "| target | within error [95% CI] | within R² | level | n (paired) | invariance error [95% CI] | transfer error | inv / within |",
                  "|---|---|---|---|---|---|---|---|"]
@@ -481,7 +495,7 @@ def table(res: dict) -> str:
             rows += ["", "L2 per boost level (adjusted win rate, first metric per contrast): see l3.json `galilean.l2_by_level`."]
         rows.append("")
     m = res.get("mass_independence")
-    if m:
+    if m and "skipped" not in m:
         rows += ["## Mass independence", "", f"Target `{m['target']}` ({m['subfamily'] or 'all'}), slope vs log mass / mean |target| "
                  f"(law: 0); {m['n_groups']} groups", "", "| space | clips | slope [95% CI] | true slope |", "|---|---|---|---|"]
         for sp, d in m["spaces"].items():
@@ -490,7 +504,7 @@ def table(res: dict) -> str:
                 rows.append(f"| {sp} | {n} | {v['slope_rel']:+.3f} [{ci[0]:+.3f}, {ci[1]:+.3f}] | {v['true_slope_rel']:+.3f} |")
         rows.append("")
     t = res.get("transfer")
-    if t:
+    if t and "skipped" not in t:
         rows += ["## Transfer", "", f"Split `{t['split_key']}` {t['conditions']}, clips {t['n']}, cells searched {t['n_cells']}", "",
                  "| target | direction | R² transfer | R² within target condition | gap |", "|---|---|---|---|---|"]
         for tn, d in t["targets"].items():

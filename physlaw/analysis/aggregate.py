@@ -89,6 +89,9 @@ def _l2b(d):
 
 def _l3(d):
     out = {}
+    for an in ("galilean", "mass_independence", "transfer"):
+        if "skipped" in d.get(an, {}):
+            out[f"{an}"] = "skipped"
     for t, v in d.get("galilean", {}).get("targets", {}).items():
         out[f"within_error.{t}"] = v["within_error"]
         for lv, w in v["by_level"].items():
