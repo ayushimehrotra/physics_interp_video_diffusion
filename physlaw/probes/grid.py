@@ -81,7 +81,7 @@ def grid_probe(X: np.ndarray, blocks: Mapping[str, np.ndarray], groups: np.ndarr
     """Full nested protocol for every block on one feature matrix (one grid cell).
 
     Returns {block: {"score_mean", "score_sd", "scores", "alphas_chosen",
-                     "oof": [n, k] out-of-fold predictions averaged over fold seeds (for held-out selection),
+                     "oof": [fold_seeds, n, k] out-of-fold predictions per fold seed (for held-out selection),
                      "quick": observed single-seed score at the null's alpha,
                      "null": [P] scores under the permutations (if perms given)}}.
     """
@@ -98,7 +98,7 @@ def grid_probe(X: np.ndarray, blocks: Mapping[str, np.ndarray], groups: np.ndarr
 
     scores = np.zeros((fold_seeds, B))
     chosen = [[] for _ in range(B)]
-    oof_sum = np.zeros_like(Y)
+    oof_all = np.zeros((fold_seeds, *Y.shape))
     for seed in range(fold_seeds):
         oof = np.zeros_like(Y)
         for te in grouped_kfold(groups, k, seed):
@@ -113,7 +113,7 @@ def grid_probe(X: np.ndarray, blocks: Mapping[str, np.ndarray], groups: np.ndarr
             for b in range(B):
                 chosen[b].append(float(alphas[best[b]]))
         scores[seed] = _r2_cols(Y, oof, slices)
-        oof_sum += oof
+        oof_all[seed] = oof
 
     # reduced protocol of permutation_null: alpha by inner CV on all rows (seed 0 -> 10_000),
     # one fold seed (0), fixed alpha; observed and null use the same.
@@ -146,7 +146,7 @@ def grid_probe(X: np.ndarray, blocks: Mapping[str, np.ndarray], groups: np.ndarr
     return {b: {"score_mean": float(scores[:, i].mean()), "score_sd": float(scores[:, i].std()),
                 "scores": scores[:, i].tolist(), "alphas_chosen": chosen[i],
                 "alpha_null": float(alphas[a_null[i]]), "quick": float(quick[i]),
-                "null": null[:, i], "oof": oof_sum[:, slices[i]] / fold_seeds}
+                "null": null[:, i], "oof": oof_all[:, :, slices[i]]}
             for i, b in enumerate(names)}
 
 

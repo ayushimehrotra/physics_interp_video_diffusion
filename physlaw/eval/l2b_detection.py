@@ -68,10 +68,10 @@ def _decision(beta, Z):
 
 
 def cv_auc(X, y, groups, lams, k, fold_seeds, seed0=0, fixed_lam=None, ys=None):
-    """Grouped CV logistic probe. Returns (per-seed AUCs, oof decision values averaged over seeds, chosen lams).
+    """Grouped CV logistic probe. Returns (per-seed AUCs, oof decision values [fold_seeds, n], chosen lams).
     ``ys`` [P, n]: extra label vectors scored with the SAME folds and ``fixed_lam`` (permutation null)."""
     n = len(y)
-    oof_sum, aucs, chosen = np.zeros(n), [], []
+    oofs, aucs, chosen = [], [], []
     null_oof = None if ys is None else np.zeros((len(ys), n))
     for fs in range(fold_seeds):
         oof = np.zeros(n)
@@ -97,9 +97,9 @@ def cv_auc(X, y, groups, lams, k, fold_seeds, seed0=0, fixed_lam=None, ys=None):
                 for pi, yp in enumerate(ys):
                     null_oof[pi, te] = _decision(logistic_fit(Ztr, yp[tr], lam), Zte)
         aucs.append(auc_score(y, oof))
-        oof_sum += oof
+        oofs.append(oof)
     nulls = None if ys is None else np.array([auc_score(yp, o) for yp, o in zip(ys, null_oof)])
-    return aucs, oof_sum / fold_seeds, chosen, nulls
+    return aucs, np.stack(oofs), chosen, nulls
 
 
 def swap_perms(groups: np.ndarray, y: np.ndarray, n: int, seed: int = 0) -> np.ndarray:
@@ -169,7 +169,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, l2_summary: dict | None = None, wo
 
         def score(c, gids, cells=cells, groups=groups):
             m = np.isin(groups, gids)
-            return auc_score(y[m], cells[c]["oof"][m])
+            return float(np.mean([auc_score(y[m], o[m]) for o in cells[c]["oof"]]))
         rec = {"n_groups": len(gs), "n_rows": len(rows), "control": bool(con.get("control")),
                "auc_by_cell": {c: v["auc_mean"] for c, v in cells.items()},
                "overall": heldout_select(score, list(cells), groups, n_splits=n_splits), "pools": {}}

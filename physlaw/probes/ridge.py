@@ -189,11 +189,11 @@ def adam_linear_probe(X: np.ndarray, Y: np.ndarray, groups: np.ndarray, *, k: in
     """Unregularised linear probe trained with Adam (RigidBench's protocol): MSE, ``epochs`` passes of
     shuffled minibatches, zero init, default Adam betas. Features and targets standardised on the
     training fold (a preprocessing step; it leaves the probe unregularised). Same grouped folds as
-    ``fit_probe``. Returns {score_mean, score_sd, scores, oof [n, m] (mean over fold seeds)}."""
+    ``fit_probe``. Returns {score_mean, score_sd, scores, oof [fold_seeds, n, m]}."""
     X = np.asarray(X, np.float64)
     Y = np.asarray(Y, np.float64).reshape(len(X), -1)
     rng = np.random.default_rng(seed)
-    scores, oof_sum = [], np.zeros_like(Y)
+    scores, oofs = [], []
     for fs in range(fold_seeds):
         oof = np.zeros_like(Y)
         for te in grouped_kfold(groups, k, fs):
@@ -218,6 +218,6 @@ def adam_linear_probe(X: np.ndarray, Y: np.ndarray, groups: np.ndarray, *, k: in
                         p -= lr * (m_ / (1 - 0.9 ** t)) / (np.sqrt(v_ / (1 - 0.999 ** t)) + 1e-8)
             oof[te] = ((X[te] - mx) / sx @ W + b) * sy + my
         scores.append(r2_score(Y, oof))
-        oof_sum += oof
+        oofs.append(oof)
     return {"score_mean": float(np.mean(scores)), "score_sd": float(np.std(scores)), "scores": scores,
-            "oof": oof_sum / fold_seeds}
+            "oof": np.stack(oofs)}

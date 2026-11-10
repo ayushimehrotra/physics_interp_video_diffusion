@@ -54,6 +54,7 @@ VIOLATING = ("mom_violate_e1", "mom_violate_e015", "energy_create")
 RES_LAWS = ("momentum", "energy", "com", "angular_momentum")
 POOLS = {"frame": {"A": "frame.post", "B": "frame.post"}, "roi": {"A": "roi_A.post", "B": "roi_B.post"}}
 SPREAD_OK = (0.8, 1.2)
+WEAK_FLOOR = 0.8          # d_floor above this: S_family flagged as uninformative in the table
 
 
 def residuals(v_hat: np.ndarray, m: np.ndarray, vpre: np.ndarray, vpost: np.ndarray) -> dict:
@@ -321,10 +322,13 @@ def table(res: dict) -> str:
                  "|---|---|---|---|---|---|---|---|---|---|"]
         for t, d in v["twins"].items():
             m, md = d["mean"], d["median"]
-            rows.append(f"| {t} | {d['n']} | {f(d, 'outcome')} | {f(d, 'family')} | {m['forecast']['d_family']:.3f} / "
+            weak = " †" if m["floor"]["d_family"] > WEAK_FLOOR else ""
+            rows.append(f"| {t} | {d['n']} | {f(d, 'outcome')} | {f(d, 'family')}{weak} | {m['forecast']['d_family']:.3f} / "
                         f"{m['floor']['d_family']:.3f} | {md['forecast']['e_hat']:.2f} / {md['floor']['e_hat']:.2f} | "
                         f"{f(d, 'momentum')} | {f(d, 'com')} | {f(d, 'angular_momentum')} | "
                         f"{f(d, 'energy') if v['energy_scorable'] else 'not scorable'} |")
+    rows += ["", f"† d_floor > {WEAK_FLOOR}: the probes cannot place REAL legal outcomes much nearer the family than the "
+             "no-event null (d_null = 1), so S_family has almost no range there and is uninformative."]
     rows += ["", "## P-forecast (information ceiling: probes trained ON forecasts; never a law score)", "",
              "| space / pool | post v R² (A, B) | pre v R² (A, B) | ROI mask floor, post v R² (A, B) |", "|---|---|---|---|"]
     for key, c in res["ceiling"].items():
