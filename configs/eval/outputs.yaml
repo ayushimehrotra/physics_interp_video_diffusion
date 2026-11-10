@@ -1,8 +1,21 @@
+# Output-level evaluation (spec §6). Stages: 07 generate, 08 track + read out, 09 score.
 level: outputs
-families: [f1, f2, f3, f5]
-seeds_per_clip: 4
-# Step 0 (added): unsteered feasibility gate. In the old project no generator passed
-# a two-ball collision gate (all were run off-spec or 0/10 at official settings).
-# Run the gate first; skip a model's full output eval if it fails.
-feasibility_gate: {n_clips: 20, min_pass_rate: 0.3}
-tracker: {masks: sam2, points: cotracker}
+families: [f1, f7, f8]
+# Laws scored on a measured outcome, per family (physlaw.eval.laws names).
+laws:
+  f1: [momentum, energy, com, angular_momentum]
+  f7: [gravity, axis_independence, mass_independence, bounce]
+  f8: [ramp_energy]
+bootstrap: {n: 2000}
+# Track A (§6.2): continue the real pre-event context with the adapter's generate().
+track_a:
+  seeds_per_clip: 4
+  # feasibility gate: seed-0 generations of the first n_clips groups; below min_pass_rate measurable, no extra seeds
+  gate: {n_clips: 20, min_pass_rate: 0.5}
+  prompt: config          # config: the adapter's own prompt; minimal: the family's minimal prompt (set_prompt)
+# Track B (§6.3): frame 0 + the minimal prompt, the model's official I2V pipeline; strict and loose gates (stage 8).
+track_b:
+  n_groups: 20
+  seeds: [0]
+# Tracker (§6.1): colour tracker in physlaw/eval/outputs.py, validated per family on real clips (stage 8 --real).
+tracker: colour
