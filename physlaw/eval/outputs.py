@@ -319,7 +319,7 @@ def _track_a_measure(group_dir, adapter_geom):
     clips = {t: load_clip(group_dir / t) for t in legal}
     fr, k = adapter_geom(clips[legal[0]].labels)
     fam = clips[legal[0]].pl["family"]
-    if fam == "f1":
+    if READOUT_SELF.get(fam) is readout_self:              # two-ball collision families
         return clips, legal, lambda v, c: measure_clip(v, c, fr, k, *adapter_geom.fps_hw)
     fps, H, W = adapter_geom.fps_hw
     return clips, legal, lambda v, c: READOUT_SELF[fam](fit_frames(c.frames[fr], (H, W)) if v is None else v, c, fps,
@@ -663,7 +663,7 @@ def readout_self(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
 # Output track B stage drivers (scripts/08, scripts/09)
 # --------------------------------------------------------------------------- #
 
-READOUT_SELF = {"f1": readout_self}     # family -> track B readout (gen_frames, clip, fps, gate=...); F7 / F8 below
+READOUT_SELF = {f: readout_self for f in ("f1", "f2", "f3", "f4")}   # family -> track B readout; F7 / F8 below
 TRAJ_KEYS = ("g_ratio", "g_post_over_true", "vx_ratio", "accel_ratio_heavy_light", "bounce_height_ratio",
              "bottom_speed_ratio")
 GATES = ("strict", "loose")

@@ -4,6 +4,8 @@ families: [f1, f7, f8]
 # Laws scored on a measured outcome, per family (physlaw.eval.laws names); a dict = per sub-family.
 laws:
   f1: [momentum, energy, com, angular_momentum]
+  f2: [momentum, energy, com, angular_momentum]
+  f3: [momentum, energy, com, angular_momentum]
   f7: {projectile: [gravity, axis_independence], drop: [gravity, mass_independence], bounce: [bounce]}
   f8: [ramp_energy]
 bootstrap: {n: 2000}
