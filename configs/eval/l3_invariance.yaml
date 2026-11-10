@@ -5,6 +5,7 @@ level: l3
 families: [f4, f6, f7, f1]
 fold_seeds: 2                 # outer CV repeats (each with held-out (pool, layer) selection inside)
 bootstrap: {n: 2000}
+min_groups: 4                 # fewer groups: the analysis is skipped (test runs may lower it)
 analyses:
   f4: [galilean]
   f6: [mass_independence, transfer]

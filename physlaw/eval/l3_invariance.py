@@ -457,8 +457,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, log=print) -> dict:
         out["stand_in"] = cfg["stand_in"]
     n_groups = len({r["group"] for r in recs})
     for an in todo:
-        if n_groups < MIN_GROUPS:                      # grouped CV with inner selection needs a few groups
-            out[an] = {"skipped": f"{n_groups} groups < {MIN_GROUPS}"}
+        if n_groups < int(cfg.get("min_groups", MIN_GROUPS)):   # grouped CV with inner selection needs a few groups
+            out[an] = {"skipped": f"{n_groups} groups < {cfg.get('min_groups', MIN_GROUPS)}"}
             log(f"[L3] {an}: skipped ({out[an]['skipped']})")
         elif an == "galilean":
             out["galilean"] = galilean(recs, labels, A, pools, layers, cfg, cache_dir, data_dir, log)
