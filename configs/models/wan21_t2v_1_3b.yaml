@@ -1,0 +1,37 @@
+# Wan2.1-T2V-1.3B (spec §4.2 group 2, P0) at its OFFICIAL settings, from the official repo github.com/Wan-Video/Wan2.1
+# (= the model card): generate.py t2v defaults (81 frames, 50 steps), wan/configs/shared_config.py (16 fps, negative
+# prompt, bf16), SUPPORTED_SIZES['t2v-1.3B'] = 832*480 only, and the README's 1.3B-specific advice: "If you are using
+# the T2V-1.3B model, we recommend setting --sample_guide_scale 6. The --sample_shift parameter can be adjusted within
+# the range of 8 to 12" -> guidance 6, flow_shift 8. (Generic defaults: guidance 5, shift 5; the diffusers card's example
+# uses guidance 5 with the shipped scheduler's flow_shift 3. flow_shift and guidance only affect sampling: forecast /
+# generate, not encode or surprise.) Transformer + text encoder bf16, VAE fp32 (card). See physlaw/models/wan.py.
+name: wan2.1-t2v-1.3b
+kind: diffusion
+hf_id: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+revision: 0fad780a534b6463e45facd96134c9f345acfa5b
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-T2V-1.3B-Diffusers   # downloaded without text_encoder/
+dtype: bfloat16
+# UMT5-XXL. The repo ships it in fp32 (22.7 GB); every tensor cast to bf16 (the dtype it runs in) is bit-identical to
+# Wan2.2-TI2V-5B-Diffusers' bf16 copy (all 242 tensors compared, 2026-11-10), so that copy is used.
+text_encoder:
+  path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.2-TI2V-5B-Diffusers
+official:
+  height: 480
+  width: 832
+  num_frames: 81          # 4N+1; 5.0 s at 16 fps
+  fps: 16
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  scheduler: UniPCMultistepScheduler   # flow_prediction (shipped), flow_shift set below as the cards do
+  flow_shift: 8.0
+  negative_prompt: "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+input:
+  center_on_contact: false            # 5.0 s from frame 0; contact at input frames ~37-43
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # 21 latent frames x 30 x 52 tokens, 1536-d
+layers: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 29]
+encode_snr_db: [-20, -8, 0, 8]
+# --- adapter settings (physlaw/models/wan.py) ---
+prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
+forecast_layers: [6, 15, 24]
+surprise: {n_draws: 2}
+noise_seed: 0

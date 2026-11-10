@@ -1,0 +1,6 @@
+# Wan2.2-TI2V-5B base weights at PhysRVG's settings: PhysRVG's pair partner (spec §4.2 group 3: both members with
+# identical settings; physrvg.yaml has the sources). wan22_ti2v_5b.yaml is the base at its own official settings.
+defaults: physrvg.yaml
+name: wan2.2-ti2v-5b-physrvg-settings
+dit_weights: null
+lora: null

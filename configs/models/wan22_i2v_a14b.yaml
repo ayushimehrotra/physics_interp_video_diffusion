@@ -6,7 +6,8 @@
 # Added 2026-11-06 for output track B (self-consistency, spec §6b): not on the spec §4.2 list (nearest: P2
 # "Wan 2.1 I2V-14B"); it is the first generator that produced measurable F1-style collisions.
 name: wan2.2-i2v-a14b
-kind: diffusion
+kind: generator
+output_track: B
 hf_id: Wan-AI/Wan2.2-I2V-A14B-Diffusers
 revision: 596658fd9ca6b7b71d5057529bbf319ecbc61d74     # from the download's .cache/huggingface metadata
 local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.2-I2V-A14B-Diffusers
@@ -20,5 +21,13 @@ official:
   fps: 16
   num_inference_steps: 40
   guidance_scale: 3.5
+  # The shipped scheduler_config.json (flow_shift 3.0) is used, as for the 22 track-B clips of 2026-11-06. NOTE: the
+  # official repo's wan/configs/wan_i2v_A14B.py has sample_shift 5.0; the diffusers card does not override it.
+  scheduler: UniPCMultistepScheduler
   negative_prompt: "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
-prompt_template: minimal   # physlaw.models.cogvideox.minimal_prompt
+input:
+  center_on_contact: false
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}
+prompt_template: minimal   # physlaw.models.dit.minimal_prompt
+# WanI2VAdapter (physlaw/models/wan.py). Both 14B experts in bf16 (2 x 28 GB) do not fit the 48 GB GPU together:
+# the 2026-11-06 clips (scripts/experiments/track_b_generate_wan.py) were made on an 80 GB pod.

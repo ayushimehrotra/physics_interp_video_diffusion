@@ -1,0 +1,26 @@
+# Wan2.1-I2V-14B-480P (spec §4.2 group 5, P1): output track B generator (frame 0 + minimal prompt -> clip), WanI2VAdapter.
+# Weights NOT downloaded on the 2026-11 machine (sha256 pins = the Hub's LFS hashes); the code path is exercised by
+# Wan2.2's WanImageToVideoPipeline. OFFICIAL settings, github.com/Wan-Video/Wan2.1: generate.py i2v defaults (40 steps,
+# sample_shift 3.0 for 832*480, 81 frames), shared_config (16 fps, guide_scale 5.0), wan/configs/wan_i2v_14B.py
+# (negative prompt = "镜头晃动，" + the shared one). 480P model: F1's 832 x 480 frame needs no resize.
+name: wan2.1-i2v-14b
+kind: generator
+output_track: B
+hf_id: Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+revision: b184e23a8a16b20f108f727c902e769e873ffc73
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-I2V-14B-480P-Diffusers
+dtype: bfloat16
+official:
+  height: 480
+  width: 832
+  num_frames: 81
+  fps: 16
+  num_inference_steps: 40
+  guidance_scale: 5.0
+  scheduler: UniPCMultistepScheduler
+  flow_shift: 3.0
+  negative_prompt: "镜头晃动，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+input:
+  center_on_contact: false
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}
+prompt_template: minimal   # physlaw.models.dit.minimal_prompt

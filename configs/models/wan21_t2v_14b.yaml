@@ -1,0 +1,15 @@
+# Wan2.1-T2V-14B (spec §4.2 group 2, P1): same code path as wan21_t2v_1_3b.yaml (WanAdapter); weights NOT downloaded
+# on the 2026-11 machine (no disk; sha256 pins are the Hub's LFS hashes at the pinned revision). OFFICIAL settings,
+# github.com/Wan-Video/Wan2.1 generate.py t2v defaults: 50 steps, sample_shift 5.0, guide_scale 5.0, 81 frames, 16 fps.
+# Size 832*480 (supported for t2v-14B; F1's native aspect and the 1.3B's size, so the two compare at equal input).
+defaults: wan21_t2v_1_3b.yaml
+name: wan2.1-t2v-14b
+hf_id: Wan-AI/Wan2.1-T2V-14B-Diffusers
+revision: 38ec498cb3208fb688890f8cc7e94ede2cbd7f68
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-T2V-14B-Diffusers
+text_encoder: {path: null}            # its own text_encoder/ (download the full repo)
+official:
+  guidance_scale: 5.0
+  flow_shift: 5.0
+layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39]   # 40 blocks, 5120-d
+forecast_layers: [10, 20, 30]
