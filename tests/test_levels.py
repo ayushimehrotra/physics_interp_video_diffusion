@@ -153,3 +153,15 @@ def test_backproject_and_trajectory_readout_recover_g():
     assert gravity.residual(pre, post, r["ctx"]) < 0.05
     fast = _side_clip(g=1.5 * 9.81)          # a clip whose whole arc has g x 1.5: the readout sees it
     assert O.readout_traj(fast.frames[::3], fast, 16.0)["g_post_over_true"] == pytest.approx(1.5, abs=0.08)
+
+
+def test_aggregate_reads_heldout_formats(tmp_path):
+    d = tmp_path / "m2" / "f1"
+    d.mkdir(parents=True)
+    (d / "l1.json").write_text(json.dumps({"selected": {"P-real-mm|frame": {"family": {"score": 0.3}, "outcome": {"score": 0.1}},
+                                                        "P-real-mm|roi": {"family": {"score": 0.9}}}}))
+    (d / "l2.json").write_text(json.dumps({"motion_adjusted": {"summary": {"x vs y": {"score": 0.7, "covariates": "c"}}}}))
+    (d / "l2b.json").write_text(json.dumps({"contrasts": {"x vs y": {"overall": {"score": 0.8}, "encoded_but_unused": 0.1}}}))
+    r = aggregate.run(tmp_path)["rows"][0]
+    assert r["l1"] == {"S_family.P-real-mm": 0.3, "S_outcome.P-real-mm": 0.1}       # frame pool only (leak-free)
+    assert r["l2"]["x vs y"] == 0.7 and r["l2b"]["x vs y"] == 0.8 and r["encoded_unused"]["x vs y"] == 0.1

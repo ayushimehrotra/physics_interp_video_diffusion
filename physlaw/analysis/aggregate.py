@@ -3,13 +3,12 @@ has not been run.
 
 Columns and where each comes from (first match wins):
   L0           mean R² over l0.json targets
-  L1           S per law on the legal twins: l1.json ``S_family`` blocks (law-family score, if present), else the
-               legacy outcome / momentum S of the leak-free ``frame_mm`` variant (DiTs: median over (SNR, layer) spaces,
-               no selection)
-  L2           motion-adjusted win rate per contrast (covariates speed + copy-last, first available distance of
-               PRIMARY_DISTANCES, fixed a priori: object-region MSE of the model's own prediction / clean-context loss);
-               l2.json ``primary`` if the file names one
-  L2b          AUC per contrast (l2b.json); encoded-but-unused = (AUC - 0.5) - (L2 adjusted win - 0.5)
+  L1           S_family and S_outcome of the held-out selected space, frame pool (l1.json ``selected``), per probe
+               option; older files: outcome / momentum S of the leak-free ``frame_mm`` variant (DiTs: median over spaces)
+  L2           motion-adjusted win rate per contrast: l2.json ``motion_adjusted.summary`` (held-out distance selection);
+               older files: covariates speed + copy-last, first distance of PRIMARY_DISTANCES (fixed a priori)
+  L2b          held-out AUC per contrast (l2b.json ``overall``); encoded-but-unused from l2b.json, else
+               (AUC - 0.5) - (L2 adjusted win - 0.5)
   L3           Galilean invariance error per target and boost level (f4), mass-independence slope of the forecast
                (f6/f7), transfer gaps
   L4           r(predicted, observed) change of v_B' along n for the mass direction (frame_mm, else frame)
@@ -39,10 +38,15 @@ def _l0(d):
 
 def _l1(d):
     out = {}
-    for blk in (d.get("S_family"), d.get("law_family", {}).get("S_family") if isinstance(d.get("law_family"), dict) else None):
-        if isinstance(blk, dict):
-            out.update({f"S_family.{k}": _num(v if not isinstance(v, dict) else v.get("S")) for k, v in blk.items()})
-    vs = d.get("variants", {})
+    for key, sel in (d.get("selected") or {}).items():          # held-out selected space (spec v2 L1)
+        opt, pool = key.split("|")
+        if pool == "frame":                                      # primary: leak-free frame pool
+            for score in ("family", "outcome"):
+                if _num(sel.get(score, {}).get("score")) is not None:
+                    out[f"S_{score}.{opt}"] = sel[score]["score"]
+    if out:
+        return out
+    vs = d.get("variants", {})                                   # pre-2026-11-10 L1 (no selection rule)
     keys = [k for k in vs if k == "frame_mm" or k.endswith("|frame_mm")]
     for t in LEGAL:
         for law in ("outcome", "momentum"):
@@ -56,28 +60,28 @@ def _l1(d):
 
 
 def _l2(d):
-    if isinstance(d.get("primary"), dict):
-        return {c: _num(v) for c, v in d["primary"].items()}
-    ma = d.get("motion_adjusted", {}).get("contrasts", {})
-    cs = next((c for c in COVARIATES if c in ma), None)
+    ma = d.get("motion_adjusted", {})
+    if ma.get("summary"):                                        # held-out distance selection (spec v2 L2)
+        out = {c: v["score"] for c, v in ma["summary"].items() if _num(v.get("score")) is not None}
+        out["_covariates"] = next(iter(ma["summary"].values())).get("covariates")
+        return out
+    cs = next((c for c in COVARIATES if c in ma.get("contrasts", {})), None)
     if cs is None:
         return None
     out = {}
-    for c, by_m in ma[cs].items():
+    for c, by_m in ma["contrasts"][cs].items():
         m = next((m for m in PRIMARY_DISTANCES if m in by_m), None)
         if m:
             out[c] = by_m[m]["adj_win_rate"]
-    out["_distance"], out["_covariates"] = m, cs
+            out["_distance"] = m
+    out["_covariates"] = cs
     return out
 
 
 def _l2b(d):
-    src = d.get("contrasts", d)
     out = {}
-    for c, v in src.items():
-        a = v.get("auc") if isinstance(v, dict) else None
-        if a is None and isinstance(v, dict):
-            a = v.get("best", {}).get("auc") if isinstance(v.get("best"), dict) else None
+    for c, v in d.get("contrasts", {}).items():
+        a = v.get("overall", {}).get("score") if isinstance(v.get("overall"), dict) else v.get("auc")
         if _num(a) is not None:
             out[c] = float(a)
     return out or None
@@ -155,7 +159,12 @@ def collect(results: Path) -> list[dict]:
                 v = fn(json.loads(f.read_text()))
                 if v:
                     row[name] = v
-        if row.get("l2b") and row.get("l2"):
+        f = fam_dir / "l2b.json"
+        ebu = {c: v["encoded_but_unused"] for c, v in json.loads(f.read_text()).get("contrasts", {}).items()
+               if _num(v.get("encoded_but_unused")) is not None} if f.exists() else {}
+        if ebu:
+            row["encoded_unused"] = ebu
+        elif row.get("l2b") and row.get("l2"):
             row["encoded_unused"] = {c: (a - 0.5) - (row["l2"][c] - 0.5) for c, a in row["l2b"].items()
                                      if _num(row["l2"].get(c)) is not None}
         if len(row) > 2:

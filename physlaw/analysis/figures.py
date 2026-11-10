@@ -47,9 +47,9 @@ def _colors(models):
 
 def _l1_score(r):
     l1 = r.get("l1") or {}
-    fam = [v for k, v in l1.items() if k.startswith("S_family.") and v is not None]
-    if fam:
-        return float(np.mean(fam)), "L1 S_family (mean over laws)"
+    for k in ("S_family.P-pred-real", "S_family.P-real-mm"):
+        if l1.get(k) is not None:
+            return l1[k], f"L1 {k} (held-out space, frame pool)"
     v = l1.get("S_outcome.conserve_e1")
     return (v, "L1 S_outcome (conserve_e1, frame_mm)") if v is not None else (None, None)
 
@@ -93,8 +93,9 @@ def draw(rows: list[dict], results: Path, out: Path, log=print) -> list[str]:
         if r["family"] != "f1" or not r.get("l2") or not f.exists():
             continue
         d = json.loads(f.read_text())
-        cs, dist = r["l2"]["_covariates"], r["l2"]["_distance"]
+        cs = r["l2"]["_covariates"]
         for c, v in d["motion_adjusted"]["contrasts"][cs].items():
+            dist = r["l2"].get("_distance") or (d["motion_adjusted"].get("summary", {}).get(c) or {}).get("selected")
             if dist in v:
                 raw_adj.append((r["model"], c, v[dist]["raw_win_rate"], v[dist]["adj_win_rate"]))
     if raw_adj:
