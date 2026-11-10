@@ -1,6 +1,6 @@
 # Output track B - wan2.2-i2v-a14b on f1
 
-Readouts: `/tmp/claude-0/-root/1e571780-01d0-4d88-a090-f041787bcada/scratchpad/levels/wan_trackB`; laws: momentum, energy, com, angular_momentum
+Readouts: `/tmp/claude-0/-root/1e571780-01d0-4d88-a090-f041787bcada/scratchpad/levels/wan_trackB`; laws: ['momentum', 'energy', 'com', 'angular_momentum']
 
 ## Gate: strict
 

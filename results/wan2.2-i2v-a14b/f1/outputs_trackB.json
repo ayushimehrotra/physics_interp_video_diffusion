@@ -2496,6 +2496,6 @@
  "family": "f1",
  "track": "B",
  "readouts": "/tmp/claude-0/-root/1e571780-01d0-4d88-a090-f041787bcada/scratchpad/levels/wan_trackB",
- "model_config_hash": "575d79cc36d5",
- "eval_config_hash": "2fcd23d3abf3"
+ "model_config_hash": "f617bc4bb176",
+ "eval_config_hash": "bda925980daa"
 }

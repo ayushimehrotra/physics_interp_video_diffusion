@@ -52,6 +52,8 @@ def md_track_a(res) -> list[str]:
 
 def md_track_b(res) -> list[str]:
     keys = ["e", "r_momentum", "ke_ratio", *O.TRAJ_KEYS, *(f"res_{l}" for l in res["laws"])]
+    stats = [s for d in res["gates"].values() for s in [d["generated"], *d.get("real", {}).values()]]
+    keys = [k for k in keys if any(f"median_{k}" in s for s in stats)]            # this family's readouts only
     rows = []
     for gate, d in res["gates"].items():
         rows += [f"## Gate: {gate}", "",
