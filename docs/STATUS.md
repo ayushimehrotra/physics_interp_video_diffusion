@@ -338,3 +338,129 @@ Estimate: an F1 group is ~950 frames, so ~3 min per group at saturation, and 400
 and `models/encoders.py:VJEPA2Adapter` -> `physlaw/models/vjepa2.py`, using
 `models/base.sample_frames` (no frame repetition) and `tokens/project.py` instead of the old
 fixed-frame-20 pooling.
+
+## WP eval (2026-11-10)
+
+Spec v2 milestones 13, 14 and the L1 part of 15, plus the §5 protocol changes. Branch `wp-eval`.
+
+**Built**
+* `physlaw/eval/laws/` (numpy only, torch-free): one `Law` per spec law (`NAME`, `residual`, `family_distance`,
+  `null_outcome`), in three modules that share algebra: `collision.py` (momentum + the restitution family, energy,
+  com, angular_momentum, galilean), `freefall.py` (gravity, axis_independence, bounce, mass_independence,
+  pendulum), `incline.py` (ramp_energy, rolling). Import as `from physlaw.eval.laws import momentum` or
+  `LAWS[name]`; `from_labels(labels)` builds `(pre, post, ctx)` for collision families. **Normalisation:** every
+  family distance is divided by the null's own distance to the family, so d_null = 1 for every law and scene.
+  Tests (`tests/test_laws.py`): closed-form legal and violating outcomes per law, and the F1 laws against
+  `collision_physics` and all 320 `data/f1` labels.
+* `physlaw/probes/select.py`: the held-out selection rule (select on half of the groups, score on the other half,
+  50 random halvings x 2) and Holm. Used by L0 (cell), L1 (DiT space), L2 (distance) and L2b (layer/pool).
+  `grid_probe` now returns per-seed out-of-fold predictions. Deleted `probes/stats.py` and `probes/_fast_cv.py`
+  (dead: they imported a module that does not exist).
+* L0: held-out R² next to the old in-sample max; Holm across targets; one-twin-per-group refit of post targets
+  (< 200 groups; each twin type in turn, averaged; also for the mask floor); the DiT noised-input-latent baseline
+  (reads `pooled_latent` + `latent_keys`, skipped when absent: no existing cache has them yet); the RigidBench
+  velocity protocol (`velocity_protocols.rigidbench.enabled`, off by default).
+* L1 revised (§5.2): S_outcome and S_family primary (d from `laws.momentum.family_distance`, d_floor = the probes
+  on real legal frames, d_null = 1, plus the argmin ê); S_momentum demoted with the caveat (reference: the built
+  shuffled-group forecast); CoM and angular-momentum residuals (same caveat); energy only when the decoded
+  forecast speeds have 0.8-1.2x the spread of the real-frame decode, else "not scorable"; frame pool primary, ROI
+  secondary (labelled as leaking location, with its mask floor); probe options P-real-mm, P-pred-real, P-forecast
+  (ceiling only); DiT space selected by the held-out rule. `l1_forecast_laws.residuals` is kept for `eval/outputs.py`.
+* P-pred-real: `pred_real()` on `models/vjepa2.py` (shared by the untrained control) and `models/videomae2.py`.
+  The post-event spatial positions are split into 4 seeded groups; pass k masks group k in every post-event
+  token-frame and the rest of the clip is context (V-JEPA 2: context encoder on the visible tokens only, then the
+  predictor; VideoMAE: encoder on the visible tokens, decoder hidden states at the masked ones). A unit test checks
+  that pass k never sees the pixels it predicts. Stage 4: `--pred-real`.
+* L2 (§5.3): contrasts per family in `configs/eval/l2_surprise.yaml` (calibration pair + list with magnitude and
+  stratify), so F7/F8 plug in; strata both ways (`[energy_physical]`, `[not energy_physical]`); dose-response
+  (Spearman of the adjusted residual with the magnitude difference); the legal-vs-legal control check (adjusted
+  win CI must contain 0.5, else the distance's contrasts are `inconclusive`); Holm per (covariate set, distance)
+  and on the raw contrasts; a summary per contrast that selects the distance (among those whose control is at
+  chance) on held-out groups.
+* L2b (§5.4): `eval/l2b_detection.py`, `configs/eval/l2b_detection.yaml`, wired into stage 6 (`--level ...l2b`, run
+  after L2). L2-penalised logistic probe (Newton in the SVD basis), grouped CV, within-group label-swap
+  permutations (500, max over layers x pools), ROI mask floor, held-out layer selection, Holm, encoded-but-unused
+  index. Stage 6 also got `--out` (test runs outside `results/`).
+
+**Real runs (CPU, the existing 64-group caches; written to `results/<model>/f1/`).** Full protocol: L0 12 fold seeds
+and 500 permutations; L1 and L2b use 5-fold x 4 seeds cross-fitting (spec §5 allows it below 100 groups; ~13 test
+groups per fold). Times on the shared machine: L0 5-6 min per encoder, 23 min CogVideoX-2b; L2 < 1 min; L2b 10-13 min
+per encoder, 32 min CogVideoX-2b; L1 < 1 min per encoder, 7 min CogVideoX-2b.
+
+*L0.* The in-sample best cells and R² reproduce the old results exactly. Held-out R² is 0.00-0.04 lower (e.g.
+V-JEPA 2 post velocity 0.915 / 0.916 vs 0.920 / 0.918). One-twin-per-group refit of post targets: V-JEPA 2
+0.81-0.95, VideoMAE-v2 0.71-0.90, CogVideoX-2b 0.95 (velocity), untrained post velocity -0.02 (old STATUS:
+-0.04 / 0.84). Holm p = 0.040 for every trained-model target (20 x the 0.002 permutation floor). Velocity protocol
+test run on CogVideoX-2b (scratch, 2 seeds): RigidBench's Adam probe gives 0.93-0.97 vs ridge 0.93-0.98, so on
+this model the protocol does not explain the disagreement with RigidBench's weak Wan 2.2 velocity.
+
+*L1 (P-real-mm; frame = primary).* The old numbers reproduce (V-JEPA 2 conserve_e1 S_outcome +0.25 ROI, +0.26 frame;
+CogVideoX-2b snr-20/L6 ROI +0.60). What changes is what is reported:
+* V-JEPA 2, frame pool, both legal twins: S_outcome -0.32 [-1.00, +0.11] (+0.26 for e = 1, -1.00 for e = 0.15),
+  S_family -1.00: the decoded forecast is FURTHER from the legal family than "no collision" (d = 1.40 vs 1) with
+  ê = 0.00; the probe floor itself is 0.88, so S_family has almost no range there (flagged † in the table).
+  ROI pool: S_outcome +0.09, S_family -0.34 [-0.61, -0.11] (floor 0.45).
+* CogVideoX-2b: the space selected on held-out groups for the ROI pool is snr-20/L6 (100/100 picks out of 12):
+  held-out S_outcome +0.33 [+0.14, +0.49] on both legal twins (+0.60 on e = 1 alone, the old "preliminary best of
+  48"); S_family -0.19. On the leak-free frame pool: S_outcome -0.88, S_family -1.00. The old preliminary L1 result
+  does not survive leak-free pooling; the ROI pool's mask floor alone gives post-velocity R² 0.39-0.42.
+* VideoMAE-v2: S_outcome -0.66 (frame, e = 1) to -1.00; S_family -1.00 or undefined (floor >= null).
+* Untrained: undefined or -1 everywhere (frame-pool probes are at R² ~0).
+* Energy is "not scorable" for every encoder variant (forecast speed spread 0.45-0.61 or 1.4-1.5 of the real
+  decode); scorable only for some CogVideoX ROI spaces (snr-20/L6: S_energy +0.81).
+* P-forecast ceiling (unchanged): V-JEPA 2 ROI post-velocity R² 0.74 (mask floor 0.12-0.24), frame 0.22.
+
+*L2 (motion-adjusted, speed + copy-last covariates, held-out distance).*
+* V-JEPA 2: momentum violations MORE surprising than their legal twins after adjustment: held-out adjusted win
+  0.66 (e = 1) and 0.70 (e = 0.15), Holm-significant; on the energy-physical stratum 0.69, on the 21
+  energy-creating groups 0.43 (no difference). energy_create: 0.59, not significant after Holm. No dose-response:
+  Spearman of the adjusted residual with the momentum residual is -0.25 to +0.27 (mostly n.s.), so the surprise
+  does not grow with the size of the violation.
+* VideoMAE-v2: no difference on every distance whose control is at chance. The raw-pixel `*_wmse_*` distances
+  fail the control (legal-vs-legal adjusted win 0.72), so their apparent momentum effects (0.70-0.88) are now
+  marked inconclusive.
+* CogVideoX-2b: mom_violate_e015 vs conserve_e015, clean_mse_all: adjusted 0.66 [0.52, 0.77], Holm p 0.04,
+  held-out 0.63. These numbers are unchanged from the old l2.md (post_speed and speed + copy-last sets), but the old
+  STATUS line "all CIs include 0.5" was true only for the copy-last set. A weak, borderline effect; every other
+  contrast: no difference.
+* Untrained: no difference anywhere; controls at chance.
+
+*L2b (new).* Momentum violations are barely linearly decodable from pooled post-event activations: held-out AUC
+0.57-0.58 (V-JEPA 2; ROI mask floor 0.46-0.57), 0.57-0.58 (VideoMAE-v2), 0.55-0.57 (CogVideoX-2b), 0.55-0.63
+(untrained). energy_create: 0.97 / 0.95 / 0.94 (untrained 0.74), but the legal-vs-legal pair (e = 1 vs 0.15) is
+separable almost as well (0.94 / 0.90 / 0.89 / 0.73): L2b is not motion-adjusted, so this is mostly motion.
+Encoded-but-unused index: momentum -0.08 / -0.12 for V-JEPA 2 (its own surprise beats the linear probe), -0.06 to
++0.07 for the others; energy +0.38 to +0.48, inheriting the motion confound.
+
+**Deviations / disagreements (flagged for the user)**
+1. P-pred-real is written to sidecar files `<group>/<twin>.pred_real.npz`, not appended to the existing `.npz`:
+   the shared caches must not be rewritten (worktree rule), and a sidecar is just as resumable.
+2. RigidBench probes "actor-mask-averaged tokens"; the caches hold only pooled features, so it uses the own-ball
+   ROI pool (disk at 1.5x the projected radius).
+3. CoM velocity from velocity-only states is the momentum change again (M dv_cm = dp); only the denominator differs
+   (mass-weighted mean speed, which does not blow up when |p| is small). Angular momentum is taken about the world
+   origin: about the contact point the F1 momentum edit (a drift along n) is invisible.
+4. "Real spread" for energy scorability = the spread of the probes' decode of real frames (same probe), not the
+   true speeds.
+5. F1 data: the e = 1 twin is Bullet's outcome, whose impulse is up to ~0.4° off the analytic normal, so legal twins
+   sit at family distance <= 0.015 (not 0) and conserve_e1 changes KE by up to +1.2%. Tests use those tolerances.
+6. L2b uses 5-fold x 4 seeds (not 12) and its own penalty grid = the ridge alphas.
+7. In S_family the frame-pool probe floors are 0.88-0.99 (d_null = 1) for every model, so S_family on the primary
+   pool cannot separate models at 64 groups; it is flagged in the tables. More groups or better probes
+   (P-pred-real) are needed for the primary law-family score to be informative.
+
+**For the mentor (full scale)** — per model and family, after stage 4 (and 5 for pixel baselines):
+```
+PY=/root/envs/physics_venv/bin/python
+for lv in l0_states l2_surprise l2b_detection l1_forecast_laws; do
+  $PY scripts/06_eval.py --model configs/models/<model>.yaml --level configs/eval/$lv.yaml --data data/<family>
+done
+# P-pred-real (encoders only), then re-run L1:
+HF_HUB_OFFLINE=1 flock /root/meta/gpu.lock $PY scripts/04_cache_activations.py --model configs/models/<model>.yaml \
+    --data data/<family> --pred-real
+# velocity protocol check (Wan2.2-TI2V-5B):
+$PY scripts/06_eval.py --model configs/models/wan22_ti2v_5b.yaml --level configs/eval/l0_states.yaml --data data/f1 \
+    --set velocity_protocols.rigidbench.enabled=true
+```
+With >= 100 groups set `fold_seeds_l1: 12` and `l2b.fold_seeds: 12` (spec §5). F7/F8 need their contrasts in
+`l2_surprise.yaml` and a `laws.from_labels` branch once their label schema exists.
