@@ -757,8 +757,9 @@ def track_b_summary(rows: dict, real_rows: dict, data_dir, laws) -> dict:
 #                      vx ratio (axis independence); drop: acceleration ratio heavier / lighter (mass independence)
 #   bounce             parabolas on the fall before and the rise after the first floor contact -> velocities at contact
 #                      and the rebound height ratio (apex above the contact height / release height above it)
-#   ramp (F8)          bottom speed: velocity of a quadratic fit to the last TR_WINDOW_S before the path reaches the
-#                      floor height, over sqrt(2 g h) with h the tracked drop from release to the floor
+#   ramp (F8)          bottom speed: slope at the floor of a quadratic fit to the path length s(t) over the last
+#                      TR_WINDOW_S before the path reaches the floor height, over sqrt(2 g h) with h the tracked drop
+#                      from release to the floor
 TR_FG = 30.0
 TR_WINDOW_S = 0.5
 TR_MIN_FRAMES = 5
@@ -911,14 +912,19 @@ def readout_traj(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
         win = [i for i in after if hit - Wn < i <= hit]
         if len(win) < TR_MIN_FRAMES:
             return {**res, "measurable": False, "reason": "short_window"}
-        cs = [_fit(t[win], world[win, k, a], 2) for a in (horiz, 2)]
-        v_b = np.array([np.polyval(np.polyder(c), t[hit]) for c, _ in cs])
+        # path length s(t) bends smoothly through the ramp's fillets, where x(t) and z(t) do not: fit s(t)
+        P = world[win][:, k][:, [horiz, 2]]
+        sl = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
+        cs, rs = _fit(t[win], sl, 2)
+        speed = float(np.polyval(np.polyder(cs), t[hit]))
+        d = P[-1] - P[-2]
+        v_b = speed * d / max(np.linalg.norm(d), 1e-12)                       # along the final direction of travel
         h = z_rel - z_bot
-        res.update(bottom_speed=float(np.linalg.norm(v_b)), h=h,
-                   bottom_speed_ratio=float(np.linalg.norm(v_b) / np.sqrt(2 * g_true * h)) if h > 0 else float("nan"))
+        res.update(bottom_speed=speed, h=h, bottom_speed_ratio=speed / np.sqrt(2 * g_true * h) if h > 0 else float("nan"))
         res["state_pre"], res["state_post"] = {"v": [[0.0, 0.0]]}, {"v": [v_b.tolist()]}
         res["ctx"] = {"g_mag": g_true, "h": h}
-        resid = max(_fit(t[win], pix[win, k, a], 2)[1] for a in (0, 1))
+        px_per_m = np.median(np.linalg.norm(np.diff(pix[win, k], axis=0), axis=1) / np.maximum(np.diff(sl), 1e-9))
+        resid = rs * float(px_per_m)
     res["fit_resid"] = float(resid)
     if gate == "strict" and checks and resid > TR_MAX_RESID_PX:
         return {**res, "measurable": False, "reason": "fit_residual"}
