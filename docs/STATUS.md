@@ -412,7 +412,8 @@ fixed-frame-20 pooling.
   bounce height ratio 0.648 legal e 0.8, 0.192 legal e 0.4 (true 0.16: a 4-frame rise), 1.302 energy_x13);
   F8 5/5 (bottom speed / sqrt(2gh) 0.989 / 1.003 / 1.023 on the legal slope A / B / kink, 1.269 energy_x125, 0.838
   path_dependent, closed form 0.847). Laws: gravity residual 0.055 legal vs 0.52 gravity_x15; axis independence
-  0.029 vs 0.414 vx_x06; ramp_energy 0.003-0.023 legal vs 0.27 / 0.16.
+  0.029 vs 0.414 vx_x06; ramp_energy 0.003-0.023 legal vs 0.27 / 0.16. F3 (collision readout, identical-looking
+  balls, true masses per twin): 10/10 measurable, momentum residual 0.011-0.043, e 0.99-1.01, CoM <= 0.021, L <= 0.018.
 * **L3 stand-in on F1** (V-JEPA 2 ViT-L cache, CPU; no F4/F6/F7 caches yet): every analysis runs end to end. Labelled
   stand-in in its output. Mass independence with target |dv| (momentum makes the lighter ball change more): the
   probe floor recovers the slope (-0.62 vs true -0.82), the decoded forecast does not (+0.07 / -0.04 mm).
