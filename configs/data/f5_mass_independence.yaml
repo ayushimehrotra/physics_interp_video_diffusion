@@ -1,0 +1,3 @@
+# f5_mass_independence: NOT BUILT YET (spec milestone 8). Generator raises NotImplementedError.
+defaults: _master.yaml
+family: f5

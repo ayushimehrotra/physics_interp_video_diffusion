@@ -1,0 +1,3 @@
+# f3_hidden_mass: NOT BUILT YET (spec milestone 8). Generator raises NotImplementedError.
+defaults: _master.yaml
+family: f3
