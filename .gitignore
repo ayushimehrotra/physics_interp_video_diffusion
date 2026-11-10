@@ -1,7 +1,7 @@
 # Large or regenerable outputs: rebuilt by the pipeline (see docs/RESUME.md)
-data/
-cache/
-logs/
+/data
+/cache
+/logs
 __pycache__/
 *.pyc
 .pytest_cache/
