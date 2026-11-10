@@ -141,7 +141,15 @@ def cells(A, pools, layers, want_pools, want_layers="all") -> dict[str, np.ndarr
     return {f"{l}/{p}": A[:, pools.index(p), layers.index(l)] for p in want_pools if p in pools for l in ls}
 
 
-def forecast_spaces(cache_dir: Path, recs, mcfg, pool_names) -> dict[str, tuple[dict, dict]]:
+def _mask_weights(cache_dir: Path, data_dir: Path, recs, mcfg) -> dict:
+    """Per-clip ROI pooling weights (L0's _maskfeat_v2.npz, built and cached here if L0 has not run)."""
+    from physlaw.eval.l0_states import mask_features
+    from physlaw.models.base import token_spec
+    labels = [json.loads((data_dir / r["clip"] / "labels.json").read_text()) for r in recs]
+    return mask_features(cache_dir, data_dir, recs, labels, token_spec(mcfg), workers=4)
+
+
+def forecast_spaces(cache_dir: Path, data_dir: Path, recs, mcfg, pool_names) -> dict[str, tuple[dict, dict]]:
     """{space: (real {pool: [n, D]}, forecast {pool: [n, D]})}, as L1: encoders' FINAL space (forecast tokens pooled
     with each clip's own weights from L0's _maskfeat_v2.npz), diffusion models' per-(SNR, layer) fc_pooled."""
     zs = [np.load(cache_dir / r["file"]) for r in recs]
@@ -157,9 +165,7 @@ def forecast_spaces(cache_dir: Path, recs, mcfg, pool_names) -> dict[str, tuple[
         li = [str(l) for l in zs[0]["layers"]].index("-1")
         get_ = lambda z, p: z["pooled"][pools.index(p), li]
     real = {p: np.stack([get_(z, p) for z in zs]).astype(np.float64) for p in pool_names}
-    mf = np.load(cache_dir / "_maskfeat_v2.npz")
-    if list(mf["clips"]) != [r["clip"] for r in recs]:
-        raise RuntimeError("_maskfeat_v2.npz is for another clip list: run L0 on this family first")
+    mf = _mask_weights(cache_dir, data_dir, recs, mcfg)
     tub = int(mcfg["token_grid"]["tubelet"])
     fc = {p: np.zeros_like(real[p]) for p in pool_names}
     memo = {}
@@ -339,7 +345,7 @@ def _within_slope(y: np.ndarray, x: np.ndarray, g: np.ndarray) -> float:
     return float((xc @ yc) / max(xc @ xc, 1e-12))
 
 
-def mass_independence(cache_dir, recs, labels, mcfg, cfg, family: str, log=print) -> dict:
+def mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family: str, log=print) -> dict:
     mc = cfg["mass_independence"]
     fam = mc["families"][family]
     sel = [i for i, l in enumerate(labels) if fam.get("subfamily") is None or get(l, "physlaw.subfamily") == fam["subfamily"]]
@@ -347,7 +353,7 @@ def mass_independence(cache_dir, recs, labels, mcfg, cfg, family: str, log=print
     objs = list(fam.get("objects", ["A", "B"]))
     tname = fam["target"]
     pools = {o: f"roi_{o}.post" for o in objs}
-    spaces = forecast_spaces(cache_dir, recs, mcfg, sorted(set(pools.values())))
+    spaces = forecast_spaces(cache_dir, data_dir, recs, mcfg, sorted(set(pools.values())))
     groups = np.array([r["group"] for r in recs])
     twins = np.array([r["twin"] for r in recs])
     legal = np.isin(twins, fam["legal"])
@@ -446,7 +452,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, log=print) -> dict:
         if an == "galilean":
             out["galilean"] = galilean(recs, labels, A, pools, layers, cfg, cache_dir, data_dir, log)
         elif an == "mass_independence":
-            out["mass_independence"] = mass_independence(cache_dir, recs, labels, mcfg, cfg, family, log)
+            out["mass_independence"] = mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family, log)
         elif an == "transfer":
             out["transfer"] = transfer(recs, labels, A, pools, layers, cfg, family, log)
         else:

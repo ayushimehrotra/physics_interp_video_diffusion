@@ -46,6 +46,7 @@ def main():
     ap.add_argument("--untrained", default="configs/models/untrained_vitl.yaml")
     ap.add_argument("--workers", type=int, default=64)
     ap.add_argument("--out", default=None, help="default results/<model>/<family> (use a scratch dir for test runs)")
+    ap.add_argument("--cache", default=None, help="stage 4 cache (default cache/<model>/<family>)")
     ap.add_argument("--set", nargs="*", default=[])
     ap.add_argument("--work", default=None, help="L4: intervention cache (default cache/<model>/<family>/_l4)")
     ap.add_argument("--force", action="store_true", help="L4: recompute cached interventions")
@@ -53,7 +54,7 @@ def main():
     mcfg = load_config(a.model)
     cfg = load_config(a.level, a.set)
     data = resolve_path(a.data)
-    cache = REPO / "cache" / mcfg.name / data.name
+    cache = Path(a.cache) if a.cache else REPO / "cache" / mcfg.name / data.name
     out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
     level = cfg["level"]

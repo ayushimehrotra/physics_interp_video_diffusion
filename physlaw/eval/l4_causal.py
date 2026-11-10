@@ -280,7 +280,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
         del m
 
     # decoding probes: real post-event frames of the training groups, per space and pool; mm from cached forecasts
-    spaces = forecast_spaces(cache_dir, recs, mcfg, list(POST_POOLS))
+    spaces = forecast_spaces(cache_dir, data_dir, recs, mcfg, list(POST_POOLS))
     grp = np.array([r["group"] for r in recs])
     Yv = {o: np.array([l["physlaw"]["post_velocity"][o][:2] for l in labels], float) for o in "AB"}
     Z = {g: dict(np.load(work / f"{g}.npz")) for g in groups}
