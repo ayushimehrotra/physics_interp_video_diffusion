@@ -803,7 +803,12 @@ def track_objects(frames: np.ndarray, labels: dict, objs: list, frames_idx: list
                   float(np.sqrt(max(m.sum(), 1) / np.pi)))
         px = labels["per_frame"][frames_idx[t0]][o]["pixel"]
         prev[o] = np.array([px[1] * H / H0, px[0] * W / W0])
-    bg = np.median(frames, 0).astype(np.float32)
+    # background: per-pixel median of the REAL reference frames with the objects masked out (a ball that comes to
+    # rest would otherwise become background); pixels the objects always cover fall back to the clip median
+    ref = np.where((ref_masks > 0)[..., None], np.nan, ref_frames.astype(np.float32))
+    with np.errstate(all="ignore"):
+        bg = np.nanmedian(ref, 0) if ref_frames.shape[1:3] == frames.shape[1:3] else np.full(frames.shape[1:], np.nan)
+    bg = np.where(np.isfinite(bg), bg, np.median(frames, 0)).astype(np.float32)
     pos = np.full((T, len(objs), 2), np.nan)
     for t in range(T):
         img = frames[t].astype(np.float32)
@@ -855,10 +860,13 @@ def readout_traj(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
     if sub in ("projectile", "drop", "bounce"):
         fits, resid = {}, 0.0
         for k in range(len(objs)):
-            pre = [i for i in range(max(0, ke - Wn), ke) if ok[i, k]]
-            post = [i for i in range(ke, min(len(t), ke + Wn)) if ok[i, k]]
-            if sub == "bounce":                                             # fall before, rise after the contact
-                pre = [i for i in pre if world[i, k, 2] > world[pre[-1], k, 2] - 1e-9] if pre else pre
+            gap = 1 if sub == "bounce" else 0                             # skip the frames touching the floor
+            pre = [i for i in range(max(0, ke - gap - Wn), ke - gap) if ok[i, k]]
+            post = [i for i in range(ke + gap, min(len(t), ke + gap + Wn)) if ok[i, k]]
+            if sub == "bounce" and len(post) > 2:                           # rise only: stop at the next floor contact
+                zc = world[post[0], k, 2]
+                back = [j for j, i in enumerate(post[2:], 2) if world[i, k, 2] <= zc]
+                post = post[: back[0]] if back else post
             if len(pre) < TR_MIN_FRAMES or len(post) < TR_MIN_FRAMES:
                 return {**res, "measurable": False, "reason": "short_window"}
             cz0, _ = _fit(t[pre], world[pre, k, 2], 2)
@@ -876,8 +884,9 @@ def readout_traj(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
         res["fits"] = {objs[k]: {kk: (np.asarray(v).tolist() if isinstance(v, (list, np.ndarray)) else float(v))
                                  for kk, v in f.items()} for k, f in fits.items()}
         f0 = fits[0]
+        moving = abs(f0["vx_pre"]) > 0.1 * float(np.linalg.norm(f0["v_pre"]))     # a horizontal motion to compare
         res.update(g_ratio=f0["g_post"] / f0["g_pre"], g_post_over_true=f0["g_post"] / g_true,
-                   vx_ratio=f0["vx_post"] / f0["vx_pre"] if abs(f0["vx_pre"]) > 1e-6 else float("nan"))
+                   vx_ratio=f0["vx_post"] / f0["vx_pre"] if moving else float("nan"))
         if sub == "drop" and len(objs) == 2:
             m = [pl["objects"][o]["mass"] for o in objs]
             hv, lt = (1, 0) if m[1] > m[0] else (0, 1)
