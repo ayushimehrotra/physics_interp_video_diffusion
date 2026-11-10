@@ -8,8 +8,9 @@ event frame. Rolling without slipping: a = g sin(th) / (1 + I / (m r^2)), with I
   tie           the tube rolls at the solid's acceleration (rolling; both arrive together)
 
 Kubric has no cylinder primitive: the bodies are generated .obj meshes (``mesh_obj``),
-textured with an object-space checker so the rotation is visible. The camera looks
-obliquely along the cylinder axes so both lanes and the end faces (disc vs ring) show.
+textured with an object-space checker so the rotation is visible. The camera looks down
+obliquely (45 deg pitch, 30 deg yaw) so both lanes and the end faces (disc vs ring) show;
+draws whose lanes overlap on screen are rejected.
 The slab runs out of the frame (no floor), as in F6 incline.
 """
 from __future__ import annotations
