@@ -19,7 +19,7 @@ galilean:                             # F4: a group holds every boost level (twi
   targets: [restitution, com_angle]
   pools: [roi_pair.all, frame.all]
   layers: all
-  l2_contrasts: [["{level}_e1", "{level}_e015"]]   # L2 repeated per boost level (F4 has legal twins only)
+  l2_contrasts: {calibration: ["{level}_e1", "{level}_e015"], list: []}   # L2 per boost level (F4: legal twins only)
 mass_independence:                    # per-object target over window_s after the event; twins as the data generator names them
   families:
     f7: {subfamily: drop, target: accel_z, window_s: 0.2, objects: [A, B], legal: [legal, legal_e04], violating: [heavy_x13]}

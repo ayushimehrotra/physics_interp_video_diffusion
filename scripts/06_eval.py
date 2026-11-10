@@ -5,6 +5,8 @@
         --level configs/eval/l0_states.yaml --data data/f1
     /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
         --level configs/eval/l2_surprise.yaml --data data/f1
+    ... --level configs/eval/l1_forecast_laws.yaml     (P-pred-real used if stage 4 --pred-real ran)
+    ... --level configs/eval/l2b_detection.yaml        (after L2: reads l2.json for the encoded-but-unused index)
 
     /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
         --level configs/eval/l3_invariance.yaml --data data/f4
@@ -12,6 +14,7 @@
         --level configs/eval/l4_causal.yaml --data data/f3
 
 Inputs: cache/<model>/<family>/ from stage 4 (+ _pixel_baselines.jsonl from stage 5 for L2).
+Order per model: L0 (builds _maskfeat_v2.npz, used by L1/L2b/L3/L4), L2, L2b, L1. --out writes elsewhere (test runs).
 L3 runs the analyses configured for the family (CPU). L4 loads the model (GPU): it reruns forecast() (and, for
 generators, generate()) under activation interventions, cached in --work, then scores them.
 L0 also folds in the untrained control's result if results/<untrained>/<family>/l0.json exists
@@ -42,8 +45,8 @@ def main():
     ap.add_argument("--data", required=True)
     ap.add_argument("--untrained", default="configs/models/untrained_vitl.yaml")
     ap.add_argument("--workers", type=int, default=64)
+    ap.add_argument("--out", default=None, help="default results/<model>/<family> (use a scratch dir for test runs)")
     ap.add_argument("--set", nargs="*", default=[])
-    ap.add_argument("--out", default=None, help="default results/<model>/<family>")
     ap.add_argument("--work", default=None, help="L4: intervention cache (default cache/<model>/<family>/_l4)")
     ap.add_argument("--force", action="store_true", help="L4: recompute cached interventions")
     a = ap.parse_args()
@@ -84,6 +87,16 @@ def main():
         if "motion_adjusted" in res:
             md = ("## Motion-adjusted (calibrated on legal-vs-legal pairs)\n\n" + l2_surprise.adjusted_table(res["motion_adjusted"])
                   + "\n\n## Raw contrasts\n\n" + md)
+    elif level == "l2b":
+        from physlaw.eval import l2b_detection
+        l2f = out_dir / "l2.json"
+        l2s = json.loads(l2f.read_text()).get("motion_adjusted", {}).get("summary") if l2f.exists() else None
+        if l2s is None:
+            print(f"[06] WARNING: no motion-adjusted summary in {l2f}; run L2 first for the encoded-but-unused index")
+        res = l2b_detection.run(cache, data, cfg, l2s, workers=min(a.workers, 8))
+        res.update(meta)
+        (out_dir / "l2b.json").write_text(json.dumps(res, indent=1))
+        md = l2b_detection.table(res)
     elif level == "l1":
         from physlaw.eval import l1_forecast_laws
         res = l1_forecast_laws.run(cache, data, cfg, mcfg)

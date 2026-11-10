@@ -147,3 +147,10 @@ def token_spec(cfg) -> TokenGridSpec:
                              int(tg["vae_temporal"]) * int(tg.get("patch_t") or 1), fit, first_tubelet=1)
     R = int(cfg["input"]["resolution"])
     return TokenGridSpec((R, R), int(tg["patch"]), int(tg["tubelet"]), fit)
+
+
+def spatial_mask_groups(n_spatial: int, n_masks: int, seed: int = 0) -> list[np.ndarray]:
+    """Partition of the spatial token positions into ``n_masks`` random groups (seeded, so identical for
+    every clip). P-pred-real (spec §5.2) masks one group in every post-event token-frame per pass."""
+    perm = np.random.default_rng(seed).permutation(n_spatial)
+    return [np.sort(perm[k::n_masks]) for k in range(n_masks)]

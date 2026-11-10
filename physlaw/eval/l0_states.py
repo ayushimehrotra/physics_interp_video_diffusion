@@ -16,7 +16,19 @@ Baselines, through the same pipeline:
   * tracker     both balls' token-space centre, radius, presence per token-frame of the window
                 (an ideal tracker on the masks; a reference for what is visible, not a floor)
   * untrained   the same grid on the untrained control (separate run; merged in the report)
+  * latent      DiTs (spec §5.1): the model's own noised VAE latent z_t, same pooling, per SNR (cache keys
+                ``pooled_latent`` [P, S, C'] + ``latent_keys``); skipped if absent
   * null        500 group-block permutations, max over the target's grid -> corrected p.
+
+Selection rule (spec §5): the reported best cell is chosen on half of the groups and scored on the
+other half from the cross-fitted predictions (probes.select.heldout_select); the in-sample max over the
+grid is kept as ``best_cell`` / ``r2`` (the old protocol) with the permutation p, which corrects for it.
+Holm across targets on the corrected p.
+One-twin-per-group refit (spec §5.1): with < ``one_twin_refit_below`` groups, post-event targets are
+refit at the selected cell on one twin per group (each twin type in turn, averaged): pre targets repeat
+across a group's twins, post ones do not, which inflates post R² at small n.
+Velocity protocol check (spec §5.1; ``velocity_protocols.rigidbench.enabled``): RigidBench's
+unregularised linear probe trained with Adam on the own-ball ROI pools, per layer, selected by the rule.
 
 Note (F1, legacy appearance arm): density is 1.5 or 6.0 and tied to the material, so mass is
 visible through size AND material; the tracker (size only) bounds the size part.
@@ -32,6 +44,8 @@ import numpy as np
 
 from physlaw.probes.grid import grid_max_p, grid_probe, group_block_perms
 from physlaw.probes.observer import OBSERVERS, observer_matrix
+from physlaw.probes.ridge import adam_linear_probe, r2_score
+from physlaw.probes.select import heldout_select, holm
 
 TARGETS = ("velocity", "speed", "direction", "log_mass", "radius")
 OBJECTS = ("A", "B")
@@ -64,11 +78,24 @@ def complete_groups(recs: list[dict]) -> list[dict]:
 
 
 def load_pooled(cache_dir: Path, recs: list[dict]):
+    """(acts [n, P, L, D], pools, layers, latent {"latent/snr<±d>": [n, P, C']}). DiT caches may carry the
+    noised-input-latent baseline as ``pooled_latent`` [P, S, C'] + ``latent_keys`` (stage 4, models agent);
+    absent in older caches -> {}."""
     first = np.load(cache_dir / recs[0]["file"])
     pools = [str(p) for p in first["pools"]]
     layers = [int(l) if str(l).lstrip("-").isdigit() else str(l) for l in first["layers"]]
-    A = np.stack([np.load(cache_dir / r["file"])["pooled"] for r in recs]).astype(np.float32)  # [n, P, L, D]
-    return A, pools, layers
+    lkeys = [str(k) for k in first["latent_keys"]] if "pooled_latent" in first.files else []
+    A, L = [], []
+    for r in recs:
+        z = np.load(cache_dir / r["file"])
+        A.append(z["pooled"])
+        if lkeys:
+            L.append(z["pooled_latent"])
+    lat = {}
+    if lkeys:
+        L = np.stack(L).astype(np.float32)                       # [n, P, S, C']
+        lat = {k: L[:, :, i] for i, k in enumerate(lkeys)}
+    return np.stack(A).astype(np.float32), pools, layers, lat
 
 
 def targets(labels: list[dict]) -> dict[str, np.ndarray]:
@@ -160,7 +187,39 @@ def _features(xfun):
         return _G["obs"][xfun[1]]
     if kind == "mask":
         return _G["mask"][xfun[1]]
+    if kind == "lat":
+        return _G["lat"][xfun[2]][:, xfun[1]]
     raise KeyError(kind)
+
+
+def _run_refit(job):
+    """One-twin-per-group refit of one block on one feature cell: R² per twin type."""
+    xfun, b, fold_seeds = job
+    X, Y, tw = _G["X"](xfun), _G["Y"][b], _G["twins"]
+    out = {}
+    for t in sorted(set(tw)):
+        rows = np.where(tw == t)[0]
+        out[t] = grid_probe(X[rows], {b: Y[rows]}, _G["groups"][rows], alphas=_G["alphas"], k=_G["k"],
+                            fold_seeds=fold_seeds)[b]["score_mean"]
+    return job, out
+
+
+def _run_rigidbench(job):
+    xfun, b, kw = job
+    return job, adam_linear_probe(_G["X"](xfun), _G["Y"][b], _G["groups"], k=_G["k"], **kw)
+
+
+def _select(cells: dict, Y: np.ndarray, groups: np.ndarray, n_splits: int) -> dict:
+    """Held-out selection over cells {name: {"oof": [n, k]}} by R² on held-out group halves."""
+    rows = {}
+
+    def score(c, gids):
+        key = gids.tobytes()
+        if key not in rows:
+            rows[key] = np.isin(groups, gids)
+        r = rows[key]
+        return r2_score(Y[r], cells[c]["oof"][r])
+    return heldout_select(score, list(cells), groups, n_splits=n_splits)
 
 
 def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=print) -> dict:
@@ -169,10 +228,11 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=
     probe = cfg["probe"]
     recs = complete_groups(load_index(cache_dir))
     labels = [json.loads((data_dir / r["clip"] / "labels.json").read_text()) for r in recs]
-    acts, pools, layers = load_pooled(cache_dir, recs)
+    acts, pools, layers, lat = load_pooled(cache_dir, recs)
     groups = np.array([r["group"] for r in recs])
     twins = np.array([r["twin"] for r in recs])
-    log(f"[L0] {len(recs)} clips / {len(set(groups))} groups; acts {acts.shape}; layers {layers}")
+    n_groups = len(set(groups))
+    log(f"[L0] {len(recs)} clips / {n_groups} groups; acts {acts.shape}; layers {layers}; latent {sorted(lat)}")
 
     from physlaw.models.base import token_spec
     spec = token_spec(model_cfg)
@@ -181,7 +241,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=
     want = [t for t in cfg.get("targets", TARGETS)]
     Y = {k: v for k, v in Y.items() if k.split(".")[2] in want}
 
-    _G.update(X=_features, Y=Y, groups=groups, acts=acts, mask=mask,
+    _G.update(X=_features, Y=Y, groups=groups, twins=twins, acts=acts, mask=mask, lat=lat,
               obs={o: observer_matrix(labels, o) for o in OBSERVERS},
               alphas=tuple(float(x) for x in probe["alphas"]), k=int(probe["k_folds"]), fold_seeds=int(probe["fold_seeds"]),
               perms=group_block_perms(groups, twins, int(probe["n_permutations"]), seed=0))
@@ -194,6 +254,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=
             pi = pools.index(_pool_name(kind, o, ph))
             for li in range(len(layers)):
                 jobs.setdefault(("act", pi, li), []).append(b)
+            for lk in lat:
+                jobs.setdefault(("lat", pi, lk), []).append(b)
         for obs in OBSERVERS:
             jobs.setdefault(("obs", obs), []).append(b)
         jobs.setdefault(("mask", f"geom.{ph}"), []).append(b)
@@ -208,7 +270,11 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=
             if (i + 1) % 25 == 0:
                 log(f"[L0]   {i + 1}/{len(jobs)} cells")
 
-    out = {"n_clips": len(recs), "n_groups": int(len(set(groups))), "layers": layers, "targets": {}}
+    n_splits = int(cfg.get("selection", {}).get("n_splits", 50))
+    out = {"n_clips": len(recs), "n_groups": n_groups, "layers": layers, "targets": {},
+           "protocol": {"k_folds": int(probe["k_folds"]), "fold_seeds": int(probe["fold_seeds"]),
+                        "test_groups_per_fold": n_groups / int(probe["k_folds"]),
+                        "n_permutations": int(probe["n_permutations"]), "selection_splits": n_splits}}
     for b in Y:
         o, ph, _ = b.split(".")
         cells = {}
@@ -238,16 +304,90 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, workers: int = 48, log=
             "mask_floor_by_pool": {k[1][2:]: res[k][b]["score_mean"] for k in res
                                    if k[0] == "mask" and k[1].startswith("w.") and b in res[k]},
             "tracker": {"r2": geom["score_mean"], "r2_sd": geom["score_sd"]},
+            "heldout": _select(cells, Y[b], groups, n_splits),
         }
+        if lat:
+            lcells = {f"{lk}/{_pool_name(kind, o, ph)}": res[("lat", pools.index(_pool_name(kind, o, ph)), lk)][b]
+                      for kind in POOL_KINDS for lk in lat}
+            out["targets"][b]["latent_baseline"] = _select(lcells, Y[b], groups, n_splits)
+    hp = holm({b: t["p_corrected"] for b, t in out["targets"].items()})
+    for b, t in out["targets"].items():
+        t["p_holm"] = hp[b]
+
+    # one-twin-per-group refit of post-event targets at the selected cell (and its pool's mask floor)
+    if n_groups < int(cfg.get("one_twin_refit_below", 200)):
+        rjobs = []
+        for b, t in out["targets"].items():
+            if b.split(".")[1] != "post":
+                continue
+            lk, pname = t["heldout"]["selected"].rsplit("/", 1)
+            li = [_lname(l) for l in layers].index(lk)
+            rjobs.append((("act", pools.index(pname), li), b, int(probe["fold_seeds"])))
+            if ("mask", f"w.{pname}") in res:
+                rjobs.append((("mask", f"w.{pname}"), b, int(probe["fold_seeds"])))
+        with ProcessPoolExecutor(workers) as ex:
+            for (xfun, b, _), r in ex.map(_run_refit, rjobs):
+                key = "one_twin_refit" if xfun[0] == "act" else "one_twin_refit_mask_floor"
+                out["targets"][b][key] = {"r2": float(np.mean(list(r.values()))), "by_twin": r,
+                                          "n_groups": n_groups}
+        log(f"[L0] one-twin refit: {len(rjobs)} fits")
+
+    rb = cfg.get("velocity_protocols", {}).get("rigidbench", {})
+    if rb.get("enabled"):
+        kw = {k: rb[k] for k in ("epochs", "lr", "batch", "fold_seeds") if k in rb}
+        rjobs = [(("act", pools.index(_pool_name("roi_own", b.split(".")[0], b.split(".")[1])), li), b, kw)
+                 for b in Y if b.endswith(".velocity") for li in range(len(layers))]
+        rres: dict = {}
+        with ProcessPoolExecutor(workers) as ex:
+            for (xfun, b, _), r in ex.map(_run_rigidbench, rjobs):
+                rres.setdefault(b, {})[f"{_lname(layers[xfun[2]])}/{pools[xfun[1]]}"] = r
+        for b, cells in rres.items():
+            o, ph, _ = b.split(".")
+            pname = _pool_name("roi_own", o, ph)
+            ridge = {f"{_lname(l)}/{pname}": res[("act", pools.index(pname), li)][b] for li, l in enumerate(layers)}
+            out["targets"][b]["velocity_protocol"] = {
+                "rigidbench": {**_select(cells, Y[b], groups, n_splits), **{k: rb.get(k) for k in kw},
+                               "per_cell": {c: v["score_mean"] for c, v in cells.items()}},
+                "ridge_same_pool": _select(ridge, Y[b], groups, n_splits)}
+        log(f"[L0] RigidBench protocol: {len(rjobs)} fits")
     return out
 
 
 def table(res: dict, untrained: dict | None = None) -> str:
-    rows = ["| target | best cell | R² (sd) | untrained R² | mask floor (same pool) | tracker | best observer | null q95 | p_corr |",
-            "|---|---|---|---|---|---|---|---|---|"]
+    pr = res.get("protocol", {})
+    n_var = {b: t["heldout"]["n_variants"] for b, t in res["targets"].items() if "heldout" in t}
+    rows = [f"n_groups = {res['n_groups']}, {pr.get('k_folds', 5)}-fold x {pr.get('fold_seeds', '?')} seeds "
+            f"(~{pr.get('test_groups_per_fold', res['n_groups'] / 5):.0f} test groups per fold), "
+            f"{pr.get('n_permutations', '?')} permutations; variants searched per target: "
+            f"{sorted(set(n_var.values())) or '?'} (layers x pools). Held-out R²: cell selected on half the groups, "
+            f"scored on the other half ({pr.get('selection_splits', '?')} random splits x 2); in-sample max R² is the "
+            "old protocol (its permutation p corrects for the search).", "",
+            "| target | held-out R² (selected cell, picks) | in-sample best cell: R² (sd) | untrained held-out R² | "
+            "one-twin refit R² (mask floor) | mask floor (same pool) | latent baseline | tracker | best observer | "
+            "null q95 | p_corr | p_Holm |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for b, t in res["targets"].items():
-        u = untrained["targets"].get(b, {}).get("r2") if untrained else None
-        rows.append(f"| {b} | {t['best_cell']} | {t['r2']:.3f} ({t['r2_sd']:.3f}) | "
-                    f"{'' if u is None else f'{u:.3f}'} | {t['mask_floor']['r2']:.3f} | {t['tracker']['r2']:.3f} | "
-                    f"{t['observer']['r2']:.3f} ({t['observer']['best']}) | {t['null_max_q95']:.3f} | {t['p_corrected']:.3g} |")
+        ut = untrained["targets"].get(b, {}) if untrained else {}
+        u = ut.get("heldout", {}).get("score", ut.get("r2"))
+        h = t.get("heldout")
+        hs = (f"{h['score']:.3f} ({h['selected']}, {h['selected_counts'][str(h['selected'])]}/{2 * h['n_splits']})"
+              if h else "")
+        ot = t.get("one_twin_refit")
+        of = t.get("one_twin_refit_mask_floor")
+        os_ = f"{ot['r2']:.3f} ({of['r2']:.3f})" if ot and of else (f"{ot['r2']:.3f}" if ot else "")
+        lb = t.get("latent_baseline")
+        lbs = f"{lb['score']:.3f} ({lb['selected']})" if lb else ""
+        rows.append(f"| {b} | {hs} | {t['best_cell']}: {t['r2']:.3f} ({t['r2_sd']:.3f}) | "
+                    f"{'' if u is None else f'{u:.3f}'} | {os_} | {t['mask_floor']['r2']:.3f} | "
+                    f"{lbs} | {t['tracker']['r2']:.3f} | "
+                    f"{t['observer']['r2']:.3f} ({t['observer']['best']}) | {t['null_max_q95']:.3f} | "
+                    f"{t['p_corrected']:.3g} | {t.get('p_holm', float('nan')):.3g} |")
+    vp = {b: t["velocity_protocol"] for b, t in res["targets"].items() if "velocity_protocol" in t}
+    if vp:
+        rows += ["", "Velocity protocol check (spec §5.1), own-ball ROI pool, layer selected by the held-out rule:", "",
+                 "| target | ridge (this benchmark) held-out R² (layer) | RigidBench (Adam, unregularised) held-out R² (layer) |",
+                 "|---|---|---|"]
+        for b, v in vp.items():
+            r, a = v["ridge_same_pool"], v["rigidbench"]
+            rows.append(f"| {b} | {r['score']:.3f} ({r['selected']}) | {a['score']:.3f} ({a['selected']}) |")
     return "\n".join(rows)

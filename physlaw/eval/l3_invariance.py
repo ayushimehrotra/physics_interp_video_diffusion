@@ -300,11 +300,12 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
 
 
 def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=print) -> dict:
-    """Raw L2 contrasts separately on each boost level's twins (``{level}`` in a twin name is the level), with the
-    copy-last-frame baseline beside them. Not motion-adjusted: that calibration needs F1's twin names."""
+    """L2 (raw and motion-adjusted) separately on each boost level's twins. ``contrasts``: an L2 family block
+    ({calibration: [legal, legal], list: [{viol, legal, ...}]}) whose twin names may contain ``{level}``."""
     from physlaw.eval import l2_surprise
     lv_of = {r["clip"]: lv for r, lv in zip(recs, level)}
-    srcs = {"model": cache_dir / "_index.jsonl", "copy_last_baseline": cache_dir / "_pixel_baselines.jsonl"}
+    srcs = {"model": cache_dir / "_index.jsonl", "pixel_baselines": cache_dir / "_pixel_baselines.jsonl"}
+    fam = data_dir.name
     out = {}
     with tempfile.TemporaryDirectory() as tmp:
         for lv in sorted(set(level)):
@@ -315,10 +316,15 @@ def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=pri
                 keep = [l for l in f.read_text().splitlines() if l.strip() and lv_of.get(json.loads(l)["clip"]) == lv]
                 (Path(tmp) / f"{name}_{lv}.jsonl").write_text("\n".join(keep) + "\n")
                 sources[name] = Path(tmp) / f"{name}_{lv}.jsonl"
-            cfg = {"contrasts": [[t.format(level=lv) for t in c] for c in contrasts]}
+            fill = lambda t: t.format(level=lv)
+            cfg = {"contrasts": {fam: {"calibration": [fill(t) for t in contrasts["calibration"]],
+                                       "list": [{**c, "viol": fill(c["viol"]), "legal": fill(c["legal"])}
+                                                for c in contrasts.get("list", [])]}}}
             res = l2_surprise.run(sources, data_dir, cfg, log=lambda *a: None)
-            out[str(lv)] = {c: {src: {m: {k: v[k] for k in ("n", "win_rate", "win_rate_ci95") if k in v} for m, v in d.items()}
-                                for src, d in by.items()} for c, by in res["contrasts"].items()}
+            out[str(lv)] = {"contrasts": {c: {src: {m: {k: v[k] for k in ("n", "win_rate", "win_rate_ci95") if k in v}
+                                                    for m, v in d.items()} for src, d in by.items()}
+                                          for c, by in res["contrasts"].items()},
+                            "motion_adjusted": res.get("motion_adjusted")}
             log(f"[L3 galilean] L2 at boost level {lv}: {len(res['contrasts'])} contrasts")
     return out
 

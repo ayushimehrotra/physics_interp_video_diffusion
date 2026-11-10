@@ -21,6 +21,14 @@ Resumable: clips with an existing .npz are skipped unless --force.
 Diffusion, two passes: --no-forecast caches encode() + surprise() only (L0, L2). A later run without it
 adds fc_pooled to every .npz that lacks it (one sampled forecast per group; encode/surprise and the
 index are not recomputed).
+Encoders, P-pred-real (spec §5.2 L1 probe option): --pred-real computes ONLY the adapter's pred_real()
+(V-JEPA 2: predictor outputs for masked real post-event tokens, rest of the clip as context; VideoMAE:
+decoder hidden states with the real future visible elsewhere), pooled with the twin's post-event pools,
+into a sidecar <group>/<twin>.pred_real.npz {pooled [P_post, D], pools, n_masks}. Existing files are
+never rewritten; nothing else is recomputed. Not defined for diffusion models.
+
+    HF_HUB_OFFLINE=1 flock /root/meta/gpu.lock /root/envs/physics_venv/bin/python \
+        scripts/04_cache_activations.py --model configs/models/vjepa2_vitl.yaml --data data/f1 --pred-real
 """
 from __future__ import annotations
 
@@ -41,6 +49,21 @@ from physlaw.tokens.pool import pool_weights  # noqa: E402
 from physlaw.tokens.project import project_masks, token_frame_phase  # noqa: E402
 
 
+def post_weights(Wt, names, phases, kt):
+    """The twin's pooling weights restricted to token-frames >= kt (the forecast's frames), renormalised."""
+    Wf = Wt.reshape(len(names), len(phases), -1)[:, kt:].reshape(len(names), -1)
+    return Wf / Wf.sum(1, keepdim=True).clamp_min(1e-12)
+
+
+def add_pred_real(m, x, k, f_pr, Wt, names, phases, kt, n_masks):
+    """Encoders: P-pred-real features pooled with this twin's post-event pools -> sidecar .pred_real.npz."""
+    from physlaw.models.vjepa2 import FINAL
+    A = m.pred_real(x, k, n_masks=n_masks)[FINAL]
+    post = [i for i, n in enumerate(names) if n.endswith(".post")]
+    pooled = post_weights(Wt, names, phases, kt)[post] @ A.reshape(-1, A.shape[-1]).float()
+    np.savez(f_pr, pooled=pooled.half().cpu().numpy(), pools=np.array([names[i] for i in post]), n_masks=n_masks)
+
+
 def add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo):
     """Diffusion: forecast = activations captured while sampling the continuation (seed 0); identical for
     every twin of the group (shared context latents), so sampled once per group. Pooled with THIS twin's
@@ -52,8 +75,7 @@ def add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo):
         import imageio.v3 as iio
         iio.imwrite(out / gid / "gen_seed0.mp4", vid, fps=m.fps, codec="libx264", quality=9)
     fk = sorted(fc_memo["acts"])
-    Wf = Wt.reshape(len(names), len(phases), -1)[:, kt:].reshape(len(names), -1)
-    Wf = Wf / Wf.sum(1, keepdim=True).clamp_min(1e-12)
+    Wf = post_weights(Wt, names, phases, kt)
     fc_pooled = torch.stack([Wf @ fc_memo["acts"][q].reshape(-1, fc_memo["acts"][q].shape[-1]).float()
                              for q in fk], 1)
     z = dict(np.load(f_npz))
@@ -70,6 +92,8 @@ def main():
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--no-forecast", action="store_true",
                     help="diffusion: skip the sampled forecast (encode + surprise only); a later run adds it")
+    ap.add_argument("--pred-real", action="store_true",
+                    help="encoders: only add <twin>.pred_real.npz (P-pred-real probe features) next to each clip")
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
 
@@ -83,6 +107,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     print(f"[04] model={cfg.name} clips={len(clips)} groups={len(groups)} out={out} hash={config_hash(cfg)}", flush=True)
     m = load_adapter(cfg)
+    if a.pred_real and not hasattr(m, "pred_real"):
+        sys.exit(f"[04] {cfg.name}: P-pred-real is not defined for this adapter (spec §5.2: encoders only)")
+    n_masks = int(cfg.get("pred_real", {}).get("n_masks", 4))
     from physlaw.models.vjepa2 import FINAL
     t0, done = time.time(), 0
     diffusion = cfg.get("kind") == "diffusion"
@@ -91,8 +118,11 @@ def main():
         for path in clips:
             gid, twin = path.parent.name, path.name
             f_npz = out / gid / f"{twin}.npz"
+            f_pr = out / gid / f"{twin}.pred_real.npz"
             forecast_only = False
-            if f_npz.exists() and not a.force:
+            if a.pred_real and f_pr.exists() and not a.force:
+                continue
+            if f_npz.exists() and not a.force and not a.pred_real:
                 if not (diffusion and not a.no_forecast and "fc_pooled" not in np.load(f_npz).files):
                     continue
                 forecast_only = True                     # pass 2: add the forecast to a pass-1 file
@@ -110,6 +140,12 @@ def main():
             if forecast_only:
                 add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo)
                 done += 1
+                continue
+            if a.pred_real:
+                add_pred_real(m, x, k, f_pr, Wt, names, phases, kt, n_masks)
+                done += 1
+                if done % 20 == 0:
+                    print(f"[04] pred_real {done}/{len(clips)}  {(time.time() - t0) / done:.2f} s/clip", flush=True)
                 continue
             acts = m.encode(x)
             layers = sorted(acts)

@@ -11,3 +11,6 @@ baselines: [untrained, mask_only_floor]   # mask-only floor added: old §20 pool
 pools: [roi_A, roi_B, roi_pair, frame]
 windows: [pre, post, all]
 roi_radius_mult: 1.5
+# Selection rule (spec §5, §7): a reported "best" variant is chosen on half the groups and scored on
+# the other half, over n_splits random halvings (both ways). probes/select.py.
+selection: {n_splits: 50}
