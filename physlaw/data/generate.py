@@ -520,6 +520,8 @@ def apply_look(h: dict, sc: FAM.Scene, look: dict) -> FAM.Camera:
         floor_texture(h["floor"], h["renderer"], look["floor"])
     for name, o in h["objs"].items():
         o.material.color = kb.Color(*look["bodies"][name], 1.0)
+        if sc.look.get("checker_bodies"):
+            checker(o, h["renderer"], look["bodies"][name], 6.0, 0.45)
     return cam
 
 
@@ -827,6 +829,8 @@ def render_nuisance(cfg, sc, h, ndir: Path, scratch, pool, common, legacy, seed)
         cam = NZ.perturb_camera(sc.camera, look)
         probe = copy.copy(sc)
         probe.camera = cam
+        if legacy:      # two-sphere scenes start in view: keep them in view from frame 0
+            probe.inframe = {**sc.inframe, "start": 0}
         if probe.inframe_reason() is None:
             break
     else:
