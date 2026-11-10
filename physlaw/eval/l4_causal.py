@@ -222,6 +222,12 @@ def _corr(a, b):
     return float(a @ b / d) if d > 0 else float("nan")
 
 
+def _sibling(cache_dir: Path, family: str, mcfg) -> Path:
+    """Another family's stage 4 cache: next to this one, else the repo's cache/<model>/<family>."""
+    p = cache_dir.parent / family
+    return p if p.exists() else Path(__file__).resolve().parents[2] / "cache" / mcfg.name / family
+
+
 def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = False, log=print) -> dict:
     from physlaw.config import resolve_path
     alphas = [float(a) for a in cfg["alphas_sd"]]
@@ -242,7 +248,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
         sgroups = np.array(groups_all)
     else:
         sdata = resolve_path(cfg["direction_data"])
-        srecs, slab, sA, spools, slayers = load_family(cache_dir.parent / sdata.name, sdata)
+        srecs, slab, sA, spools, slayers = load_family(_sibling(cache_dir, sdata.name, mcfg), sdata)
         sg = [r["group"] for r in srecs]
         srows = np.array([sg.index(g) for g in sorted(set(sg))])
         sgroups = np.array(sorted(set(sg)))
@@ -279,13 +285,22 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
                           bool(cfg.get("generate_readout", True)), force, log)
         del m
 
-    # decoding probes: real post-event frames of the training groups, per space and pool; mm from cached forecasts
-    spaces = forecast_spaces(cache_dir, data_dir, recs, mcfg, list(POST_POOLS))
-    grp = np.array([r["group"] for r in recs])
-    Yv = {o: np.array([l["physlaw"]["post_velocity"][o][:2] for l in labels], float) for o in "AB"}
+    # decoding probes: real post-event frames of the training groups, per space and pool; mm from cached forecasts.
+    # probe_data: train them on another family instead (all its groups), e.g. when the evaluated set is tiny
+    if cfg.get("probe_data"):
+        pdata = resolve_path(cfg["probe_data"])
+        precs, plabels = load_family(_sibling(cache_dir, pdata.name, mcfg), pdata)[:2]
+        spaces = forecast_spaces(_sibling(cache_dir, pdata.name, mcfg), pdata, precs, mcfg, list(POST_POOLS))
+        grp = np.array(["probe:" + r["group"] for r in precs])               # never a test group
+    else:
+        plabels = labels
+        spaces = forecast_spaces(cache_dir, data_dir, recs, mcfg, list(POST_POOLS))
+        grp = np.array([r["group"] for r in recs])
+    Yv = {o: np.array([l["physlaw"]["post_velocity"][o][:2] for l in plabels], float) for o in "AB"}
     Z = {g: dict(np.load(work / f"{g}.npz")) for g in groups}
     conds = sorted({key.split("|")[0] for key in Z[groups[0]]} - {"base"})
-    out = {"layer": layer, "direction_family": cfg.get("direction_data") or data_dir.name, "alphas_sd": alphas,
+    out = {"layer": layer, "direction_family": cfg.get("direction_data") or data_dir.name,
+           "probe_family": cfg.get("probe_data") or data_dir.name, "alphas_sd": alphas,
            "n_groups": len(groups), "twins": sorted({t for g in groups for t in twins_of[g]}),
            "directions": [{k_: d[k_] for k_ in ("sd", "gain", "alpha", "cv_r2")} for d in dirs],
            "variants": {}}
