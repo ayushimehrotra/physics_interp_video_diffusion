@@ -16,6 +16,9 @@ def load_adapter(cfg, device: str = "cuda"):
     if kind == "diffusion" and "CogVideoX1.5" in cfg["hf_id"] and "I2V" in cfg["hf_id"]:
         from physlaw.models.cogvideox import CogVideoX15I2VAdapter
         return CogVideoX15I2VAdapter.load(cfg, device)
+    if kind == "positive_control":
+        from physlaw.models.positive_control import PC1Adapter
+        return PC1Adapter.load(cfg, device)
     if kind == "encoder_untrained":
         from physlaw.models.untrained import UntrainedVJEPA2Adapter
         return UntrainedVJEPA2Adapter.load(cfg, device)

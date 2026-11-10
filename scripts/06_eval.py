@@ -36,12 +36,14 @@ def main():
     ap.add_argument("--untrained", default="configs/models/untrained_vitl.yaml")
     ap.add_argument("--workers", type=int, default=64)
     ap.add_argument("--set", nargs="*", default=[])
+    ap.add_argument("--cache", default=None, help="default cache/<model>/<family> (stage 4's --out)")
+    ap.add_argument("--out", default=None, help="default results/<model>/<family>")
     a = ap.parse_args()
     mcfg = load_config(a.model)
     cfg = load_config(a.level, a.set)
     data = resolve_path(a.data)
-    cache = REPO / "cache" / mcfg.name / data.name
-    out_dir = REPO / "results" / mcfg.name / data.name
+    cache = Path(a.cache) if a.cache else REPO / "cache" / mcfg.name / data.name
+    out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
     level = cfg["level"]
     t0 = time.time()

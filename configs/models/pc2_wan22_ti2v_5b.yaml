@@ -1,0 +1,49 @@
+# PC2 positive control (spec §4.4): Wan2.2-TI2V-5B + a rank-32 LoRA fine-tuned on the PC training render set.
+# Evaluation: the Wan2.2-TI2V-5B adapter at its OFFICIAL settings (inherited) with `lora` applied.
+#   train: scripts/10_train_positive_control.py --config configs/models/pc2_wan22_ti2v_5b.yaml
+defaults: wan22_ti2v_5b.yaml
+name: pc2-wan2.2-ti2v-5b
+positive_control: pc2
+lora:
+  path: ${env:PHYSLAW_MODELS,/root/models}/pc2-wan2.2-ti2v-5b/lora   # stage 10 output (diffusers/peft format)
+  scale: 1.0
+prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
+
+# Training recipe: RigidBench (arXiv 2608.15555, App. "fine-tuning"): Wan2.2-TI2V-5B, LoRA rank 32 / alpha 32 on
+# q,k,v,o,ffn.0,ffn.2 of every block, lr 1e-4, 250 warmup steps, 5,000-step horizon, effective batch 128
+# (2 per GPU x 8 accumulation x 8 H100), fused AdamW wd 0.01, bf16, grad clip 1.0, seed 42, 640x352 x 49 frames
+# at 24 fps, first frame pinned (clean, excluded from the loss), timesteps uniform over 1,000, fp32 MSE.
+# Their best LoRA checkpoint was step 1,000 (of 500..3,000 evaluated): keep the lora_step<N>/ snapshots.
+# Schedule shape after warmup is not stated; cosine over the horizon is assumed here.
+pc2_train:
+  height: 352
+  width: 640
+  num_frames: 49
+  fps: 24
+  lora_rank: 32
+  lora_alpha: 32
+  lora_targets: [to_q, to_k, to_v, to_out.0, ffn.net.0.proj, ffn.net.2]   # diffusers names of q,k,v,o,ffn.0,ffn.2
+train:
+  steps: 5000
+  batch_size: 128            # one GPU: micro_batch x accumulation; with N GPUs keep the product at 128
+  micro_batch: 2
+  lr: 1.0e-4
+  final_lr: 0.0
+  warmup: 250
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  grad_clip: 1.0
+  grad_checkpointing: true
+  num_workers: 4
+  log_every: 1
+  save_every: 500
+  seed: 42
+
+data:                        # the PC training render set, as configs/models/positive_control.yaml
+  root: data/pc1_train
+  code_path_test: false
+  families: [f1, f2, f3, f4, f7, f8]
+  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]
+  train_splits: [train, test, val]
+  jitter: 36                 # master frames: the event lands at input frames 6..42 of 49
+  flip: true

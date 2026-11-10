@@ -1,7 +1,69 @@
-# Positive control (spec §4.3): small V-JEPA-style model trained on the F1-F5 train split.
-# Size and budget are an open decision (spec §10); these are placeholders.
+# PC1 positive control (spec §4.4): V-JEPA-style encoder + predictor at ViT-S scale, trained on the PC
+# training render set. Same input as V-JEPA 2 ViT-L (64 frames at 24 fps centred on the event, 256x256 squash,
+# patch 16, tubelet 2, ImageNet normalisation), so stages 03-06 run on it unchanged.
+#   train: scripts/10_train_positive_control.py --config configs/models/positive_control.yaml
+#   eval:  scripts/04_cache_activations.py --model configs/models/positive_control.yaml --data data/f1, then 05, 06
 defaults: vjepa2_vitl.yaml
-name: positive-control
+name: pc1-vits
 kind: positive_control
-arch: {depth: 12, dim: 384, heads: 6}
-train: {steps: 100000, batch_size: 32, lr: 3.0e-4}
+positive_control: pc1
+hf_id: null                  # trained here; not a hub checkpoint
+revision: null
+local_path: ${env:PHYSLAW_MODELS,/root/models}/pc1-vits   # stage 10 output: pc1.pt (eval), train_state.pt, curves
+dtype: float32
+layers: [0, 2, 4, 6, 8, 10, 11]
+arch:
+  dim: 384                   # ViT-S/16 encoder (22M parameters)
+  depth: 12
+  heads: 6
+  pred_dim: 384              # predictor as V-JEPA 2 ViT-L's (12 x 384)
+  pred_depth: 12
+  pred_heads: 12
+  init_seed: 0
+
+data:
+  # PC training render set (wp-data): legal clips only, seeds disjoint from the evaluation twins.
+  root: data/pc1_train        # <root>/<family>/<group>/<twin>/ as data/f1
+  code_path_test: false      # true only for runs on stand-in data (labelled in curves and plot)
+  families: [f1, f2, f3, f4, f7, f8]
+  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]
+  train_splits: [train, test]
+  holdout_splits: [val]      # in-distribution prediction error (spec §4.4)
+  n_holdout: 64
+  jitter: 24                 # master frames (+-0.5 s) of window shift around the eval placement
+  flip: true
+
+mask:
+  p_future: 0.75             # share of steps with a future-frame mask (the eval forecast setting)
+  future_ctx: [8, 24]        # context token-frames k (eval: 16 = 32 input frames before the event)
+  tube_blocks: [[8, 0.15], [2, 0.7]]   # V-JEPA multi-block: (n blocks, area fraction each)
+  aspect: [0.75, 1.5]
+
+train:
+  # Full run (data: 6 families x >= 3,000 legal clips). See docs/STATUS.md (WP pc) for the GPU-hour estimate.
+  steps: 30000
+  batch_size: 32
+  micro_batch: 8             # gradient accumulation to batch_size
+  lr: 5.0e-4
+  final_lr: 1.0e-6
+  warmup: 1500
+  weight_decay: 0.04
+  betas: [0.9, 0.999]
+  grad_clip: 1.0
+  ema: [0.998, 1.0]          # linear over training (V-JEPA)
+  grad_checkpointing: true
+  num_workers: 4
+  log_every: 20
+  eval_every: 500
+  save_every: 500
+  seed: 0
+
+pass_criterion:              # spec §4.4, accepted by the user 2026-11-10
+  l1_s_family_min: 0.5
+  l1_variant: frame_mm       # leak-free frame pool (spec §5.2 primary); switch to the P-pred-real frame variant once built
+  l1_twins: [conserve_e1, conserve_e015]
+  l2_adj_win_min: 0.7
+  l2_covariates: speed+copy_last   # brings the legal control to chance on V-JEPA 2 (STATUS milestone 3)
+  l2_distance: l1_obj              # pre-registered: object-region L1 (no selection over distances)
+  l2_contrasts: ["mom_violate_e1 vs conserve_e1", "mom_violate_e015 vs conserve_e015"]
+  l2_control: "conserve_e1 vs conserve_e015"

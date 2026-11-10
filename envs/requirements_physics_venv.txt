@@ -25,9 +25,13 @@ opencv-python-headless==4.12.0.88
 timm==1.0.28
 easydict==1.13
 
+# LoRA training (PC2, spec §4.4) and LoRA loading (VideoREPA, PC2 eval)
+peft==0.21.2
+
 # Experiment plumbing
 numpy==2.2.6
 einops==0.8.1
 pyyaml==6.0.2
 tqdm==4.67.1
 pandas==2.3.2
+matplotlib==3.11.2           # training curves (stage 10), figures
