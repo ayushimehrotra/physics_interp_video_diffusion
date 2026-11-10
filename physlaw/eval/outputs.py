@@ -805,10 +805,11 @@ def track_objects(frames: np.ndarray, labels: dict, objs: list, frames_idx: list
         prev[o] = np.array([px[1] * H / H0, px[0] * W / W0])
     # background: per-pixel median of the REAL reference frames with the objects masked out (a ball that comes to
     # rest would otherwise become background); pixels the objects always cover fall back to the clip median
-    ref = np.where((ref_masks > 0)[..., None], np.nan, ref_frames.astype(np.float32))
+    sub = slice(None, None, max(1, len(ref_frames) // 24))                 # ~24 frames are enough (memory)
+    ref = np.where((ref_masks[sub] > 0)[..., None], np.nan, ref_frames[sub].astype(np.float32))
     with np.errstate(all="ignore"):
         bg = np.nanmedian(ref, 0) if ref_frames.shape[1:3] == frames.shape[1:3] else np.full(frames.shape[1:], np.nan)
-    bg = np.where(np.isfinite(bg), bg, np.median(frames, 0)).astype(np.float32)
+    bg = np.where(np.isfinite(bg), bg, np.median(frames[sub], 0)).astype(np.float32)
     pos = np.full((T, len(objs), 2), np.nan)
     for t in range(T):
         img = frames[t].astype(np.float32)
