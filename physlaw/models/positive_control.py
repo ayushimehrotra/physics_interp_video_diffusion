@@ -123,11 +123,11 @@ def event_frame(pl: dict) -> int:
     return int(pl["first_post_contact_frame"] if "first_post_contact_frame" in pl else pl["event_frame"])
 
 
-def is_legal(pl: dict) -> bool:
-    """A clip obeys every law: ``physlaw.legal`` if the family writes it, else F1's twin naming (conserve_*)."""
-    if "legal" in pl:
-        return bool(pl["legal"])
-    return pl["twin"].startswith(("conserve", "legal"))
+def is_legal(twin: str, summary: dict | None = None) -> bool:
+    """A twin obeys every law: the generator's ``legal`` flag if recorded, else F1's naming (conserve_*)."""
+    if summary and "legal" in summary:
+        return bool(summary["legal"])
+    return twin.startswith(("conserve", "legal"))
 
 
 def eval_group_ids(dirs) -> set[str]:
@@ -142,24 +142,28 @@ def eval_group_ids(dirs) -> set[str]:
 
 
 def training_clips(dcfg, splits) -> list[Path]:
-    """Legal clips of the PC training render set (``<root>/<family>/<group>/<twin>/``) in ``splits``.
+    """Legal, completed clips of the PC training render set (``<root>/<family>/<group>/<twin>/``) in ``splits``,
+    read from each group's ``_GROUP_COMPLETE`` record (split, twins, per-twin summaries).
 
-    Raises if any clip's twin group ID belongs to an evaluation set (``exclude_eval``): the PCs must never
+    Raises if any group's twin group ID belongs to an evaluation set (``exclude_eval``): the PCs must never
     train on the benchmark's evaluation twins (spec §4.4)."""
     from physlaw.config import resolve_path
-    from physlaw.data.io import list_clips
     banned = eval_group_ids(dcfg.get("exclude_eval") or [])
     out, bad = [], []
     for fam in dcfg["families"]:
-        for p in list_clips(resolve_path(dcfg["root"]) / fam):
-            pl = json.loads((p / "labels.json").read_text())["physlaw"]
-            if pl["twin_group_id"] in banned:
-                bad.append(f"{fam}/{pl['twin_group_id']}")
-            elif is_legal(pl) and pl["split"] in splits:
-                out.append(p)
+        for g in sorted((resolve_path(dcfg["root"]) / fam).glob("*/_GROUP_COMPLETE")):
+            rec = json.loads(g.read_text())
+            gid = rec.get("group", g.parent.name)
+            if gid in banned or g.parent.name in banned:
+                bad.append(f"{fam}/{gid}")
+                continue
+            if rec["split"] not in splits:
+                continue
+            out += [g.parent / t for t in rec["twins"] if is_legal(t, rec.get("summaries", {}).get(t))
+                    and (g.parent / t / "_COMPLETE").exists()]
     if bad:
-        raise ValueError(f"{len(bad)} training clips have twin group IDs from an evaluation set "
-                         f"(e.g. {sorted(set(bad))[:5]}); refusing to train on evaluation twins")
+        raise ValueError(f"{len(bad)} training groups have twin group IDs from an evaluation set "
+                         f"(e.g. {sorted(bad)[:5]}); refusing to train on evaluation twins")
     return out
 
 

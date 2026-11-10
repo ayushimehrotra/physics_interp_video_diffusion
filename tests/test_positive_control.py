@@ -34,16 +34,12 @@ def test_tube_mask_partitions_tokens_identically_per_frame():
 
 
 def _clip(root, fam, gid, twin, split="train", legal=None):
-    d = root / fam / gid / twin
-    d.mkdir(parents=True)
-    pl = {"twin_group_id": gid, "twin": twin, "split": split, "family": fam}
-    if legal is not None:
-        pl["legal"] = legal
-    (d / "labels.json").write_text(json.dumps({"physlaw": pl}))
-    (d / "_COMPLETE").write_text("")
+    (root / fam / gid / twin).mkdir(parents=True)
+    (root / fam / gid / twin / "_COMPLETE").write_text("")
     g = root / fam / gid / "_GROUP_COMPLETE"
-    rec = json.loads(g.read_text()) if g.exists() else {"twins": []}
+    rec = json.loads(g.read_text()) if g.exists() else {"group": gid, "split": split, "twins": [], "summaries": {}}
     rec["twins"].append(twin)
+    rec["summaries"][twin] = {} if legal is None else {"legal": legal}
     g.write_text(json.dumps(rec))
 
 
