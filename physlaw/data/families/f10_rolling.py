@@ -24,10 +24,10 @@ from physlaw.data.families.f8_ramp import RAMP_THICK, mirror_static
 
 SUBFAMILIES = {"rolling": 150}
 TUBE_INNER = 0.9
-LANE = 0.9            # |y| of each lane centre
+LANE = 1.3            # |y| of each lane centre
 
 
-def oblique_camera(fmt, target, dist=20.0, yaw_deg=-28.0, pitch_deg=14.0) -> Camera:
+def oblique_camera(fmt, target, dist=20.0, yaw_deg=-30.0, pitch_deg=45.0) -> Camera:
     yaw, pitch = math.radians(yaw_deg), math.radians(pitch_deg)
     off = dist * np.array([math.sin(yaw) * math.cos(pitch), -math.cos(yaw) * math.cos(pitch), math.sin(pitch)])
     return Camera(tuple(np.asarray(target) + off), tuple(target), (0.0, 0.0, 1.0),
@@ -48,7 +48,7 @@ def sample(rng, cfg, fmt, sub="rolling"):
     r = float(rng.uniform(0.35, 0.5))
     half_len = float(rng.uniform(0.3, 0.4))
     target = (0.0, 0.0, 3.0)
-    cam = oblique_camera(fmt, target, yaw_deg=-28.0 * side)
+    cam = oblique_camera(fmt, target, yaw_deg=-30.0 * side)
     hw, hh = visible_box(cam, 20.0)
     d = np.array([math.cos(th), 0.0, -math.sin(th)])
     n = np.array([math.sin(th), 0.0, math.cos(th)])
@@ -89,6 +89,12 @@ def sample(rng, cfg, fmt, sub="rolling"):
         twins[name] = Twin(name, tracks, legal=law is None, violated_law=law, violation_magnitude=mag,
                            flags={"energy_physical": name != "hollow_first" and name != "tie"},
                            record={"kind": "release", "accel": dict(acc)})
+    for tw in twins.values():          # the two lanes must not overlap on screen
+        uv = {n: cam.project(tw.tracks[n].p) for n in "AB"}
+        gap = np.linalg.norm(uv["A"][:, :2] - uv["B"][:, :2], axis=1)
+        reach = sum(cam.K()[0, 0] * math.hypot(r, half_len) / uv[n][:, 2] for n in "AB")
+        if (gap < 1.05 * reach).any():
+            return "lanes_overlap_in_view"
     sc = Scene("f10", "rolling", [solid, tube], [slab], cam, G, te, "release", twins, fps,
                constants={"g": G, "theta_rad": th, "inertia_factors": {"A": k_of(solid), "B": k_of(tube)},
                           "accel_legal": a_legal, "release_frame": kr, "release_time_s": te, "direction": side,
