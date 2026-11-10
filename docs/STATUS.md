@@ -414,6 +414,9 @@ fixed-frame-20 pooling.
   path_dependent, closed form 0.847). Laws: gravity residual 0.055 legal vs 0.52 gravity_x15; axis independence
   0.029 vs 0.414 vx_x06; ramp_energy 0.003-0.023 legal vs 0.27 / 0.16. F3 (collision readout, identical-looking
   balls, true masses per twin): 10/10 measurable, momentum residual 0.011-0.043, e 0.99-1.01, CoM <= 0.021, L <= 0.018.
+  F2 (11 restitutions): 44/44 loose (43/44 strict), measured e -0.03 / 0.16 / 0.45 / 0.77 / 0.97 at true 0 / 0.2 / 0.5 /
+  0.8 / 1, momentum residual 0.04-0.08. F4 (not an output family): 11/18 loose, mostly short windows (wider view,
+  faster balls), so the F1 readout is not validated for boosted clips.
 * **L3 stand-in on F1** (V-JEPA 2 ViT-L cache, CPU; no F4/F6/F7 caches yet): every analysis runs end to end. Labelled
   stand-in in its output. Mass independence with target |dv| (momentum makes the lighter ball change more): the
   probe floor recovers the slope (-0.62 vs true -0.82), the decoded forecast does not (+0.07 / -0.04 mm).
