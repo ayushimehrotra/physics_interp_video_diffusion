@@ -619,7 +619,7 @@ def render_twins(cfg, sc: FAM.Scene, h: dict, gdir: Path, cam: FAM.Camera, rende
     """Render (or only label, when not ``render``) every twin of ``sc`` into ``gdir``."""
     from concurrent.futures import ThreadPoolExecutor
     k = sc.first_post
-    T = tw0_T = next(iter(sc.twins.values())).tracks[sc.bodies[0].name].p.shape[0]
+    T = next(iter(sc.twins.values())).tracks[sc.bodies[0].name].p.shape[0]
     pre_ref, summaries = {}, {}
     writer, writes = ThreadPoolExecutor(2), []
     for i, (name, tw) in enumerate(sc.twins.items()):
@@ -640,7 +640,7 @@ def render_twins(cfg, sc: FAM.Scene, h: dict, gdir: Path, cam: FAM.Camera, rende
             else:
                 rgb = np.concatenate([pre_ref[tw.pre_segment][0], rgb])
                 seg = np.concatenate([pre_ref[tw.pre_segment][1], seg])
-            assert rgb.shape[0] == tw0_T
+            assert rgb.shape[0] == T
             stats = seg_stats_for(seg, sc.bodies)
             frame_sha = [hashlib.sha256(f.tobytes()).hexdigest()[:16] for f in rgb]
         render_s = time.time() - rt0
