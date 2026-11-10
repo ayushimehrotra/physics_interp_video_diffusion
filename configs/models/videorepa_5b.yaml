@@ -11,3 +11,4 @@ lora:
   revision: 5438a0208c973fa5bec7d74486694f03e72ec939
   path: ${env:PHYSLAW_MODELS,/root/models}/VideoREPA/VideoREPA_5B/pytorch_lora_weights.safetensors
   scale: 0.5
+  sha256: f2d45a9a04c178eb53bae6f0ace42869d69e48e643565fec955125ac51a44127

@@ -43,9 +43,6 @@ import numpy as np
 from physlaw.models.dit import (DEFAULT_PROMPT, LOOKS, MINIMAL_LOOKS, DiTAdapter, apply_weight_overrides,  # noqa: F401
                                 ddpm_t_for_db, key, minimal_prompt, scene_prompt, source, text_encoder_source)
 
-_source = source   # old name, kept for scripts/experiments
-
-
 def _load_pipe(pipe_cls, cfg, default_dtype: str, device: str):
     """Load every component shard by shard straight onto ``device`` (device_map). A CPU-side load followed by
     ``.to(device)`` holds T5 (9.5 GB) plus the transformer in host RAM at once: 13.7 GB peak for 2B, more

@@ -15,6 +15,10 @@ dtype: bfloat16
 # Wan2.2-TI2V-5B-Diffusers' bf16 copy (all 242 tensors compared, 2026-11-10), so that copy is used.
 text_encoder:
   path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.2-TI2V-5B-Diffusers
+  sha256:
+    text_encoder/model-00001-of-00003.safetensors: a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58
+    text_encoder/model-00002-of-00003.safetensors: d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7
+    text_encoder/model-00003-of-00003.safetensors: 0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f
 official:
   height: 480
   width: 832
@@ -35,3 +39,8 @@ prompt: "A static camera looks straight down at a flat grey floor. Two balls rol
 forecast_layers: [6, 15, 24]
 surprise: {n_draws: 2}
 noise_seed: 0
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-T2V-1.3B-Diffusers@0fad780a534b6463e45facd96134c9f345acfa5b; verified by physlaw.models.registry.
+sha256:
+  transformer/diffusion_pytorch_model-00001-of-00002.safetensors: 6d011927dbd2cc8afe53d57abab04a8fd86f615d83324770d985fb058ece3a24
+  transformer/diffusion_pytorch_model-00002-of-00002.safetensors: b92ec2309b1f239af6f746431815a881afcc938abb26a4f08d9a2fd6c892f872
+  vae/diffusion_pytorch_model.safetensors: d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793
