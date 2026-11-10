@@ -1,0 +1,8 @@
+# F2. Restitution families: legal outcomes at e = 0.0..1.0, identical pre-contact (spec §2.2).
+defaults: _master.yaml
+family: f2
+n_groups: 100
+seed_offset: 200000
+twins:
+  e_sim: 1.0
+  levels: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]

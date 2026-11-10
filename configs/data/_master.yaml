@@ -1,0 +1,40 @@
+# Master render format shared by every scene family (spec §2.1, with one deliberate change).
+#
+# CHANGE FROM SPEC: 48 fps x 289 frames (6.0 s) instead of 24 fps x 81 frames (3.4 s).
+# Every generator's OFFICIAL clip is 5-6 s long, and 16 fps (CogVideoX1.5) cannot be
+# taken from 24 fps without uneven frame steps. From 48 fps every native rate is an
+# exact subsample, and every model sees its own native duration:
+#   CogVideoX-2b       8 fps x 49 frames = 6.0 s   -> every 6th master frame
+#   CogVideoX1.5-I2V  16 fps x 81 frames = 5.0 s   -> every 3rd
+#   Wan2.2-TI2V-5B    24 fps x 121 frames = 5.0 s  -> every 2nd
+# Contact at 2.33-2.67 s (frames 112-128) sits inside every window with >= 2.3 s of
+# context, and matches the old sets' 2.5 s contact time and per-pixel scale, so the
+# old generator's validated layout/speed ranges carry over unchanged.
+# To use the spec's literal format instead: master.fps=24 master.num_frames=81
+#   master.contact_frame_range=[36,44]
+master:
+  fps: 48
+  num_frames: 289
+  width: 832
+  height: 480
+  contact_frame_range: [112, 128]
+  contact_tolerance_frames: 1.0
+  samples_per_pixel: 64     # 32 is +36% throughput but moves some pixels by up to 104/255 (kept at 64)
+  crf: 17
+  # Throughput settings, measured on one H100 (docs/STATUS.md). With these the GPU is 99-100% busy
+  # at 4+ workers (~5.4 frames/s aggregate) instead of ~25% (1.4 frames/s).
+  persistent_data: true      # keep BVH/scene data between frames: 0.87 -> 0.32 s/frame solo
+  render_threads: 8          # cap Blender CPU threads; uncapped (578 threads/process) thrashes at 8 workers
+  decode_workers: 2          # per-worker process pool decoding PNG + cryptomatte as frames land
+
+arm: legacy             # appearance arm of the old generator (density tied to material)
+material_pair: random
+
+acceptance:
+  max_attempts: 60
+  min_post_inframe_s: 1.0          # every twin keeps both spheres fully visible this long after contact
+  min_violation_residual: 0.05     # |dp|/|p_pre| floor for momentum-violating twins
+
+splits: {train: 0.70, val: 0.15}   # test = remainder, assigned by hash of twin group ID
+nuisance_frac: 0.0                 # spec says 0.2; nuisance.py is not built yet (see README)
+out_dir: data

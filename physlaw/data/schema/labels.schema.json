@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PhysLaw clip labels (physlaw-labels-1)",
+  "type": "object",
+  "required": ["per_frame", "objects", "collision", "scene_constants", "physlaw"],
+  "properties": {
+    "per_frame": {
+      "type": "array", "minItems": 2,
+      "items": {
+        "type": "object", "required": ["frame", "time_s", "A", "B"],
+        "properties": {
+          "A": {"$ref": "#/$defs/objframe"}, "B": {"$ref": "#/$defs/objframe"}
+        }
+      }
+    },
+    "physlaw": {
+      "type": "object",
+      "required": ["schema_version", "family", "twin", "twin_group_id", "split", "seed",
+                   "contact_frame", "contact_frame_actual", "first_post_contact_frame",
+                   "contact_normal", "camera", "objects", "pre_velocity", "post_velocity",
+                   "momentum_conserved", "energy_physical", "master_format", "config_hash"],
+      "properties": {
+        "schema_version": {"const": "physlaw-labels-1"},
+        "family": {"enum": ["f1", "f2", "f3", "f4", "f5", "f6"]},
+        "split": {"enum": ["train", "val", "test"]},
+        "seed": {"type": "integer"},
+        "contact_frame": {"type": "integer"},
+        "first_post_contact_frame": {"type": "integer"},
+        "contact_normal": {"$ref": "#/$defs/vec2"},
+        "camera": {
+          "type": "object", "required": ["K", "world_to_camera", "resolution"],
+          "properties": {
+            "K": {"type": "array", "minItems": 3, "maxItems": 3},
+            "world_to_camera": {"type": "array", "minItems": 4, "maxItems": 4}
+          }
+        },
+        "objects": {
+          "type": "object", "required": ["A", "B"],
+          "additionalProperties": {
+            "type": "object", "required": ["mass", "radius", "density", "segmentation_id"],
+            "properties": {"mass": {"type": "number", "exclusiveMinimum": 0},
+                           "radius": {"type": "number", "exclusiveMinimum": 0},
+                           "density": {"type": "number", "exclusiveMinimum": 0}}
+          }
+        },
+        "momentum_conserved": {"type": "boolean"},
+        "energy_physical": {"type": "boolean"},
+        "frame_sha256_16": {"type": ["array", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+    "objframe": {
+      "type": "object", "required": ["position", "velocity", "pixel", "in_frame"],
+      "properties": {
+        "position": {"type": "array", "minItems": 3, "maxItems": 3},
+        "velocity": {"type": "array", "minItems": 3, "maxItems": 3}
+      }
+    }
+  }
+}
