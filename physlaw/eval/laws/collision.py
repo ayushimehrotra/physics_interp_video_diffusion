@@ -1,0 +1,140 @@
+"""Two-body collision laws (F1, F2, F3, F4): momentum (with the restitution family), energy,
+centre-of-mass velocity, angular momentum about a fixed point, Galilean invariance.
+
+Outcome space and the legal family follow ``physlaw.data.collision_physics``: an outcome is
+o = (dv_A, dv_B) in R^4 (plain Euclidean velocity metric), and the frictionless legal outcomes for
+a fixed pre-contact state are the segment o(e) = (1 + e) mu u_n (-n/m_A, n/m_B), e in ``e_range``.
+The §5.2 null (balls pass through, o = 0, i.e. e = -1) is off the segment.
+"""
+from __future__ import annotations
+
+import numpy as np
+
+from physlaw.data import collision_physics as cp
+from physlaw.eval.laws import Law, arr, cross2, safe_ratio
+
+
+def _state(pre: dict, ctx: dict) -> cp.PreState:
+    v = arr(pre["v"])
+    return cp.PreState(float(ctx["m"][0]), float(ctx["m"][1]), v[0, :2], v[1, :2], arr(ctx["n"])[:2])
+
+
+def _outcome(pre: dict, post: dict) -> np.ndarray:
+    return (arr(post["v"])[:, :2] - arr(pre["v"])[:, :2]).reshape(4)
+
+
+def pass_through(pre: dict, ctx: dict) -> dict:
+    """§5.2 null for collisions: no contact, every object keeps its pre-contact velocity."""
+    return {k: arr(v).copy() for k, v in pre.items()}
+
+
+# --------------------------------------------------------------------------- momentum
+
+def _momentum_residual(pre, post, ctx) -> float:
+    """|sum m v' - sum m v| / |sum m v| (= labels ``summary.momentum_residual``)."""
+    m = arr(ctx["m"])
+    p0 = m @ arr(pre["v"])
+    return safe_ratio(np.linalg.norm(m @ arr(post["v"]) - p0), np.linalg.norm(p0))
+
+
+def _momentum_family(post, pre, ctx) -> tuple[float, float]:
+    """Distance of the outcome to the legal segment {o(e): e in e_range} in R^4, divided by the
+    null's distance to it (|o(e_lo)|, since the null is o = 0). Returns (d, e_hat), e_hat the
+    restitution of the nearest family member (clamped to e_range)."""
+    s = _state(pre, ctx)
+    e_lo, e_hi = ctx.get("e_range", (0.0, 1.0))
+    o = _outcome(pre, post)
+    b = cp.legal_direction(s)
+    scale = s.mu * s.approach_speed
+    J = float(np.clip(o @ b / (b @ b), (1 + e_lo) * scale, (1 + e_hi) * scale))
+    d = np.linalg.norm(o - J * b)
+    return safe_ratio(d, np.linalg.norm(cp.legal_outcome(s, e_lo))), J / scale - 1.0
+
+
+momentum = Law("momentum", _momentum_residual, pass_through, _momentum_family,
+               "linear momentum; legal family = frictionless outcomes o(e), hidden e")
+
+
+# --------------------------------------------------------------------------- energy
+
+def _ke(m, v) -> float:
+    return float(0.5 * (arr(m) * (arr(v) ** 2).sum(-1)).sum())
+
+
+def _energy_residual(pre, post, ctx) -> float:
+    """Energy creation: max(0, KE' - KE) / KE (KE lost in an inelastic contact is legal)."""
+    k0 = _ke(ctx["m"], pre["v"])
+    return safe_ratio(max(0.0, _ke(ctx["m"], post["v"]) - k0), k0)
+
+
+energy = Law("energy", _energy_residual, pass_through, None, "no kinetic-energy creation")
+
+
+# --------------------------------------------------------------------------- centre of mass
+
+def _com_residual(pre, post, ctx) -> float:
+    """|v_cm' - v_cm| / (sum m |v| / M). With velocity-only states this is the momentum change
+    again (M dv_cm = dp); only the denominator differs: the mass-weighted mean speed, which stays
+    away from 0 when the total momentum is small (where r_p blows up)."""
+    m = arr(ctx["m"])
+    v0, v1 = arr(pre["v"]), arr(post["v"])
+    scale = (m * np.linalg.norm(v0, axis=-1)).sum() / m.sum()
+    return safe_ratio(np.linalg.norm(m @ v1 - m @ v0) / m.sum(), scale)
+
+
+com = Law("com", _com_residual, pass_through, None, "centre-of-mass velocity constant through contact")
+
+
+# --------------------------------------------------------------------------- angular momentum
+
+def _angmom(m, p, v, o) -> np.ndarray:
+    r = arr(p) - arr(o)
+    L = cross2(r, v) if r.shape[-1] == 2 else np.cross(r, arr(v))
+    return (arr(m)[:, None] * np.atleast_2d(L.T).T).sum(0)
+
+
+def _angmom_residual(pre, post, ctx) -> float:
+    """|L' - L| / sum m |p - o| |v| about the fixed point o = ctx["point"] (default origin), with
+    L = sum m (p - o) x v. ``post["p"]`` defaults to ``pre["p"]`` (contact is instantaneous).
+    Frictionless spheres conserve L about any fixed point; the F1 momentum edit (a common drift
+    delta along n) changes it by M (r_cm - o) x delta, so it is invisible about the contact point
+    and visible about a point off the line through r_cm along n (hence the origin by default)."""
+    o = ctx.get("point", np.zeros(arr(pre["p"]).shape[-1]))
+    m, p0 = arr(ctx["m"]), arr(pre["p"])
+    p1 = arr(post.get("p", p0))
+    dL = _angmom(m, p1, post["v"], o) - _angmom(m, p0, pre["v"], o)
+    scale = (m * np.linalg.norm(p0 - arr(o), axis=-1) * np.linalg.norm(arr(pre["v"]), axis=-1)).sum()
+    return safe_ratio(np.linalg.norm(dL), scale)
+
+
+angular_momentum = Law("angular_momentum", _angmom_residual, pass_through, None,
+                       "angular momentum about a fixed point, conserved by frictionless contact")
+
+
+# --------------------------------------------------------------------------- Galilean invariance
+
+def invariants(pre: dict, post: dict, ctx: dict) -> tuple[float, float]:
+    """Boost-invariant summaries of a collision: realised restitution
+    e = -((v_A' - v_B') . n) / ((v_A - v_B) . n), and A's scattering angle in the centre-of-mass
+    frame (signed, radians)."""
+    m, v0, v1, n = arr(ctx["m"]), arr(pre["v"]), arr(post["v"]), arr(ctx["n"])
+    e = -float((v1[0] - v1[1]) @ n) / float((v0[0] - v0[1]) @ n)
+    ua, ub = v0[0] - m @ v0 / m.sum(), v1[0] - m @ v1 / m.sum()
+    return e, float(np.arctan2(cross2(ua, ub), ua @ ub))
+
+
+def _galilean_residual(pre, post, ctx) -> float:
+    """|e - e_ref| + |theta - theta_ref| / pi, against the unboosted clip's invariants
+    (ctx["e_ref"], ctx["theta_ref"]; or ctx["ref"] = (pre, post) of that clip). Both summaries
+    are already boost-invariant, so any nonzero residual is a broken Galilean invariance."""
+    if "ref" in ctx:
+        e_ref, th_ref = invariants(*ctx["ref"], ctx)
+    else:
+        e_ref, th_ref = ctx["e_ref"], ctx["theta_ref"]
+    e, th = invariants(pre, post, ctx)
+    dth = (th - th_ref + np.pi) % (2 * np.pi) - np.pi
+    return float(abs(e - e_ref) + abs(dth) / np.pi)
+
+
+galilean = Law("galilean", _galilean_residual, pass_through, None,
+               "restitution and CoM-frame scattering angle invariant under a common boost")
