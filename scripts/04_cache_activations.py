@@ -29,6 +29,10 @@ never rewritten; nothing else is recomputed. Not defined for diffusion models.
 
     HF_HUB_OFFLINE=1 flock /root/meta/gpu.lock /root/envs/physics_venv/bin/python \
         scripts/04_cache_activations.py --model configs/models/vjepa2_vitl.yaml --data data/f1 --pred-real
+Diffusion, noised-input-latent baseline (spec §5.1): each twin's .npz also carries
+  pooled_latent [P, S, C'] the noised VAE latent encode() fed the model at each SNR (keys latent_keys, e.g.
+                      "latent/snr+8"), one C' = patch_t*C*patch^2 vector per token, pooled like `pooled`.
+  Any run adds it to an existing .npz that lacks it (VAE encode only, no transformer pass, nothing else recomputed).
 """
 from __future__ import annotations
 
@@ -64,10 +68,24 @@ def add_pred_real(m, x, k, f_pr, Wt, names, phases, kt, n_masks):
     np.savez(f_pr, pooled=pooled.half().cpu().numpy(), pools=np.array([names[i] for i in post]), n_masks=n_masks)
 
 
-def add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo):
+def pool_latent(lat, Wt):
+    """{"latent/snr+8": [T, gh, gw, C']} -> (pooled_latent [P, S, C'] float16, latent_keys)."""
+    import torch
+    lk = sorted(lat, key=lambda q: int(q.split("snr")[1]))
+    return (torch.stack([Wt @ lat[q].reshape(-1, lat[q].shape[-1]).float() for q in lk], 1).half().cpu().numpy(),
+            np.array(lk))
+
+
+def append_npz(f_npz, **new):
+    z = dict(np.load(f_npz))
+    np.savez(f_npz, **z, **new)
+
+
+def add_forecast(m, x, k, gid, out, Wt, names, phases, kt, fc_memo):
     """Diffusion: forecast = activations captured while sampling the continuation (seed 0); identical for
     every twin of the group (shared context latents), so sampled once per group. Pooled with THIS twin's
-    weights over the forecast's token-frames and appended to the twin's .npz; the generated video is kept."""
+    weights over the forecast's token-frames; returns the arrays to append to the twin's .npz; the generated
+    video is kept."""
     import torch
     if fc_memo.get("gid") != gid:
         acts_f, vid = m.forecast(x, k, seed=0, return_video=True)
@@ -78,8 +96,7 @@ def add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo):
     Wf = post_weights(Wt, names, phases, kt)
     fc_pooled = torch.stack([Wf @ fc_memo["acts"][q].reshape(-1, fc_memo["acts"][q].shape[-1]).float()
                              for q in fk], 1)
-    z = dict(np.load(f_npz))
-    np.savez(f_npz, **z, fc_pooled=fc_pooled.half().cpu().numpy(), fc_keys=np.array(fk), context_tokens=kt)
+    return {"fc_pooled": fc_pooled.half().cpu().numpy(), "fc_keys": np.array(fk), "context_tokens": kt}
 
 
 def main():
@@ -119,13 +136,16 @@ def main():
             gid, twin = path.parent.name, path.name
             f_npz = out / gid / f"{twin}.npz"
             f_pr = out / gid / f"{twin}.pred_real.npz"
-            forecast_only = False
             if a.pred_real and f_pr.exists() and not a.force:
                 continue
+            todo = None                                  # existing file: the parts to add (pass 2 / latent baseline)
             if f_npz.exists() and not a.force and not a.pred_real:
-                if not (diffusion and not a.no_forecast and "fc_pooled" not in np.load(f_npz).files):
+                have = np.load(f_npz).files if diffusion else ()
+                todo = [part for part, need in (("latent", diffusion and "pooled_latent" not in have),
+                                                ("forecast", diffusion and not a.no_forecast and "fc_pooled" not in have))
+                        if need]
+                if not todo:
                     continue
-                forecast_only = True                     # pass 2: add the forecast to a pass-1 file
             f_npz.parent.mkdir(parents=True, exist_ok=True)
             c = load_clip(path)
             fr = m.input_frames(c.labels)
@@ -137,8 +157,13 @@ def main():
             names = sorted(W)
             Wt = torch.from_numpy(np.stack([W[n].reshape(-1) for n in names])).to(x.device)   # [P, N]
             kt = m.n_context_tokens(k) if hasattr(m, "n_context_tokens") else k // m.token_grid.tubelet
-            if forecast_only:
-                add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo)
+            if todo is not None:
+                new = {}
+                if "latent" in todo:
+                    new.update(zip(("pooled_latent", "latent_keys"), pool_latent(m.latent_baseline(x), Wt)))
+                if "forecast" in todo:
+                    new.update(add_forecast(m, x, k, gid, out, Wt, names, phases, kt, fc_memo))
+                append_npz(f_npz, **new)
                 done += 1
                 continue
             if a.pred_real:
@@ -148,6 +173,7 @@ def main():
                     print(f"[04] pred_real {done}/{len(clips)}  {(time.time() - t0) / done:.2f} s/clip", flush=True)
                 continue
             acts = m.encode(x)
+            lat = {q: acts.pop(q) for q in [q for q in acts if isinstance(q, str) and q.startswith("latent/")]}
             layers = sorted(acts)
             # layers sharing the dominant width go into `pooled` [P, L, D]; others (VideoMAE's 512-d decoder
             # FINAL) are stored apart as pooled_final / pooled_<layer>
@@ -158,16 +184,17 @@ def main():
             pooled = torch.stack([pool_l(l) for l in main], 1)
             side = {("pooled_final" if l == FINAL else f"pooled_{l}"): pool_l(l).half().cpu().numpy()
                     for l in layers if l not in main}
+            if lat:
+                side.update(zip(("pooled_latent", "latent_keys"), pool_latent(lat, Wt)))
             layers = main
             roi_post = (obj["A"].roi | obj["B"].roi)[kt:]
             sur = m.surprise(x, k, roi_post)
             extra = {f"tokens_layer{l}": acts[l].half().cpu().numpy() for l in a.save_tokens if l in acts}
+            if diffusion and not a.no_forecast:
+                side.update(add_forecast(m, x, k, gid, out, Wt, names, phases, kt, fc_memo))
             np.savez(f_npz, pooled=pooled.half().cpu().numpy(), pools=np.array(names), layers=np.array(layers),
                      frames=np.array(fr), context_frames=k, phases=np.array(phases), **side, **extra)
-            if diffusion:
-                if not a.no_forecast:
-                    add_forecast(m, x, k, gid, out, f_npz, Wt, names, phases, kt, fc_memo)
-            else:
+            if not diffusion:
                 fc = out / gid / "_forecast.npz"
                 if not fc.exists() or a.force:
                     np.savez(fc, final=m.forecast(x, k)[FINAL].half().cpu().numpy(), context_frames=k)
