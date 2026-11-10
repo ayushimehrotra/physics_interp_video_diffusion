@@ -1,0 +1,4 @@
+defaults: _probe.yaml
+level: l4
+families: [f3]
+alphas_sd: [-2, -1, 0, 1, 2]

@@ -1,0 +1,24 @@
+# Wan2.2-I2V-A14B (MoE: high-noise + low-noise 14B experts) at its OFFICIAL settings, from the diffusers model card
+# (Wan-AI/Wan2.2-I2V-A14B-Diffusers README): area 480 x 832 at the input image's aspect, rounded to the
+# VAE x patch multiple (F1's 832 x 480 frame is exactly 480 x 832: no resize, no padding), 81 frames at 16 fps,
+# 40 steps, guidance 3.5 (both experts; the pipeline's boundary_ratio switches experts), shipped scheduler,
+# the card's Chinese negative prompt. Transformers bf16, VAE fp32.
+# Added 2026-11-06 for output track B (self-consistency, spec §6b): not on the spec §4.2 list (nearest: P2
+# "Wan 2.1 I2V-14B"); it is the first generator that produced measurable F1-style collisions.
+name: wan2.2-i2v-a14b
+kind: diffusion
+hf_id: Wan-AI/Wan2.2-I2V-A14B-Diffusers
+revision: 596658fd9ca6b7b71d5057529bbf319ecbc61d74     # from the download's .cache/huggingface metadata
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.2-I2V-A14B-Diffusers
+# bf16 copy for fast loads (same weights the pipeline casts to bf16): /root/wan14b_local (rebuilt per pod)
+dtype: bfloat16
+official:
+  height: 480
+  width: 832
+  max_area: 399360        # 480 * 832, the card's size rule
+  num_frames: 81
+  fps: 16
+  num_inference_steps: 40
+  guidance_scale: 3.5
+  negative_prompt: "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+prompt_template: minimal   # physlaw.models.cogvideox.minimal_prompt

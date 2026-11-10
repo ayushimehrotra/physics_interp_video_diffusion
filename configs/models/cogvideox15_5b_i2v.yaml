@@ -1,0 +1,31 @@
+# CogVideoX1.5-5B-I2V at its OFFICIAL settings. §65 of the old project ran it at 45
+# frames, off the supported 16N+1 lengths; that result does not carry over.
+name: cogvideox1.5-5b-i2v
+kind: diffusion
+hf_id: zai-org/CogVideoX1.5-5B-I2V
+local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX1.5-5B-I2V
+revision: 46c90528707aebbe69066390b4fe7e7d24c9c2a4   # from the download's .cache/huggingface metadata
+dtype: bfloat16
+vae_tiling: true          # model-card examples enable it; untiled 81x1360x768 encode OOMs beside other jobs
+official:
+  width: 1360
+  height: 768
+  num_frames: 81          # 16N+1; 5 s at 16 fps
+  fps: 16
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  # The official CogVideo repo (inference/cli_demo.py) uses CogVideoXDPMScheduler (trailing) with
+  # use_dynamic_cfg=True for the 5B models ("We recommend ... CogVideoXDPMScheduler for CogVideoX-5B /
+  # CogVideoX-5B-I2V"); the checkpoint's scheduler_config.json default is DDIM. Repo recommendation used.
+  scheduler: CogVideoXDPMScheduler
+  use_dynamic_cfg: true
+input:
+  center_on_contact: false
+token_grid: {patch: 2, patch_t: 2, vae_spatial: 8, vae_temporal: 4}
+layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 41]
+encode_snr_db: [-20, -8, 0, 8]
+# --- adapter settings (physlaw/models/cogvideox.py, CogVideoX15I2VAdapter) ---
+prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
+forecast_layers: [10, 21, 32]
+surprise: {n_draws: 2}
+noise_seed: 0

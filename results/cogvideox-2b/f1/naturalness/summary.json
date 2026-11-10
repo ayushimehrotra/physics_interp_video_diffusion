@@ -1,0 +1,228 @@
+[
+ {
+  "group": "f1_100000",
+  "variant": "orig",
+  "ball_diam_px": 48.71900263951763,
+  "real": {
+   "tracked_after_ctx": 0.9642857142857143,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100000",
+  "variant": "zoom",
+  "ball_diam_px": 105.50632065227187,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100000",
+  "variant": "zoom_wood",
+  "ball_diam_px": 105.50632065227187,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100000",
+  "variant": "zoom_wood_long",
+  "ball_diam_px": 105.50632065227187,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.17857142857142858,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100001",
+  "variant": "orig",
+  "ball_diam_px": 30.476063912413004,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.09375,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100001",
+  "variant": "zoom",
+  "ball_diam_px": 59.23624061147679,
+  "real": {
+   "tracked_after_ctx": 0.90625,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.125,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100001",
+  "variant": "zoom_wood",
+  "ball_diam_px": 59.23624061147679,
+  "real": {
+   "tracked_after_ctx": 0.9375,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.03125,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100001",
+  "variant": "zoom_wood_long",
+  "ball_diam_px": 59.23624061147679,
+  "real": {
+   "tracked_after_ctx": 0.9375,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100002",
+  "variant": "orig",
+  "ball_diam_px": 46.2703366299256,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0625,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100002",
+  "variant": "zoom",
+  "ball_diam_px": 100.14045576303701,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0625,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100002",
+  "variant": "zoom_wood",
+  "ball_diam_px": 100.14045576303701,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.03125,
+   "measurable": false,
+   "reason": "lost_after_contact"
+  }
+ },
+ {
+  "group": "f1_100002",
+  "variant": "zoom_wood_long",
+  "ball_diam_px": 100.14045576303701,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "E_out": 0.7077949298518108
+ },
+ {
+  "group": "f1_100003",
+  "variant": "orig",
+  "ball_diam_px": 46.78232518409436,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100003",
+  "variant": "zoom",
+  "ball_diam_px": 89.19578537278827,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": true
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100003",
+  "variant": "zoom_wood",
+  "ball_diam_px": 89.19578537278827,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": false,
+   "reason": "no_contact"
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ },
+ {
+  "group": "f1_100003",
+  "variant": "zoom_wood_long",
+  "ball_diam_px": 89.19578537278827,
+  "real": {
+   "tracked_after_ctx": 1.0,
+   "measurable": false,
+   "reason": "no_contact"
+  },
+  "gen": {
+   "tracked_after_ctx": 0.0,
+   "measurable": false,
+   "reason": "lost_after_context"
+  }
+ }
+]

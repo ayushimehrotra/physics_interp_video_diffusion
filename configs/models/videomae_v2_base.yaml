@@ -1,0 +1,16 @@
+# VideoMAE-v2 base (spec P0). Giant: hf_id OpenGVLab/VideoMAEv2-giant,
+# revision d27568eb41ccb2d41bb191fc2e3fe5aad74942d4, patch 14.
+name: videomaev2-base
+kind: encoder
+hf_id: OpenGVLab/VideoMAEv2-Base
+revision: 78c337a418cc4adaf7f1ff6c7ba343418393966b
+trust_remote_code: true
+dtype: float32
+input:
+  num_frames: 16
+  resolution: 224
+  fps: 8                  # 16 frames = 2.0 s around contact (pretraining used stride-4 sampling of ~30 fps video)
+  center_on_contact: true
+token_grid: {patch: 16, tubelet: 2}
+layers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+surprise: {mask_ratio: 0.9, mask_kind: tube, n_mask_draws: 8}

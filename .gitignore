@@ -1,0 +1,14 @@
+# Large or regenerable outputs: rebuilt by the pipeline (see docs/RESUME.md)
+data/
+cache/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Results: keep the tables (json/md), not the media
+results/**/*.mp4
+results/**/*.png
+results/**/*.gif
+results/**/*.npz
+# Reference PDFs (copyrighted papers, 67 MB): kept locally only
+docs/references/*.pdf

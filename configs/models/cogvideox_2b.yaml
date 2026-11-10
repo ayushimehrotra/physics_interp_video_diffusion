@@ -1,0 +1,26 @@
+# CogVideoX-2b T2V at its OFFICIAL settings (model card / scheduler_config.json).
+name: cogvideox-2b
+kind: diffusion
+hf_id: zai-org/CogVideoX-2b
+revision: 1137dacfc2c9c012bed6a0793f4ecf2ca8e7ba01
+local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-2b   # plain-file copy of that snapshot, every file hash-verified
+dtype: float16            # 2b was trained in fp16 (5b variants in bf16)
+official:
+  width: 720
+  height: 480
+  num_frames: 49          # 13 latent frames (4x temporal VAE)
+  fps: 8
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  scheduler: CogVideoXDDIMScheduler   # v_prediction, trailing spacing, zero-SNR
+  use_dynamic_cfg: false
+input:
+  center_on_contact: false            # 6.0 s master == 6.0 s native clip: use all of it
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}
+layers: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 29]
+encode_snr_db: [-20, -8, 0, 8]        # spec §10 default noise grid
+# --- adapter settings (physlaw/models/cogvideox.py) ---
+prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
+forecast_layers: [6, 15, 24]          # captured during sampling at the steps nearest each encode SNR
+surprise: {n_draws: 2}                # x encode SNR timesteps; noise draws identical across twins
+noise_seed: 0

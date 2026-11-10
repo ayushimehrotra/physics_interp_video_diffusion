@@ -1,0 +1,7 @@
+# Positive control (spec §4.3): small V-JEPA-style model trained on the F1-F5 train split.
+# Size and budget are an open decision (spec §10); these are placeholders.
+defaults: vjepa2_vitl.yaml
+name: positive-control
+kind: positive_control
+arch: {depth: 12, dim: 384, heads: 6}
+train: {steps: 100000, batch_size: 32, lr: 3.0e-4}

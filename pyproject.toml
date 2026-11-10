@@ -1,0 +1,21 @@
+[project]
+name = "physlaw"
+version = "0.1.0"
+description = "PhysLaw-Internal: physical laws inside video models"
+requires-python = ">=3.11"
+# Two environments (see CLAUDE.md). Pinned versions:
+#   model/eval venv : envs/requirements_physics_venv.txt  (torch 2.8.0, diffusers 0.35.1, transformers 4.56.1)
+#   kubric venv     : envs/kubric_requirements_locked.txt (bpy 4.3.0, pybullet 3.2.7, numpy 1.26.4)
+dependencies = ["numpy", "pyyaml", "jsonschema"]
+
+[project.optional-dependencies]
+models = ["torch==2.8.0", "torchvision==0.23.0", "diffusers==0.35.1", "transformers==4.56.1",
+          "accelerate==1.10.1", "timm==1.0.28", "easydict==1.13", "imageio==2.37.0",
+          "imageio-ffmpeg==0.6.0", "pillow==11.3.0", "scipy", "ftfy"]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["physlaw*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

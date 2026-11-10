@@ -1,0 +1,5 @@
+defaults: _probe.yaml
+level: l1
+families: [f1, f2, f3]
+laws: [momentum, energy, restitution]
+bootstrap: {n: 2000, ci: 0.95}

@@ -1,0 +1,5 @@
+# Negative control: V-JEPA 2 ViT-L architecture, randomly initialised (spec P0).
+defaults: vjepa2_vitl.yaml
+name: untrained-vitl
+kind: encoder_untrained
+init_seed: 0

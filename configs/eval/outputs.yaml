@@ -1,0 +1,8 @@
+level: outputs
+families: [f1, f2, f3, f5]
+seeds_per_clip: 4
+# Step 0 (added): unsteered feasibility gate. In the old project no generator passed
+# a two-ball collision gate (all were run off-spec or 0/10 at official settings).
+# Run the gate first; skip a model's full output eval if it fails.
+feasibility_gate: {n_clips: 20, min_pass_rate: 0.3}
+tracker: {masks: sam2, points: cotracker}

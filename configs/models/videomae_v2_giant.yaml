@@ -1,0 +1,22 @@
+# VideoMAE v2-giant WITH its pre-training pixel decoder (spec P0 "VideoMAE-v2 ... giant if compute
+# allows"). The HF model repos OpenGVLab/VideoMAEv2-* are encoder-only (no decoder => no
+# reconstruction surprise / forecast). This is the original pre-training checkpoint from the
+# OpenGVLab/VideoMAE2 file repo. Loaded with torch.load(weights_only=True). See physlaw/models/videomae2.py.
+name: videomaev2-giant
+kind: encoder
+arch: videomae2_pretrain
+hf_id: OpenGVLab/VideoMAE2
+revision: 706cc172d65ebd4dedbee3f9c0183a93df9fa125
+checkpoint:
+  file: mae-g/vit_g_hybrid_pt_1200e.pth
+  path: ${env:PHYSLAW_MODELS,/root/models}/videomae2/vit_g_hybrid_pt_1200e.pth
+  sha256: 5773c881d303426f2f0e906df9842c4ca95fba6a5901849a3e8d9d1ed8f79b5f
+dtype: float32
+input:
+  num_frames: 16          # pre-training clip length
+  resolution: 224
+  fps: 8                  # 16 frames = 2.0 s; contact at input frame 8 (token-frame 4 boundary)
+  center_on_contact: true
+token_grid: {patch: 14, tubelet: 2}
+layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39]   # encoder blocks; + 40 (final norm) + FINAL (decoder space)
+surprise: {mask_ratio: 0.9, mask_kind: tube, n_mask_draws: 8}

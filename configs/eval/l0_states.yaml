@@ -1,0 +1,4 @@
+defaults: _probe.yaml
+level: l0
+families: [f1]
+targets: [velocity, speed, direction, log_mass, radius]

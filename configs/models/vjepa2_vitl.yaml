@@ -1,0 +1,18 @@
+# V-JEPA 2 ViT-L encoder + predictor (spec P0).
+name: vjepa2-vitl
+kind: encoder
+hf_id: facebook/vjepa2-vitl-fpc64-256
+revision: b3c1679b7c34d3255ef3547f27c7b226aefab26f
+local_path: ${env:PHYSLAW_MODELS,/root/models}/vjepa2-vitl-fpc64-256   # plain-file copy of that snapshot (persistent)
+dtype: float32
+input:
+  num_frames: 64          # fpc64: the checkpoint's own clip length
+  resolution: 256
+  # Each distinct master frame shown ONCE. The old capture showed every frame twice
+  # ("5:37:1x2"), which halves apparent speed; do not reproduce that.
+  fps: 24                 # 64 frames at 24 fps = 2.67 s, contact at ~frame 32.
+                          # TODO(milestone 2): check against V-JEPA 2's pretraining frame rate.
+  center_on_contact: true
+token_grid: {patch: 16, tubelet: 2}
+layers: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23]
+surprise_distances: [l1, mse, cosine]

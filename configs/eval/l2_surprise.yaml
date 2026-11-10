@@ -1,0 +1,11 @@
+defaults: _probe.yaml
+level: l2
+families: [f1]
+contrasts:
+  - [mom_violate_e1, conserve_e1]
+  - [mom_violate_e015, conserve_e015]
+  - [energy_create, conserve_e015]
+  - [conserve_e1, conserve_e015]          # legal-vs-legal control
+# Added baseline: replication/RESUME.md (2026-11-02) found a copy-last-frame predictor
+# reproduces every impossible-vs-legal energy asymmetry on V-JEPA2. Report it beside every contrast.
+pixel_baselines: [copy_last_frame, constant_velocity_extrapolation]
