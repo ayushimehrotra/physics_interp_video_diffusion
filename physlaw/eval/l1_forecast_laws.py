@@ -1,41 +1,41 @@
-"""L1 forecast law consistency (spec §5): do the model's OWN predictions of the post-contact
-states obey momentum and energy conservation?
+"""L1 forecast law consistency (spec §5.2, revised in v2): do the model's OWN predictions of the
+post-event states obey the laws?
 
-Steps (spec), with the deviations needed for F1 noted:
-1. Post-contact velocity probes per object, ridge on encode() FINAL-layer activations of REAL
-   post-contact frames (FINAL = the predictor's target space). Deviation: with 64 groups a
-   train/test split leaves ~9 test groups, so probes are CROSS-FITTED: grouped 5-fold over twin
-   groups, repeated over ``fold_seeds`` seeds, trained on every twin of the training groups;
-   every test-group prediction comes from a probe that never saw that group.
-2. forecast(): predictor outputs for the post-contact token-frames from the pre-contact frames only
-   (cached by stage 4; identical for every twin of a group).
-3. Probes applied to the forecast pooled with the same pooling weights -> predicted v_A', v_B'.
-4. Law residuals with TRUE masses and TRUE pre-contact velocities:
-     momentum r_p = |m_A v̂_A' + m_B v̂_B' − p_pre| / |p_pre|
-     energy   r_E = max(0, KE(v̂') − KE_pre) / KE_pre
+Pipeline. forecast() gives the model's prediction of the post-event token-frames from pre-event frames
+only (cached by stage 4; identical for every twin of a group). A post-velocity probe decodes it into
+v̂_A', v̂_B'. Probes are CROSS-FITTED over twin groups (grouped ``k_folds`` x ``fold_seeds_l1`` seeds;
+5 x 4 by default, allowed at < 100 groups by spec §5): every group's decode comes from probes that never
+saw that group. Laws come from ``physlaw.eval.laws`` with TRUE masses, pre velocities and contact geometry.
 
-Calibration:
-  * floor     the same probes on encode() of the REAL post-contact frames (probe noise alone)
-  * null      both balls continue unchanged (spec). For F1 this conserves p and KE EXACTLY
-              (r = 0), so it cannot anchor S. It is reported but not used in S.
-  * shuffle   (added) the forecast decoded for a DIFFERENT group, scored against this group's masses
-              and pre velocities: a prediction that ignores this scene's physics.
-  * S_law     = 1 − (r_forecast − r_floor) / (r_shuffle − r_floor), clipped to [−1, 1].
-  * outcome   (added) E = ||v̂' − v'|| / ||v' − v_pre|| over both balls (4-vector): the error of
-              the predicted post velocities relative to the true velocity change. The spec's null
-              has E = 1 by construction, so S_outcome = 1 − (E_forecast − E_floor)/(1 − E_floor).
-              The legal outcome depends on e, which the context does not show (both legal twins
-              share the context), so outcome is reported per legal twin.
-Pools for the forecast:
-  * roi    the evaluated twin's own post-contact ROI (spec). It tells the probe WHERE the ball
-           really goes, which leaks the outcome (L0 mask floor: R² up to ~0.4 for velocity).
-  * frame  all post-contact tokens: no location leak, weaker probes.
-  * *_mm   moment-matched: before the real-frame probe is applied, forecast features are shifted and
-           scaled to the real features' per-dimension mean / sd, both estimated on the TRAINING groups
-           only, without labels. Needed because predictor outputs are compressed relative to encoder
-           outputs (decoded forecast spread ~0.1 of real without it).
-Sensitivity check: the floor on the momentum-violating twins should show large r_p (the probes
-can see a violation in real video); otherwise a low forecast residual means nothing.
+Probe options (spec §5.2; all reported):
+  * P-real-mm    probe trained on encode() of REAL post-event frames; forecast features moment-matched to
+                 the real ones (per-dim mean / sd from training groups, no labels) before decoding.
+  * P-pred-real  probe trained on the model's own forecast-space outputs for MASKED REAL post-event tokens
+                 with the rest of the clip as context (stage 4 --pred-real sidecars; encoders only). Same
+                 space as the forecast, so applied without moment matching.
+  * P-forecast   probe trained ON the forecast features (cross-fitted): an information ceiling only,
+                 reported as decoding R², never used to score laws.
+Pools: ``frame`` (all post-event tokens; leak-free) is PRIMARY. ``roi`` (each ball's ROI at its TRUE
+post-event location) is secondary and leaks where the ball goes (its mask floor is reported).
+
+Scores per twin (the forecast is shared by a group's twins; the LEGAL twins are the law test, the
+violating twins' floors show whether the probes can see a violation in real video):
+  * S_outcome (primary)  E = ||v̂' − v'|| / ||v' − v_pre|| (4-vector); the no-event null has E = 1, so
+                         S = 1 − (E_fc − E_floor) / (1 − E_floor). Per legal twin (e is not visible).
+  * S_family (primary)   d = laws.momentum.family_distance: distance to the legal family {o(e), e ∈ [0, 1]}
+                         normalised so the §5.2 null (pass-through) has d_null = 1;
+                         S = 1 − (d_fc − d_floor) / (d_null − d_floor), d_floor = the probes on the real
+                         post-event frames (of this option). Also ê, the family's argmin restitution.
+  * S_momentum (demoted) a forecast that ignores the collision conserves momentum exactly in F1, so this
+                         cannot show understanding on its own. Reference = shuffled-group forecast (built
+                         behaviour; STATUS v2 disagreement 4). CoM and angular-momentum residuals carry the
+                         same caveat and are reported the same way.
+  * energy               scored only when decoded forecast speeds have 80-120% of the spread of the decoded
+                         real frames (otherwise "not scorable": shrunk forecasts never create energy).
+Bootstrap 95% CIs over groups. ``legal`` pools both legal twins per group.
+Selection rule: DiTs give one space per (SNR, layer); for each probe option and pool the space is selected on
+half the groups and scored on the other half (probes.select.heldout_select), separately for S_outcome and
+S_family. The number of spaces searched is reported.
 """
 from __future__ import annotations
 
@@ -44,34 +44,158 @@ from pathlib import Path
 
 import numpy as np
 
+from physlaw.eval import laws
 from physlaw.eval.l0_states import complete_groups, load_index
 from physlaw.probes.ridge import DEFAULT_ALPHAS, _inner_alpha, _SVDRidge, grouped_kfold
+from physlaw.probes.select import heldout_select
 
 LEGAL = ("conserve_e1", "conserve_e015")
 VIOLATING = ("mom_violate_e1", "mom_violate_e015", "energy_create")
-
-
-def _physics(labels):
-    pl = labels["physlaw"]
-    m = np.array([pl["objects"][o]["mass"] for o in "AB"])
-    vpre = np.array([pl["pre_velocity"][o][:2] for o in "AB"], float)
-    vpost = np.array([pl["post_velocity"][o][:2] for o in "AB"], float)
-    return m, vpre, vpost
+RES_LAWS = ("momentum", "energy", "com", "angular_momentum")
+POOLS = {"frame": {"A": "frame.post", "B": "frame.post"}, "roi": {"A": "roi_A.post", "B": "roi_B.post"}}
+SPREAD_OK = (0.8, 1.2)
 
 
 def residuals(v_hat: np.ndarray, m: np.ndarray, vpre: np.ndarray, vpost: np.ndarray) -> dict:
-    """v_hat [2, 2] (object, xy) predicted post velocities."""
-    p_pre = m @ vpre
-    ke_pre = 0.5 * (m * (vpre ** 2).sum(1)).sum()
-    ke_hat = 0.5 * (m * (v_hat ** 2).sum(1)).sum()
-    return {"r_p": float(np.linalg.norm(m @ v_hat - p_pre) / np.linalg.norm(p_pre)),
-            "r_E": float(max(0.0, ke_hat - ke_pre) / ke_pre),
+    """v_hat [2, 2] predicted post velocities -> {r_p, r_E, E_out} (kept for eval/outputs.py)."""
+    pre, ctx = {"v": vpre}, {"m": m}
+    post = {"v": np.asarray(v_hat, float)}
+    return {"r_p": laws.momentum.residual(pre, post, ctx), "r_E": laws.energy.residual(pre, post, ctx),
             "E_out": float(np.linalg.norm(v_hat - vpost) / np.linalg.norm(vpost - vpre))}
 
 
-def _score(rf, rfl, rref):
-    d = rref - rfl
-    return float(np.clip(1 - (rf - rfl) / d, -1, 1)) if d > 0 else float("nan")
+def _S(fc, fl, ref):
+    """1 − (fc − fl) / (ref − fl), clipped to [−1, 1]; NaN where ref <= fl. Works on arrays."""
+    fc, fl, ref = np.broadcast_arrays(*(np.asarray(a, float) for a in (fc, fl, ref)))
+    d = ref - fl
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(d > 0, np.clip(1 - (fc - fl) / d, -1, 1), np.nan)
+
+
+# --------------------------------------------------------------------------- inputs
+
+def _load_spaces(cache_dir, recs, clips, model_cfg, mf):
+    """{space: {"real"|"fc"|"pr": {pool: [n, D]}}}; "pr" only where every clip has a .pred_real.npz."""
+    first = np.load(cache_dir / recs[0]["file"])
+    pools = [str(p) for p in first["pools"]]
+    PP = ("roi_A.post", "roi_B.post", "frame.post")
+    zs = [np.load(cache_dir / r["file"]) for r in recs]
+    spaces = {}
+    if "fc_pooled" in first.files:     # diffusion: one space per (SNR, layer) key, pooled per twin by stage 4
+        lkeys = [str(l) for l in first["layers"]]
+        fkeys = [str(x) for x in first["fc_keys"]]
+        for q in fkeys:
+            li, fi = lkeys.index(q), fkeys.index(q)
+            spaces[q] = {"real": {p: np.stack([z["pooled"][pools.index(p), li] for z in zs]).astype(np.float64) for p in PP},
+                         "fc": {p: np.stack([z["fc_pooled"][pools.index(p), fi] for z in zs]).astype(np.float64) for p in PP}}
+        return spaces
+    if "pooled_final" in first.files:  # forecast space: VideoMAE's decoder (own width) or layer -1 of `pooled`
+        get = lambda z, p: z["pooled_final"][pools.index(p)]
+    else:
+        li = [int(l) for l in first["layers"]].index(-1)
+        get = lambda z, p: z["pooled"][pools.index(p), li]
+    real = {p: np.stack([get(z, p) for z in zs]).astype(np.float64) for p in PP}
+    phases = {c: np.array([str(x) for x in z["phases"]]) for c, z in zip(clips, zs)}
+    fc = {p: np.zeros_like(real["frame.post"]) for p in real}
+    row = {c: i for i, c in enumerate(clips)}
+    for g in sorted({c.split("/")[0] for c in clips}):
+        z = np.load(cache_dir / g / "_forecast.npz")
+        F = z["final"].astype(np.float32)                      # [T_post, gh, gw, D]
+        t0 = int(z["context_frames"]) // int(model_cfg.token_grid.tubelet)
+        for c in [c for c in clips if c.startswith(g + "/")]:
+            i = row[c]
+            post = phases[c][t0:] == "post"
+            for p in ("roi_A.post", "roi_B.post"):
+                w = mf[f"w.{p}"][i].reshape(len(phases[c]), *F.shape[1:3])[t0:] * post[:, None, None]
+                fc[p][i] = (w.reshape(-1) / w.sum()) @ F.reshape(-1, F.shape[-1])
+            fc["frame.post"][i] = F[post].reshape(-1, F.shape[-1]).mean(0)
+    spaces["final"] = {"real": real, "fc": fc}
+    prf = [cache_dir / r["file"].replace(".npz", ".pred_real.npz") for r in recs]
+    if all(f.exists() for f in prf):
+        zp = [np.load(f) for f in prf]
+        pp = [str(p) for p in zp[0]["pools"]]
+        spaces["final"]["pr"] = {p: np.stack([z["pooled"][pp.index(p)] for z in zp]).astype(np.float64) for p in PP}
+    return spaces
+
+
+# --------------------------------------------------------------------------- decoding
+
+def _crossfit(X_train, Y, groups, X_apply, k, n_seeds, alphas, mm_src=None):
+    """Cross-fitted ridge: returns (oof decode of X_train, decode of X_apply, mean R² of the oof), both
+    averaged over seeds. ``mm_src``: moment-match X_apply to X_train with training-fold stats first."""
+    n = len(Y)
+    oof_m, app_m, r2 = np.zeros_like(Y), np.zeros_like(Y), []
+    for seed in range(n_seeds):
+        oof = np.zeros_like(Y)
+        for te in grouped_kfold(groups, k, seed):
+            tr = np.setdiff1d(np.arange(n), te)
+            a = _inner_alpha(X_train[tr], Y[tr], groups[tr], alphas, k, seed, False, True)
+            mdl = _SVDRidge(X_train[tr], Y[tr], True)
+            oof[te] = mdl.predict(X_train[te], a)
+            xa = X_apply[te]
+            if mm_src is not None:
+                xa = (xa - mm_src[tr].mean(0)) / (mm_src[tr].std(0) + 1e-8) * (X_train[tr].std(0) + 1e-8) + X_train[tr].mean(0)
+            app_m[te] += mdl.predict(xa, a) / n_seeds
+        oof_m += oof / n_seeds
+        r2.append(1 - ((Y - oof) ** 2).sum() / ((Y - Y.mean(0)) ** 2).sum())
+    return oof_m, app_m, float(np.mean(r2))
+
+
+def _ceiling(X, Y, groups, k, alphas):
+    """P-forecast: ridge trained on the features themselves, cross-fitted by group (one seed). R²."""
+    oof = np.zeros_like(Y)
+    for te in grouped_kfold(groups, k, 0):
+        tr = np.setdiff1d(np.arange(len(Y)), te)
+        a = _inner_alpha(X[tr], Y[tr], groups[tr], alphas, k, 0, False, True)
+        oof[te] = _SVDRidge(X[tr], Y[tr], True).predict(X[te], a)
+    return float(1 - ((Y - oof) ** 2).sum() / ((Y - Y.mean(0)) ** 2).sum())
+
+
+# --------------------------------------------------------------------------- scoring
+
+def _per_clip(v_fc, v_fl, states, clips, row, ugroups, res_laws=RES_LAWS):
+    """Per clip: forecast / floor / null / shuffle values of every score. v_* [n, 2, 2]."""
+    per = {}
+    for c in clips:
+        pre, post, ctx = states[c]
+        i = row[c]
+        d = {}
+        for src, v in (("forecast", v_fc[i]), ("floor", v_fl[i]), ("null", pre["v"])):
+            x = {"v": v, "p": pre["p"]}
+            d[src] = {ln: laws.LAWS[ln].residual(pre, x, ctx) for ln in res_laws}
+            d[src]["E_out"] = float(np.linalg.norm(v - post["v"]) / np.linalg.norm(post["v"] - pre["v"]))
+            d[src]["d_family"], d[src]["e_hat"] = laws.momentum.family_distance(x, pre, ctx)
+        per[c] = d
+    for c in clips:      # shuffle: other groups' decoded forecast (same twin type) against this group's physics
+        g, t = c.split("/")
+        pre, _, ctx = states[c]
+        others = [v_fc[row[f"{h}/{t}"]] for h in ugroups if h != g]
+        per[c]["shuffle"] = {ln: float(np.mean([laws.LAWS[ln].residual(pre, {"v": v, "p": pre["p"]}, ctx) for v in others]))
+                             for ln in res_laws}
+    return per
+
+
+def _twin_scores(per, gs_rows, n_boot, rng, energy_ok, res_laws=RES_LAWS):
+    """gs_rows: list over groups of the clip keys pooled for that group (1 per twin; 2 for ``legal``)."""
+    keys = ("E_out", "d_family", "e_hat", *res_laws)
+    arr = {src: {k_: np.array([np.mean([per[c][src][k_] for c in cs]) for cs in gs_rows]) for k_ in keys
+                 if k_ in per[gs_rows[0][0]][src]} for src in ("forecast", "floor", "null", "shuffle")}
+
+    def scores(ix):
+        m = {src: {k_: v[ix].mean(-1) for k_, v in d.items()} for src, d in arr.items()}
+        out = {"outcome": _S(m["forecast"]["E_out"], m["floor"]["E_out"], 1.0),
+               "family": _S(m["forecast"]["d_family"], m["floor"]["d_family"], 1.0)}
+        for ln in [l for l in res_laws if l != "energy" or energy_ok]:
+            out[ln] = _S(m["forecast"][ln], m["floor"][ln], m["shuffle"][ln])
+        return out
+    n = len(gs_rows)
+    S = {k_: float(v[0]) for k_, v in scores(np.arange(n)[None]).items()}
+    B = scores(rng.integers(0, n, (n_boot, n)))
+    ci = {k_: [float(np.nanquantile(b, 0.025)), float(np.nanquantile(b, 0.975))] if np.isfinite(b).any() else [np.nan, np.nan]
+          for k_, b in B.items()}
+    mean = {src: {k_: float(v.mean()) for k_, v in d.items()} for src, d in arr.items()}
+    med = {src: {k_: float(np.median(v)) for k_, v in d.items()} for src, d in arr.items()}
+    return {"n": n, "S": S, "S_ci95": ci, "mean": mean, "median": med}
 
 
 def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
@@ -80,195 +204,130 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
     k = int(probe["k_folds"])
     n_seeds = int(cfg.get("fold_seeds_l1", 4))
     n_boot = int(cfg["bootstrap"]["n"])
+    n_splits = int(cfg.get("selection", {}).get("n_splits", 50))
+    res_laws = tuple(cfg.get("laws", RES_LAWS))
     recs = complete_groups(load_index(cache_dir))
     clips = [r["clip"] for r in recs]
     row = {c: i for i, c in enumerate(clips)}
     labels = {c: json.loads((data_dir / c / "labels.json").read_text()) for c in clips}
+    states = {c: laws.from_labels(labels[c]) for c in clips}
     groups = np.array([r["group"] for r in recs])
     ugroups = sorted(set(groups))
-
-    # real post-contact pooled FINAL activations (stage 4) and pooling weights (L0's _maskfeat_v2)
-    first = np.load(cache_dir / recs[0]["file"])
-    pools = [str(p) for p in first["pools"]]
-    PP = ("roi_A.post", "roi_B.post", "frame.post")
-    zs = [np.load(cache_dir / r["file"]) for r in recs]
+    twins = sorted({c.split("/")[1] for c in clips}, key=lambda t: (t not in LEGAL, t))
     mf = np.load(cache_dir / "_maskfeat_v2.npz")
     if list(mf["clips"]) != clips:
         raise RuntimeError("_maskfeat_v2.npz is for another clip list: run L0 first (it builds the weights)")
-    spaces = {}     # name -> (real {pool: [n, D]}, forecast {pool: [n, D]})
-    if "fc_pooled" in first.files:
-        # diffusion: forecast activations already pooled per twin by stage 4, one space per (SNR, layer) key;
-        # the real counterpart is encode() at the same key
-        lkeys = [str(l) for l in first["layers"]]
-        for q in [str(x) for x in first["fc_keys"]]:
-            li, fi = lkeys.index(q), [str(x) for x in first["fc_keys"]].index(q)
-            real = {p: np.stack([z["pooled"][pools.index(p), li] for z in zs]).astype(np.float64) for p in PP}
-            fc = {p: np.stack([z["fc_pooled"][pools.index(p), fi] for z in zs]).astype(np.float64) for p in PP}
-            spaces[q] = (real, fc)
-    else:
-        # the forecast space: a separate `pooled_final` (VideoMAE decoder, other width) or layer -1 of `pooled`
-        if "pooled_final" in first.files:
-            get = lambda z, p: z["pooled_final"][pools.index(p)]
-        else:
-            li = [int(l) for l in first["layers"]].index(-1)
-            get = lambda z, p: z["pooled"][pools.index(p), li]
-        real = {p: np.stack([get(z, p) for z in zs]).astype(np.float64) for p in PP}
-        phases = {c: np.array([str(x) for x in z["phases"]]) for c, z in zip(clips, zs)}
-        # forecasts pooled with each twin's weights: [n, D] per pool
-        fc = {p: np.zeros_like(real["frame.post"]) for p in real}
-        for g in ugroups:
-            z = np.load(cache_dir / g / "_forecast.npz")
-            F = z["final"].astype(np.float32)                      # [T_post, gh, gw, D]
-            t0 = int(z["context_frames"]) // int(model_cfg.token_grid.tubelet)
-            for c in [c for c in clips if c.startswith(g + "/")]:
-                i = row[c]
-                post = phases[c][t0:] == "post"
-                for p in ("roi_A.post", "roi_B.post"):
-                    w = mf[f"w.{p}"][i].reshape(len(phases[c]), *F.shape[1:3])[t0:] * post[:, None, None]
-                    fc[p][i] = (w.reshape(-1) / w.sum()) @ F.reshape(-1, F.shape[-1])
-                fc["frame.post"][i] = F[post].reshape(-1, F.shape[-1]).mean(0)
-        spaces["final"] = (real, fc)
+    spaces = _load_spaces(cache_dir, recs, clips, model_cfg, mf)
+    Y = {o: np.array([states[c][1]["v"][oi] for c in clips]) for oi, o in enumerate("AB")}
+    Ypre = {o: np.array([states[c][0]["v"][oi] for c in clips]) for oi, o in enumerate("AB")}
+    true_speed = np.linalg.norm(np.stack([Y["A"], Y["B"]], 1), axis=-1)
+    options = ["P-real-mm"] + (["P-pred-real"] if any("pr" in s for s in spaces.values()) else [])
+    out = {"n_groups": len(ugroups), "n_clips": len(clips), "options": options,
+           "protocol": {"k_folds": k, "fold_seeds": n_seeds, "test_groups_per_fold": len(ugroups) / k,
+                        "cross_fitting_note": "5-fold x 4 seeds cross-fitting (spec §5: allowed below 100 groups)",
+                        "n_spaces": len(spaces), "selection_splits": n_splits, "bootstrap": n_boot},
+           "variants": {}, "ceiling": {}, "selected": {}}
+    rng = np.random.default_rng(0)
+    legal_rows = [[f"{g}/{t}" for t in LEGAL] for g in ugroups]
+    for space, S_ in spaces.items():
+        for pname, pmap in POOLS.items():
+            # P-forecast ceiling (information in the forecast; not a law score)
+            rows1 = np.array([row[f"{g}/{LEGAL[0]}"] for g in ugroups])
+            ceil = {f"post_{o}": _ceiling(S_["fc"][pmap[o]][rows1], Y[o][rows1], groups[rows1], k, alphas) for o in "AB"}
+            ceil.update({f"pre_{o}": _ceiling(S_["fc"][pmap[o]][rows1], Ypre[o][rows1], groups[rows1], k, alphas) for o in "AB"})
+            if pname == "roi":   # how much a forecast-trained ROI probe gets from the ROI's placement alone
+                ceil.update({f"mask_floor_post_{o}": _ceiling(mf[f"w.{pmap[o]}"][rows1].astype(np.float64), Y[o][rows1],
+                                                              groups[rows1], k, alphas) for o in "AB"})
+            out["ceiling"][f"{space}|{pname}"] = ceil
+            for opt in options:
+                src = "real" if opt == "P-real-mm" else "pr"
+                if src not in S_:
+                    continue
+                v_fc, v_fl, r2 = np.zeros((len(clips), 2, 2)), np.zeros((len(clips), 2, 2)), []
+                for oi, o in enumerate("AB"):
+                    oof, app, r = _crossfit(S_[src][pmap[o]], Y[o], groups, S_["fc"][pmap[o]], k, n_seeds, alphas,
+                                            mm_src=S_["fc"][pmap[o]] if opt == "P-real-mm" else None)
+                    v_fl[:, oi], v_fc[:, oi] = oof, app
+                    r2.append(r)
+                per = _per_clip(v_fc, v_fl, states, clips, row, ugroups, res_laws)
+                sp_fc = np.linalg.norm(v_fc, axis=-1)
+                sp_fl = np.linalg.norm(v_fl, axis=-1)
+                ratio = float(sp_fc.std() / sp_fl.std())
+                energy_ok = SPREAD_OK[0] <= ratio <= SPREAD_OK[1]
+                res = {"probe_r2_floor": float(np.mean(r2)), "spread_ratio_forecast_over_floor": ratio,
+                       "energy_scorable": energy_ok, "speed_spread_true": float(true_speed.std()),
+                       "corr_forecast_vs_post": float(np.corrcoef(v_fc.ravel(), np.stack([Y["A"], Y["B"]], 1).ravel())[0, 1]),
+                       "twins": {}}
+                res["twins"]["legal"] = _twin_scores(per, legal_rows, n_boot, rng, energy_ok, res_laws)
+                for t in twins:
+                    res["twins"][t] = _twin_scores(per, [[f"{g}/{t}"] for g in ugroups], n_boot, rng, energy_ok, res_laws)
+                res["_per"] = per
+                out["variants"][f"{space}|{opt}|{pname}"] = res
+                log(f"[L1] {space}|{opt}|{pname}: floor R² {res['probe_r2_floor']:.3f}, S_outcome(legal) "
+                    f"{res['twins']['legal']['S']['outcome']:+.2f}, S_family(legal) {res['twins']['legal']['S']['family']:+.2f}")
 
-    roi = {"A": "roi_A.post", "B": "roi_B.post"}
-    frame = {"A": "frame.post", "B": "frame.post"}
-    base_variants = {"roi": (roi, False), "roi_mm": (roi, True), "frame": (frame, False), "frame_mm": (frame, True)}
-    out = {"n_groups": len(ugroups), "fold_seeds": n_seeds, "variants": {}}
-    runs = [((sp, vn), pm) for sp in spaces for vn, pm in base_variants.items()]
-    for (space, vbase), (pmap, mm) in runs:
-        real, fc = spaces[space]
-        vname = vbase if len(spaces) == 1 else f"{space}|{vbase}"
-        # cross-fitted predictions: real (floor) and forecast, averaged over seeds -> [n, 2 objects, 2]
-        pr_real = np.zeros((len(clips), 2, 2)); pr_fc = np.zeros((len(clips), 2, 2))
-        r2_real = []
-        for oi, o in enumerate("AB"):
-            Y = np.array([labels[c]["physlaw"]["post_velocity"][o][:2] for c in clips], float)
-            X, Xf = real[pmap[o]], fc[pmap[o]]
-            for seed in range(n_seeds):
-                oof = np.zeros_like(Y)
-                for te in grouped_kfold(groups, k, seed):
-                    tr = np.setdiff1d(np.arange(len(clips)), te)
-                    a = _inner_alpha(X[tr], Y[tr], groups[tr], alphas, k, seed, False, True)
-                    mdl = _SVDRidge(X[tr], Y[tr], True)
-                    oof[te] = mdl.predict(X[te], a)
-                    xf = Xf[te]
-                    if mm:   # moment matching: forecast features to real-feature mean/sd, train-fold stats, no labels
-                        mu_r, sd_r = X[tr].mean(0), X[tr].std(0) + 1e-8
-                        mu_f, sd_f = Xf[tr].mean(0), Xf[tr].std(0) + 1e-8
-                        xf = (xf - mu_f) / sd_f * sd_r + mu_r
-                    pr_fc[te, oi] += mdl.predict(xf, a) / n_seeds
-                pr_real[:, oi] += oof / n_seeds
-                r2_real.append(1 - ((Y - oof) ** 2).sum() / ((Y - Y.mean(0)) ** 2).sum())
-        # per (group, twin) residuals
-        per = {}
-        for c in clips:
-            g, t = c.split("/")
-            m, vpre, vpost = _physics(labels[c])
-            i = row[c]
-            per[c] = {"forecast": residuals(pr_fc[i], m, vpre, vpost),
-                      "floor": residuals(pr_real[i], m, vpre, vpost),
-                      "null": residuals(vpre, m, vpre, vpost)}
-        # shuffle: other groups' decoded forecast for the same twin type, against this group's physics
-        for c in clips:
-            g, t = c.split("/")
-            m, vpre, vpost = _physics(labels[c])
-            others = [residuals(pr_fc[row[f"{h}/{t}"]], m, vpre, vpost) for h in ugroups if h != g]
-            per[c]["shuffle"] = {kk: float(np.mean([o[kk] for o in others])) for kk in others[0]}
-
-        res = {"probe_r2_real_post": float(np.mean(r2_real)), "twins": {}}
-        rng = np.random.default_rng(0)
-        for t in LEGAL + VIOLATING:
-            gs = [g for g in ugroups if f"{g}/{t}" in per]
-            arr = {src: {kk: np.array([per[f"{g}/{t}"][src][kk] for g in gs]) for kk in ("r_p", "r_E", "E_out")}
-                   for src in ("forecast", "floor", "null", "shuffle")}
-            mean = {src: {kk: float(v.mean()) for kk, v in d.items()} for src, d in arr.items()}
-            S = {"momentum": _score(mean["forecast"]["r_p"], mean["floor"]["r_p"], mean["shuffle"]["r_p"]),
-                 "energy": _score(mean["forecast"]["r_E"], mean["floor"]["r_E"], mean["shuffle"]["r_E"]),
-                 "outcome": _score(mean["forecast"]["E_out"], mean["floor"]["E_out"], 1.0)}
-            boots = {kk: [] for kk in S}
-            for _ in range(n_boot):
-                i = rng.integers(0, len(gs), len(gs))
-                mb = {src: {kk: v[i].mean() for kk, v in d.items()} for src, d in arr.items()}
-                boots["momentum"].append(_score(mb["forecast"]["r_p"], mb["floor"]["r_p"], mb["shuffle"]["r_p"]))
-                boots["energy"].append(_score(mb["forecast"]["r_E"], mb["floor"]["r_E"], mb["shuffle"]["r_E"]))
-                boots["outcome"].append(_score(mb["forecast"]["E_out"], mb["floor"]["E_out"], 1.0))
-            ci = {kk: [float(np.nanquantile(b, 0.025)), float(np.nanquantile(b, 0.975))] for kk, b in boots.items()}
-            res["twins"][t] = {"n": len(gs), "mean": mean, "S": S, "S_ci95": ci,
-                               "median": {src: {kk: float(np.median(v)) for kk, v in d.items()} for src, d in arr.items()}}
-        res["diagnostics"] = _diagnostics(clips, row, labels, groups, ugroups, pr_real, pr_fc,
-                                          {o: fc[pmap[o]] for o in "AB"}, alphas, k,
-                                          {o: mf[f"w.{pmap[o]}"] for o in "AB"} if pmap is roi else None)
-        out["variants"][vname] = res
-        log(f"[L1] {vname}: probe R² on real post frames {res['probe_r2_real_post']:.3f}")
+    # selection rule over spaces, per (option, pool), on the legal rows
+    for opt in options:
+        for pname in POOLS:
+            vs = [v for v in out["variants"] if v.endswith(f"|{opt}|{pname}")]
+            if not vs:
+                continue
+            sel = {}
+            for score, key in (("outcome", "E_out"), ("family", "d_family")):
+                def f(v, gids, key=key):
+                    per = out["variants"][v]["_per"]
+                    cs = [f"{g}/{t}" for g in gids for t in LEGAL]
+                    fc = np.mean([per[c]["forecast"][key] for c in cs])
+                    fl = np.mean([per[c]["floor"][key] for c in cs])
+                    return float(_S(fc, fl, 1.0))
+                sel[score] = heldout_select(f, vs, ugroups, n_splits=n_splits)
+            out["selected"][f"{opt}|{pname}"] = sel
+    for v in out["variants"].values():
+        v.pop("_per")
     return out
 
 
-def _corr(a, b):
-    a, b = a.ravel() - a.mean(), b.ravel() - b.mean()
-    return float(a @ b / np.sqrt((a @ a) * (b @ b)))
-
-
-def _diagnostics(clips, row, labels, groups, ugroups, pr_real, pr_fc, Xfc, alphas, k, mask_w=None) -> dict:
-    """Is a bad forecast score the predictor's fault or the probe transfer's?
-    On conserve_e1 rows (one per group; the forecast is the same for every twin of a group):
-      * corr(decoded forecast, true post v) and corr(decoded forecast, pre v); same for decoded real
-      * spread of decoded forecasts relative to decoded real frames (shrinkage => distribution shift)
-      * forecast-trained probe: ridge on FORECAST features -> post v (and -> pre v), cross-fitted by
-        group. Not the spec's L1 (probe and forecast are no longer independent), but it says whether
-        the outcome is linearly present in the forecast at all."""
-    rows_ = np.array([row[f"{g}/conserve_e1"] for g in ugroups])
-    post = np.array([[labels[clips[i]]["physlaw"]["post_velocity"][o][:2] for o in "AB"] for i in rows_], float)
-    pre = np.array([[labels[clips[i]]["physlaw"]["pre_velocity"][o][:2] for o in "AB"] for i in rows_], float)
-    d = {"n": len(rows_),
-         "corr_forecast_vs_post": _corr(pr_fc[rows_], post), "corr_forecast_vs_pre": _corr(pr_fc[rows_], pre),
-         "corr_real_vs_post": _corr(pr_real[rows_], post),
-         "spread_ratio_forecast_over_real": float(pr_fc[rows_].std(0).mean() / pr_real[rows_].std(0).mean()),
-         "corr_post_vs_pre_truth": _corr(post, pre)}
-    g = groups[rows_]
-    if mask_w is not None:   # how much of a forecast-trained ROI probe can the ROI's placement alone give?
-        sc = []
-        for oi, o in enumerate("AB"):
-            X, y = mask_w[o][rows_], post[:, oi]
-            oof = np.zeros_like(y)
-            for te in grouped_kfold(g, k, 0):
-                tr = np.setdiff1d(np.arange(len(y)), te)
-                a = _inner_alpha(X[tr], y[tr], g[tr], alphas, k, 0, False, True)
-                oof[te] = _SVDRidge(X[tr], y[tr], True).predict(X[te], a)
-            sc.append(1 - ((y - oof) ** 2).sum() / ((y - y.mean(0)) ** 2).sum())
-        d["mask_floor_r2_post_same_n"] = float(np.mean(sc))
-    for name, Y in (("post", post), ("pre", pre)):
-        sc = []
-        for oi, o in enumerate("AB"):
-            X = Xfc[o][rows_]
-            y = Y[:, oi]
-            oof = np.zeros_like(y)
-            for te in grouped_kfold(g, k, 0):
-                tr = np.setdiff1d(np.arange(len(y)), te)
-                a = _inner_alpha(X[tr], y[tr], g[tr], alphas, k, 0, False, True)
-                oof[te] = _SVDRidge(X[tr], y[tr], True).predict(X[te], a)
-            sc.append(1 - ((y - oof) ** 2).sum() / ((y - y.mean(0)) ** 2).sum())
-        d[f"forecast_trained_probe_r2_{name}"] = float(np.mean(sc))
-    return d
-
-
 def table(res: dict) -> str:
-    rows = []
+    pr = res["protocol"]
+    rows = [f"n_groups = {res['n_groups']} ({pr['cross_fitting_note']}; ~{pr['test_groups_per_fold']:.0f} test groups "
+            f"per fold); spaces searched = {pr['n_spaces']}; bootstrap {pr['bootstrap']} over groups. "
+            "Primary: S_outcome and S_family on the frame pool (leak-free). The ROI pool sits at the TRUE post-event "
+            "location and leaks it (secondary). S_momentum / CoM / angular momentum: a forecast that ignores the "
+            "collision conserves them, so they are reported, not primary (reference: shuffled-group forecast).", ""]
+    rows += ["## Selected space (held-out rule)", "",
+             "| probe option | pool | score | selected space (picks) | held-out S [2.5%, 97.5% of splits] | variants searched | groups select / eval |",
+             "|---|---|---|---|---|---|---|"]
+    for key, sel in res["selected"].items():
+        opt, pname = key.split("|")
+        for score, s in sel.items():
+            rows.append(f"| {opt} | {pname}{' (leaks location)' if pname == 'roi' else ''} | S_{score} | "
+                        f"{s['selected'].split('|')[0]} ({s['selected_counts'][s['selected']]}/{2 * s['n_splits']}) | "
+                        f"{s['score']:+.2f} [{s['score_q025']:+.2f}, {s['score_q975']:+.2f}] | {s['n_variants']} | "
+                        f"{s['n_select_groups']} / {s['n_eval_groups']} |")
     for vname, v in res["variants"].items():
-        rows += [f"### forecast pooled by: {vname}  (probe R² on real post-contact frames: {v['probe_r2_real_post']:.3f})", "",
-                 "| twin | n | r_p forecast / floor / shuffle / null | S_momentum [95% CI] | r_E forecast / floor / shuffle | S_energy [95% CI] | E_out forecast / floor | S_outcome [95% CI] |",
-                 "|---|---|---|---|---|---|---|---|"]
+        space, opt, pname = vname.split("|")
+        sel = res["selected"].get(f"{opt}|{pname}", {}).get("family", {}).get("selected")
+        if pr["n_spaces"] > 1 and vname != sel:
+            continue          # DiTs: only the selected space is tabled (all are in l1.json)
+        f = lambda d, kk: (f"{d['S'][kk]:+.2f} [{d['S_ci95'][kk][0]:+.2f}, {d['S_ci95'][kk][1]:+.2f}]"
+                           if kk in d["S"] and np.isfinite(d["S"][kk]) else "n/a")
+        en = "" if v["energy_scorable"] else f" Energy NOT SCORABLE (decoded forecast speed spread {v['spread_ratio_forecast_over_floor']:.2f} of the real-frame decode, outside 0.8-1.2)."
+        rows += ["", f"## {opt}, pool {pname}{' (secondary: leaks the post-event location)' if pname == 'roi' else ' (primary)'}"
+                 + (f", space {space}" if pr["n_spaces"] > 1 else ""), "",
+                 f"Probe R² on real post-event frames (floor decode) {v['probe_r2_floor']:.3f}; corr(decoded forecast, true post v) "
+                 f"{v['corr_forecast_vs_post']:.2f}.{en}", "",
+                 "| twin | n | S_outcome [95% CI] | S_family [95% CI] | d_family forecast / floor | ê forecast / floor (median) | "
+                 "S_momentum (demoted) | S_com | S_angmom | S_energy |",
+                 "|---|---|---|---|---|---|---|---|---|---|"]
         for t, d in v["twins"].items():
-            mn, S, ci = d["mean"], d["S"], d["S_ci95"]
-            f = lambda kk: f"{S[kk]:+.2f} [{ci[kk][0]:+.2f}, {ci[kk][1]:+.2f}]"
-            rows.append(f"| {t} | {d['n']} | {mn['forecast']['r_p']:.3f} / {mn['floor']['r_p']:.3f} / "
-                        f"{mn['shuffle']['r_p']:.3f} / {mn['null']['r_p']:.3f} | {f('momentum')} | "
-                        f"{mn['forecast']['r_E']:.3f} / {mn['floor']['r_E']:.3f} / {mn['shuffle']['r_E']:.3f} | {f('energy')} | "
-                        f"{mn['forecast']['E_out']:.3f} / {mn['floor']['E_out']:.3f} | {f('outcome')} |")
-        dg = v.get("diagnostics")
-        if dg:
-            rows += ["", "Diagnostics (conserve_e1, one row per group): " + ", ".join(
-                f"{k_} = {val:.3f}" if isinstance(val, float) else f"{k_} = {val}" for k_, val in dg.items())]
-        rows.append("")
-    rows.append("S is computed for every twin for reference, but L1's law test is the LEGAL twins (conserve_*): the "
-                "forecast is the same for all twins of a group, while violating twins' floors show whether the probes "
-                "can see a violation in real video.")
+            m, md = d["mean"], d["median"]
+            rows.append(f"| {t} | {d['n']} | {f(d, 'outcome')} | {f(d, 'family')} | {m['forecast']['d_family']:.3f} / "
+                        f"{m['floor']['d_family']:.3f} | {md['forecast']['e_hat']:.2f} / {md['floor']['e_hat']:.2f} | "
+                        f"{f(d, 'momentum')} | {f(d, 'com')} | {f(d, 'angular_momentum')} | "
+                        f"{f(d, 'energy') if v['energy_scorable'] else 'not scorable'} |")
+    rows += ["", "## P-forecast (information ceiling: probes trained ON forecasts; never a law score)", "",
+             "| space / pool | post v R² (A, B) | pre v R² (A, B) | ROI mask floor, post v R² (A, B) |", "|---|---|---|---|"]
+    for key, c in res["ceiling"].items():
+        mfl = f"{c['mask_floor_post_A']:.2f}, {c['mask_floor_post_B']:.2f}" if "mask_floor_post_A" in c else ""
+        rows.append(f"| {key} | {c['post_A']:.2f}, {c['post_B']:.2f} | {c['pre_A']:.2f}, {c['pre_B']:.2f} | {mfl} |")
     return "\n".join(rows)

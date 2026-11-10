@@ -1,5 +1,6 @@
 defaults: _probe.yaml
 level: l1
 families: [f1, f2, f3]
-laws: [momentum, energy, restitution]
+laws: [momentum, energy, com, angular_momentum]   # physlaw.eval.laws; the legal family is momentum's (restitution e)
+fold_seeds_l1: 4          # cross-fitting 5-fold x 4 seeds (spec §5: allowed below 100 groups)
 bootstrap: {n: 2000, ci: 0.95}

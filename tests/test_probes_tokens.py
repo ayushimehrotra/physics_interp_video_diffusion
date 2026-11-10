@@ -116,3 +116,64 @@ def test_phase_and_pooling():
     p = pool(acts, w)
     assert np.allclose(p["frame.all"], acts.reshape(-1, 4).mean(0), atol=1e-5)
     assert not np.any(w["roi_A.pre"][3:])
+
+
+# ------------------------------------------------------------------ P-pred-real (spec §5.2), tiny random models
+
+def _tiny_vjepa():
+    torch = pytest.importorskip("torch")
+    from transformers import VJEPA2Config, VJEPA2Model
+    from physlaw.models.vjepa2 import VJEPA2Adapter
+    torch.manual_seed(0)
+    conf = VJEPA2Config(hidden_size=32, num_hidden_layers=2, num_attention_heads=2, mlp_ratio=2.0, crop_size=48,
+                        frames_per_clip=8, patch_size=16, tubelet_size=2, pred_hidden_size=48,
+                        pred_num_hidden_layers=1, pred_num_attention_heads=2, pred_num_mask_tokens=1)
+    conf._attn_implementation = "sdpa"
+    cfg = {"name": "tiny", "input": {"resolution": 48, "num_frames": 8, "fps": 24},
+           "token_grid": {"patch": 16, "tubelet": 2}, "layers": []}
+    return torch, VJEPA2Adapter(cfg, VJEPA2Model(conf).eval(), [0.5] * 3, [0.25] * 3, "cpu")
+
+
+def _tiny_videomae():
+    torch = pytest.importorskip("torch")
+    from physlaw.models.videomae2 import VideoMAEv2Adapter, _build
+    torch.manual_seed(0)
+    model = _build(torch)(enc_dim=32, enc_depth=2, enc_heads=2, dec_dim=16, dec_depth=1, dec_heads=2,
+                          patch=16, tubelet=2).eval()
+    cfg = {"name": "tiny", "input": {"resolution": 48, "num_frames": 8, "fps": 8},
+           "token_grid": {"patch": 16, "tubelet": 2}, "layers": []}
+    return torch, VideoMAEv2Adapter(cfg, model, "cpu")
+
+
+@pytest.mark.parametrize("make", [_tiny_vjepa, _tiny_videomae])
+def test_pred_real_masks_only_its_targets(make):
+    """Pass k must not see the pixels of the positions it predicts, and must see the other post tokens."""
+    torch, m = make()
+    from physlaw.models.base import spatial_mask_groups
+    rng = np.random.default_rng(0)
+    frames = rng.integers(0, 255, (8, 48, 48, 3), dtype=np.uint8)
+    k = 4                                            # context frames: token-frames 0, 1
+    fin = -1
+    base = m.pred_real(frames, k, n_masks=3)[fin]
+    assert base.shape == (2, 3, 3, base.shape[-1])
+    grp = spatial_mask_groups(9, 3)[0]
+    edited = frames.copy()
+    for s in grp:                                    # change group-0 patches in the post frames only
+        r, c = divmod(int(s), 3)
+        edited[k:, 16 * r:16 * r + 16, 16 * c:16 * c + 16] = 255 - edited[k:, 16 * r:16 * r + 16, 16 * c:16 * c + 16]
+    new = m.pred_real(edited, k, n_masks=3)[fin]
+    flat_b, flat_n = base.reshape(2, 9, -1), new.reshape(2, 9, -1)
+    assert torch.allclose(flat_b[:, grp], flat_n[:, grp], atol=1e-5)
+    other = np.setdiff1d(np.arange(9), grp)
+    assert not torch.allclose(flat_b[:, other], flat_n[:, other], atol=1e-4)
+    # the context-only forecast never sees post frames
+    assert torch.equal(m.forecast(frames, k)[fin], m.forecast(edited, k)[fin])
+
+
+def test_vjepa_visible_encoder_matches_prefix_encoding():
+    torch, m = _tiny_vjepa()
+    x = m.to_tensor(np.random.default_rng(1).integers(0, 255, (8, 48, 48, 3), dtype=np.uint8))
+    with torch.no_grad():
+        ref = m.model(pixel_values_videos=x[:, :4], skip_predictor=True).last_hidden_state
+        got = m._encode_visible(x, torch.arange(18))
+    assert torch.allclose(ref, got, atol=1e-5)

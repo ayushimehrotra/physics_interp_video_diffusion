@@ -177,3 +177,47 @@ def permutation_null(grid: Mapping[str, np.ndarray], y: np.ndarray, groups: np.n
     p = (1 + np.sum(null_max >= observed[best])) / (n_permutations + 1)
     return {"observed": observed, "best_cell": best, "best_score": observed[best],
             "null_max": null_max.tolist(), "p_corrected": float(p), "alphas": cell_alpha}
+
+
+# --------------------------------------------------------------------------- #
+# RigidBench velocity protocol (spec §5.1 velocity protocol check)
+# --------------------------------------------------------------------------- #
+
+
+def adam_linear_probe(X: np.ndarray, Y: np.ndarray, groups: np.ndarray, *, k: int = 5, fold_seeds: int = 4,
+                      epochs: int = 20, lr: float = 1e-3, batch: int = 32, seed: int = 0) -> dict:
+    """Unregularised linear probe trained with Adam (RigidBench's protocol): MSE, ``epochs`` passes of
+    shuffled minibatches, zero init, default Adam betas. Features and targets standardised on the
+    training fold (a preprocessing step; it leaves the probe unregularised). Same grouped folds as
+    ``fit_probe``. Returns {score_mean, score_sd, scores, oof [n, m] (mean over fold seeds)}."""
+    X = np.asarray(X, np.float64)
+    Y = np.asarray(Y, np.float64).reshape(len(X), -1)
+    rng = np.random.default_rng(seed)
+    scores, oof_sum = [], np.zeros_like(Y)
+    for fs in range(fold_seeds):
+        oof = np.zeros_like(Y)
+        for te in grouped_kfold(groups, k, fs):
+            tr = np.setdiff1d(np.arange(len(Y)), te)
+            mx, sx = X[tr].mean(0), X[tr].std(0)
+            sx[sx == 0] = 1.0
+            my, sy = Y[tr].mean(0), Y[tr].std(0)
+            sy[sy == 0] = 1.0
+            Xs, Ys = (X[tr] - mx) / sx, (Y[tr] - my) / sy
+            W, b = np.zeros((X.shape[1], Y.shape[1])), np.zeros(Y.shape[1])
+            mW, vW, mb, vb, t = np.zeros_like(W), np.zeros_like(W), np.zeros_like(b), np.zeros_like(b), 0
+            for _ in range(epochs):
+                order = rng.permutation(len(tr))
+                for s in range(0, len(tr), batch):
+                    i = order[s:s + batch]
+                    r = Xs[i] @ W + b - Ys[i]
+                    gW, gb = 2 * Xs[i].T @ r / len(i), 2 * r.mean(0)
+                    t += 1
+                    for p, g, m_, v_ in ((W, gW, mW, vW), (b, gb, mb, vb)):
+                        m_ *= 0.9; m_ += 0.1 * g
+                        v_ *= 0.999; v_ += 0.001 * g * g
+                        p -= lr * (m_ / (1 - 0.9 ** t)) / (np.sqrt(v_ / (1 - 0.999 ** t)) + 1e-8)
+            oof[te] = ((X[te] - mx) / sx @ W + b) * sy + my
+        scores.append(r2_score(Y, oof))
+        oof_sum += oof
+    return {"score_mean": float(np.mean(scores)), "score_sd": float(np.std(scores)), "scores": scores,
+            "oof": oof_sum / fold_seeds}

@@ -23,7 +23,7 @@ from typing import Any
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames
+from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames, spatial_mask_groups
 
 FINAL = -1   # key for the encoder's final (layer-normed) output: the predictor's target space
 
@@ -121,6 +121,44 @@ class VJEPA2Adapter(ModelAdapter):
             tgt = [torch.arange(n_ctx, n_all, device=enc.device)[None]]
             pred = self.model.predictor(encoder_hidden_states=full, context_mask=ctx, target_mask=tgt).last_hidden_state
         return {FINAL: self._grid(pred[0], (n_all - n_ctx) // per)}
+
+    def _encode_visible(self, x, ids):
+        """Context encoder on the token subset ``ids`` (sorted positions in the full clip) only: the other
+        tokens never enter; RoPE uses the true positions. Final-normed output [1, len(ids), D]."""
+        enc = self.model.encoder
+        h = enc.embeddings(x)[:, ids]
+        for layer in enc.layer:
+            h = layer(h, ids[None])[0]
+        return enc.layernorm(h)
+
+    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0) -> dict[int, Any]:
+        """P-pred-real features (spec §5.2): predictor outputs for MASKED REAL post-event tokens, with the rest
+        of the full clip (every pre token, the other post tokens) as context. The spatial positions are split
+        into ``n_masks`` seeded groups; pass k masks group k in every post token-frame. Same FINAL space and
+        shape [T_post_tok, gh, gw, D] as forecast(), but informed by the real future."""
+        torch = self.torch
+        x = video if torch.is_tensor(video) else self.to_tensor(video)
+        tub = self.token_grid.tubelet
+        gh, gw = self.token_grid.grid_hw
+        per = gh * gw
+        n_ctx, n_all = (context_end_frame // tub) * per, (x.shape[1] // tub) * per
+        T_post = (n_all - n_ctx) // per
+        out = None
+        with torch.no_grad():
+            for grp in spatial_mask_groups(per, n_masks, seed):
+                tgt = torch.zeros(n_all, dtype=torch.bool, device=x.device)
+                for t in range(T_post):
+                    tgt[n_ctx + t * per + torch.as_tensor(grp, device=x.device)] = True
+                ctx_ids, tgt_ids = torch.where(~tgt)[0], torch.where(tgt)[0]
+                enc = self._encode_visible(x, ctx_ids)
+                full = torch.zeros(1, n_all, enc.shape[-1], dtype=enc.dtype, device=enc.device)
+                full[:, ctx_ids] = enc
+                pred = self.model.predictor(encoder_hidden_states=full, context_mask=[ctx_ids[None]],
+                                            target_mask=[tgt_ids[None]]).last_hidden_state[0]
+                if out is None:
+                    out = torch.zeros(n_all - n_ctx, pred.shape[-1], dtype=pred.dtype, device=pred.device)
+                out[tgt_ids - n_ctx] = pred
+        return {FINAL: self._grid(out, T_post)}
 
     def surprise(self, video, context_end_frame: int, object_masks=None) -> dict[str, float]:
         """Predictor error on post-context tokens: L1, MSE, 1-cos; over all tokens and over ``object_masks``

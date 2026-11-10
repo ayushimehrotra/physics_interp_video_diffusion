@@ -41,7 +41,7 @@ from typing import Any
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames
+from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames, spatial_mask_groups
 
 FINAL = -1          # forecast space: decoder hidden (512-d)
 ENC_NORM = 40       # encoder final LayerNorm output (1408-d)
@@ -275,6 +275,29 @@ class VideoMAEv2Adapter(ModelAdapter):
         x = video if torch.is_tensor(video) else self.to_tensor(video)
         h, _, T_post = self._future(x, context_end_frame)
         return {FINAL: self._grid(h, T_post)}
+
+    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0) -> dict[int, Any]:
+        """P-pred-real features (spec §5.2): decoder hidden states (FINAL) for MASKED REAL post-event tokens,
+        with every other token of the clip (all pre, the other post tokens) visible to the encoder. Spatial
+        positions split into ``n_masks`` seeded groups, group k masked in every post token-frame on pass k.
+        Same space and shape [T_post_tok, gh, gw, 512] as forecast()."""
+        torch = self.torch
+        x = video if torch.is_tensor(video) else self.to_tensor(video)
+        per = self._n_per()
+        n_ctx = (context_end_frame // self.token_grid.tubelet) * per
+        n_all = (x.shape[2] // self.token_grid.tubelet) * per
+        out = None
+        with torch.no_grad():
+            for grp in spatial_mask_groups(per, n_masks, seed):
+                tgt = torch.zeros(n_all, dtype=torch.bool, device=x.device)
+                for t in range((n_all - n_ctx) // per):
+                    tgt[n_ctx + t * per + torch.as_tensor(grp, device=x.device)] = True
+                enc, _ = self._encoder(x, ~tgt)
+                h, _ = self._decoder(enc, ~tgt, tgt)
+                if out is None:
+                    out = torch.zeros(n_all - n_ctx, h.shape[-1], dtype=h.dtype, device=h.device)
+                out[tgt[n_ctx:]] = h[0]
+        return {FINAL: self._grid(out, (n_all - n_ctx) // per)}
 
     def surprise(self, video, context_end_frame: int, object_masks=None) -> dict[str, float]:
         torch = self.torch

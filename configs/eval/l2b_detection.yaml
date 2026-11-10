@@ -1,0 +1,7 @@
+# L2b trained violation detection (spec §5.4): same twins / contrasts as L2.
+defaults: l2_surprise.yaml
+level: l2b
+l2b:
+  fold_seeds: 4            # grouped 5-fold x 4 seeds (cross-fitting allowed below 100 groups, spec §5)
+  n_permutations: 500      # within-group label swaps, max over layers x pools
+  # lambdas: default = probe.alphas (logistic L2 penalty grid, standardised features)

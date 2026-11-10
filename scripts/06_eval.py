@@ -5,8 +5,11 @@
         --level configs/eval/l0_states.yaml --data data/f1
     /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
         --level configs/eval/l2_surprise.yaml --data data/f1
+    ... --level configs/eval/l1_forecast_laws.yaml     (P-pred-real used if stage 4 --pred-real ran)
+    ... --level configs/eval/l2b_detection.yaml        (after L2: reads l2.json for the encoded-but-unused index)
 
 Inputs: cache/<model>/<family>/ from stage 4 (+ _pixel_baselines.jsonl from stage 5 for L2).
+Order per model: L0 (builds _maskfeat_v2.npz, used by L1/L2b), L2, L2b, L1. --out writes elsewhere (test runs).
 L0 also folds in the untrained control's result if results/<untrained>/<family>/l0.json exists
 (pass --untrained configs/models/untrained_vitl.yaml to name it).
 """
@@ -35,13 +38,14 @@ def main():
     ap.add_argument("--data", required=True)
     ap.add_argument("--untrained", default="configs/models/untrained_vitl.yaml")
     ap.add_argument("--workers", type=int, default=64)
+    ap.add_argument("--out", default=None, help="default results/<model>/<family> (use a scratch dir for test runs)")
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
     mcfg = load_config(a.model)
     cfg = load_config(a.level, a.set)
     data = resolve_path(a.data)
     cache = REPO / "cache" / mcfg.name / data.name
-    out_dir = REPO / "results" / mcfg.name / data.name
+    out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
     level = cfg["level"]
     t0 = time.time()
@@ -74,6 +78,16 @@ def main():
         if "motion_adjusted" in res:
             md = ("## Motion-adjusted (calibrated on legal-vs-legal pairs)\n\n" + l2_surprise.adjusted_table(res["motion_adjusted"])
                   + "\n\n## Raw contrasts\n\n" + md)
+    elif level == "l2b":
+        from physlaw.eval import l2b_detection
+        l2f = out_dir / "l2.json"
+        l2s = json.loads(l2f.read_text()).get("motion_adjusted", {}).get("summary") if l2f.exists() else None
+        if l2s is None:
+            print(f"[06] WARNING: no motion-adjusted summary in {l2f}; run L2 first for the encoded-but-unused index")
+        res = l2b_detection.run(cache, data, cfg, l2s, workers=min(a.workers, 8))
+        res.update(meta)
+        (out_dir / "l2b.json").write_text(json.dumps(res, indent=1))
+        md = l2b_detection.table(res)
     elif level == "l1":
         from physlaw.eval import l1_forecast_laws
         res = l1_forecast_laws.run(cache, data, cfg, mcfg)

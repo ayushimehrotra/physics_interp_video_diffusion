@@ -1,11 +1,17 @@
 defaults: _probe.yaml
 level: l2
 families: [f1]
+# Per family (spec §5.3): the legal-vs-legal calibration pair (also scored as the control, which must sit at
+# chance after adjustment) and the violation contrasts. magnitude: labels physlaw.summary key for the
+# dose-response (difference violating - legal); stratify: boolean physlaw label to split the contrast on.
 contrasts:
-  - [mom_violate_e1, conserve_e1]
-  - [mom_violate_e015, conserve_e015]
-  - [energy_create, conserve_e015]
-  - [conserve_e1, conserve_e015]          # legal-vs-legal control
+  f1:
+    calibration: [conserve_e1, conserve_e015]
+    list:
+      - {viol: mom_violate_e1, legal: conserve_e1, magnitude: momentum_residual, stratify: energy_physical}
+      - {viol: mom_violate_e015, legal: conserve_e015, magnitude: momentum_residual, stratify: energy_physical}
+      - {viol: energy_create, legal: conserve_e015, magnitude: ke_ratio}
+primary_covariates: speed+copy_last     # the motion-adjusted summary (held-out distance selection) uses this set
 # Added baseline: replication/RESUME.md (2026-11-02) found a copy-last-frame predictor
 # reproduces every impossible-vs-legal energy asymmetry on V-JEPA2. Report it beside every contrast.
 pixel_baselines: [copy_last_frame, constant_velocity_extrapolation]
