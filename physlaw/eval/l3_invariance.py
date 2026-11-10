@@ -353,15 +353,19 @@ def mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family: str,
     mc = cfg["mass_independence"]
     fam = mc["families"][family]
     sel = [i for i, l in enumerate(labels) if fam.get("subfamily") is None or get(l, "physlaw.subfamily") == fam["subfamily"]]
-    recs, labels = [recs[i] for i in sel], [labels[i] for i in sel]
+    if len({recs[i]["group"] for i in sel}) < 2:
+        return {"skipped": f"{len({recs[i]['group'] for i in sel})} {fam.get('subfamily') or ''} groups"}
     objs = list(fam.get("objects", ["A", "B"]))
     tname = fam["target"]
     pools = {o: f"roi_{o}.post" for o in objs}
-    spaces = forecast_spaces(cache_dir, data_dir, recs, mcfg, sorted(set(pools.values())))
+    # pooling weights are cached for the whole family (the L0 file); keep the sub-family's rows afterwards
+    spaces = {sp: tuple({p: v[sel] for p, v in d.items()} for d in rf)
+              for sp, rf in forecast_spaces(cache_dir, data_dir, recs, mcfg, sorted(set(pools.values()))).items()}
+    recs, labels = [recs[i] for i in sel], [labels[i] for i in sel]
     groups = np.array([r["group"] for r in recs])
     twins = np.array([r["twin"] for r in recs])
     legal = np.isin(twins, fam["legal"])
-    k, seeds = int(cfg["probe"]["k_folds"]), int(cfg["fold_seeds"])
+    k, seeds = min(int(cfg["probe"]["k_folds"]), len(set(groups))), int(cfg["fold_seeds"])
     alphas = tuple(float(a) for a in cfg["probe"]["alphas"])
     Y = {o: np.array([object_target(l, o, tname, float(fam.get("window_s", 1.0))) for l in labels]) for o in objs}
     logm = {o: np.log([l["physlaw"]["objects"][o]["mass"] for l in labels]) for o in objs}
@@ -424,8 +428,8 @@ def transfer(recs, labels, A, pools, layers, cfg, family: str, log=print) -> dic
     alphas = tuple(float(x) for x in cfg["probe"]["alphas"])
     out = {"split_key": tc["split_key"], "conditions": [a, b], "n": {a: int((keep & (cond == a)).sum()), b: int((keep & (cond == b)).sum())},
            "n_cells": len(Xc), "targets": {}}
-    if min(out["n"].values()) < 2 * k:
-        raise RuntimeError(f"transfer {family}: too few clips per condition {out['n']}")
+    if min(len(set(groups[keep & (cond == c)])) for c in (a, b)) < 2:
+        return {**out, "skipped": f"fewer than 2 groups in a condition {out['n']}"}
     for tname in tc["targets"]:
         Y = np.stack([clip_target(l, tname) for l in labels])
         d = {}
