@@ -83,11 +83,11 @@ def post_accel(labels, o: str, window_s: float = 1.0) -> np.ndarray:
     return np.polyfit(t, v, 1)[0] if len(fr) >= 3 else np.full(3, np.nan)
 
 
-def object_target(labels, o: str, name: str) -> float:
+def object_target(labels, o: str, name: str, window_s: float = 1.0) -> float:
     if name == "accel_z":
-        return float(post_accel(labels, o)[2])
+        return float(post_accel(labels, o, window_s)[2])
     if name == "decel":
-        a = post_accel(labels, o)
+        a = post_accel(labels, o, window_s)
         v = np.asarray(labels["per_frame"][event_frame(labels)][o]["velocity"], float)
         return float(-(a @ v) / (np.linalg.norm(v) + 1e-12))
     if name == "dv":
@@ -111,7 +111,8 @@ def clip_target(labels, name: str) -> np.ndarray:
         return np.asarray(pl["pre_velocity"]["A"][:2], float)
     if name == "accel":
         return np.array([np.linalg.norm(post_accel(labels, "A"))])
-    for path in (f"physlaw.{name}", f"physlaw.scene.{name}", f"sampled_parameters.{name}"):
+    for path in (f"physlaw.{name}", f"physlaw.constants.{name}", f"physlaw.edit.{name}", f"physlaw.scene.{name}",
+                 f"sampled_parameters.{name}"):
         v = get(labels, path)
         if v is not None:
             return np.atleast_1d(np.asarray(v, float))
@@ -256,8 +257,8 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
     gc = cfg["galilean"]
     base = str(gc["base_level"])
     level = np.array([str(get(l, gc["boost_key"], base)) for l in labels])
-    pair = np.array([str(get(l, gc["pair_key"], r["group"])) + "/" + r["twin"] for l, r in zip(labels, recs)])
-    pgroup = np.array([str(get(l, gc["pair_key"], r["group"])) for l, r in zip(labels, recs)])   # CV unit: the scene
+    pair = np.array(["/".join(str(get(l, k)) for k in gc["pair_keys"]) for l in labels])   # base <-> boosted partners
+    pgroup = np.array([str(get(l, gc["cv_key"], r["group"])) for l, r in zip(labels, recs)])  # CV unit: the scene
     speed = np.array([float(np.linalg.norm(get(l, gc.get("boost_vec_key", ""), [0.0]) or [0.0])) for l in labels])
     Xc = cells(A, pools, layers, gc["pools"], gc.get("layers", "all"))
     fit_rows = np.where(level == base)[0]
@@ -293,18 +294,17 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
             f"{lv}: inv {v['invariance_error']} transfer {v['transfer_error']}" for lv, v in d["by_level"].items()))
     for lv in sorted(set(level)):
         out["levels"][str(lv)] = int((level == lv).sum())
-    if cache_dir is not None and gc.get("l2_config"):
-        out["l2_by_level"] = l2_by_level(cache_dir, data_dir, recs, level, gc["l2_config"], log)
+    if cache_dir is not None and gc.get("l2_contrasts"):
+        out["l2_by_level"] = l2_by_level(cache_dir, data_dir, recs, level, gc["l2_contrasts"], log)
     return out
 
 
-def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, l2_config: str, log=print) -> dict:
-    """L2 (raw and motion-adjusted contrasts) separately on each boost level's twins."""
-    from physlaw.config import load_config
+def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=print) -> dict:
+    """Raw L2 contrasts separately on each boost level's twins (``{level}`` in a twin name is the level), with the
+    copy-last-frame baseline beside them. Not motion-adjusted: that calibration needs F1's twin names."""
     from physlaw.eval import l2_surprise
-    cfg = load_config(l2_config)
     lv_of = {r["clip"]: lv for r, lv in zip(recs, level)}
-    srcs = {"model": cache_dir / "_index.jsonl", "pixel_baselines": cache_dir / "_pixel_baselines.jsonl"}
+    srcs = {"model": cache_dir / "_index.jsonl", "copy_last_baseline": cache_dir / "_pixel_baselines.jsonl"}
     out = {}
     with tempfile.TemporaryDirectory() as tmp:
         for lv in sorted(set(level)):
@@ -315,10 +315,10 @@ def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, l2_config: str, lo
                 keep = [l for l in f.read_text().splitlines() if l.strip() and lv_of.get(json.loads(l)["clip"]) == lv]
                 (Path(tmp) / f"{name}_{lv}.jsonl").write_text("\n".join(keep) + "\n")
                 sources[name] = Path(tmp) / f"{name}_{lv}.jsonl"
+            cfg = {"contrasts": [[t.format(level=lv) for t in c] for c in contrasts]}
             res = l2_surprise.run(sources, data_dir, cfg, log=lambda *a: None)
-            out[str(lv)] = {"contrasts": {c: {src: {m: {k: v[k] for k in ("n", "win_rate", "win_rate_ci95") if k in v} for m, v in d.items()}
-                                         for src, d in by.items()} for c, by in res["contrasts"].items()},
-                       "motion_adjusted": res.get("motion_adjusted", {}).get("contrasts")}
+            out[str(lv)] = {c: {src: {m: {k: v[k] for k in ("n", "win_rate", "win_rate_ci95") if k in v} for m, v in d.items()}
+                                for src, d in by.items()} for c, by in res["contrasts"].items()}
             log(f"[L3 galilean] L2 at boost level {lv}: {len(res['contrasts'])} contrasts")
     return out
 
@@ -347,7 +347,7 @@ def mass_independence(cache_dir, recs, labels, mcfg, cfg, family: str, log=print
     legal = np.isin(twins, fam["legal"])
     k, seeds = int(cfg["probe"]["k_folds"]), int(cfg["fold_seeds"])
     alphas = tuple(float(a) for a in cfg["probe"]["alphas"])
-    Y = {o: np.array([object_target(l, o, tname) for l in labels]) for o in objs}
+    Y = {o: np.array([object_target(l, o, tname, float(fam.get("window_s", 1.0))) for l in labels]) for o in objs}
     logm = {o: np.log([l["physlaw"]["objects"][o]["mass"] for l in labels]) for o in objs}
     scale = float(np.mean(np.abs(np.concatenate([Y[o][legal] for o in objs]))))
     out = {"target": tname, "subfamily": fam.get("subfamily"), "objects": objs, "target_mean_abs": scale,

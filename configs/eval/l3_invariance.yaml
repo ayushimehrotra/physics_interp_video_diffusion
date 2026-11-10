@@ -10,21 +10,22 @@ analyses:
   f6: [mass_independence, transfer]
   f7: [mass_independence, transfer]
   f1: [transfer]              # clean -> nuisance
-galilean:
-  boost_key: physlaw.boost.level        # base level = u = 0; other levels are boosts
-  base_level: "0"
-  boost_vec_key: physlaw.boost.u        # boost velocity (for the error-vs-boost-size figure)
-  pair_key: physlaw.seed                # a boosted clip's u = 0 partner shares this key (and the twin name)
+galilean:                             # F4: a group holds every boost level (twins <level>_e1, <level>_e015)
+  boost_key: physlaw.edit.boost_level   # the u = 0 level is the base; the others are boosts
+  base_level: u0
+  boost_vec_key: physlaw.edit.boost     # boost velocity u (for the error-vs-boost-size figure)
+  pair_keys: [physlaw.twin_group_id, physlaw.edit.e]   # a boosted clip's u = 0 partner: same group, same e
+  cv_key: physlaw.twin_group_id
   targets: [restitution, com_angle]
   pools: [roi_pair.all, frame.all]
   layers: all
-  l2_config: configs/eval/l2_surprise.yaml   # L2 repeated on each boost level's twins
-mass_independence:
+  l2_contrasts: [["{level}_e1", "{level}_e015"]]   # L2 repeated per boost level (F4 has legal twins only)
+mass_independence:                    # per-object target over window_s after the event; twins as the data generator names them
   families:
-    f7: {subfamily: drop_pair, target: accel_z, objects: [A, B], legal: [legal], violating: [heavy_accel]}
-    f6: {subfamily: slide, target: decel, objects: [A, B], legal: [legal], violating: [heavy_decel]}
-transfer:
-  f6: {split_key: physlaw.geometry, conditions: [flat, incline], targets: [mu, accel, size], pools: [roi_A.all, frame.all]}
+    f7: {subfamily: drop, target: accel_z, window_s: 0.2, objects: [A, B], legal: [legal, legal_e04], violating: [heavy_x13]}
+    f6: {subfamily: slides, target: decel, window_s: 0.5, objects: [A, B], legal: [legal_mu1, legal_mu2], violating: [heavy_x13]}
+transfer:                             # train on conditions[0], test on conditions[1], and back
+  f6: {split_key: physlaw.subfamily, conditions: [flat, incline], twins: [legal_mu1, legal_mu2], targets: [mu, accel, size],
+       pools: [roi_A.all, frame.all]}
   f7: {split_key: physlaw.nuisance, conditions: [0, 1], targets: [velocity, size], pools: [roi_A.all, frame.all]}
-  f1: {split_key: physlaw.nuisance, conditions: [0, 1], targets: [velocity, log_mass, radius],
-       pools: [roi_A.pre, frame.pre]}
+  f1: {split_key: physlaw.nuisance, conditions: [0, 1], targets: [velocity, log_mass, radius], pools: [roi_A.pre, frame.pre]}
