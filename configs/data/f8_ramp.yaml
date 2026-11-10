@@ -1,0 +1,9 @@
+# F8. Ramp energy exchange (spec §2.3; physlaw/data/families/f8_ramp.py).
+defaults: _master.yaml
+family: f8
+seed_offset: 800000
+n_groups: 250
+subfamilies: {ramp: 250}
+nuisance_frac: 0.2
+acceptance:
+  physics_check_tol: 0.05

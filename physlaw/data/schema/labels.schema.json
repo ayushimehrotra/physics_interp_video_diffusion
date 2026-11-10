@@ -1,31 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "PhysLaw clip labels (physlaw-labels-1)",
+  "title": "PhysLaw clip labels (physlaw-labels-1 and physlaw-labels-2)",
+  "description": "labels-1: the frozen F1 render (2026-11-05). labels-2: everything rendered since, every family. A labels-2 file is a superset of labels-1 for the collision families (f1-f4). Field reference for labels-2 (all plain JSON; units m, s, kg; world z up): see $comment entries below and physlaw/data/io.py:law_inputs, which turns any labels file into the (pre, post, ctx) triple of physlaw.eval.laws.",
   "type": "object",
-  "required": ["per_frame", "objects", "collision", "scene_constants", "physlaw"],
+  "required": ["per_frame", "objects", "scene_constants", "physlaw"],
   "properties": {
     "per_frame": {
       "type": "array", "minItems": 2,
       "items": {
-        "type": "object", "required": ["frame", "time_s", "A", "B"],
-        "properties": {
-          "A": {"$ref": "#/$defs/objframe"}, "B": {"$ref": "#/$defs/objframe"}
-        }
+        "type": "object", "required": ["frame", "time_s", "A"],
+        "additionalProperties": {"$ref": "#/$defs/objframe"},
+        "properties": {"frame": {"type": "integer"}, "time_s": {"type": "number"},
+                       "total_momentum": {"type": "array"}, "total_kinetic_energy": {"type": "number"}}
       }
     },
     "physlaw": {
       "type": "object",
       "required": ["schema_version", "family", "twin", "twin_group_id", "split", "seed",
-                   "contact_frame", "contact_frame_actual", "first_post_contact_frame",
-                   "contact_normal", "camera", "objects", "pre_velocity", "post_velocity",
-                   "momentum_conserved", "energy_physical", "master_format", "config_hash"],
+                   "first_post_contact_frame", "camera", "objects", "pre_velocity", "post_velocity",
+                   "energy_physical", "master_format", "config_hash"],
       "properties": {
-        "schema_version": {"const": "physlaw-labels-1"},
-        "family": {"enum": ["f1", "f2", "f3", "f4", "f5", "f6"]},
+        "schema_version": {"enum": ["physlaw-labels-1", "physlaw-labels-2"]},
+        "family": {"enum": ["f1", "f2", "f3", "f4", "f6", "f7", "f8", "f9", "f10"]},
+        "subfamily": {"type": "string", "$comment": "f6: flat|incline|slides; f7: projectile|drop|bounce; f8: ramp; f9: pendulum; f10: rolling; '' for f1-f4"},
         "split": {"enum": ["train", "val", "test"]},
         "seed": {"type": "integer"},
+        "twin": {"type": "string"},
+        "twin_index": {"type": "integer"},
+        "twin_group_id": {"type": "string", "$comment": "<family>_<seed>, or <family>_<seed>_nuisance for a nuisance variant"},
+        "base_group_id": {"type": "string", "$comment": "the physics group (same as twin_group_id unless nuisance)"},
+        "nuisance": {"enum": [0, 1]},
+        "event_kind": {"enum": ["contact", "branch", "release", "band"], "$comment": "contact: collision or floor bounce (between frames); branch: law changes mid-flight (on a frame); release: a held body starts moving (on a frame); band: a body crosses onto a friction band"},
+        "event_time_s": {"type": "number", "$comment": "exact event time; frames are at k / fps"},
+        "event_frame": {"type": "integer", "$comment": "last frame shared by every twin of the pre_segment = first_post_contact_frame - 1"},
+        "first_post_contact_frame": {"type": "integer", "$comment": "first frame after the event (all families, despite the name)"},
+        "pre_segment": {"type": "string", "$comment": "twins with the same value are byte-identical before first_post_contact_frame (F4: one per boost; F8: one per ramp geometry; otherwise '0')"},
+        "legal": {"type": "boolean"},
+        "violated_law": {"type": ["string", "null"], "$comment": "momentum | energy | gravity | axis_independence | mass_independence | bounce | path_independence | pendulum_period | rolling; null when legal"},
+        "violation_magnitude": {"type": "number", "$comment": "f1 momentum: |dp|/|p|; f1 energy: KE_post/KE_pre; otherwise the edit factor (gravity x1.5, vx x0.6, accel x1.3, height ratio 1.3, speed x1.25, sqrt(sin th2/sin th1), period x0.8); 0 when legal"},
+        "flags": {"type": "object", "$comment": "side effects on laws other than the target: energy_physical (no energy created after the event), momentum_conserved (collision families)"},
+        "energy_physical": {"type": "boolean"},
+        "momentum_conserved": {"type": "boolean"},
+        "constants": {
+          "type": "object",
+          "$comment": "legal-world constants a law needs (never the twin's edit): g (m/s^2, 0 for f1-f4), fps, masses {obj: kg} and sizes {obj: radius or cube half-extent} OF THIS TWIN; collision: e, e_sim, contact_normal, boost_u [3]; f6: mu, a, theta_rad (incline), v0, band_normal; f7: e_floor (this twin's legal floor restitution), e_floor_lo, z_floor, release_time_s, drop_height, heavier; f8: h, theta1_rad, theta2_rad, kink_angles_rad, slope_angles_rad (this twin's path), v_bottom_legal = sqrt(2 g h), t_bottom_s, fillet_radius, mu = 0; f9: hinge_length, hinge_point, amplitude_rad, period_legal_s; f10: theta_rad, h, inertia_factors"
+        },
+        "pre_state": {"$ref": "#/$defs/state", "$comment": "state at event_frame (last shared frame)"},
+        "post_state": {"$ref": "#/$defs/state", "$comment": "state at first_post_contact_frame"},
         "contact_frame": {"type": "integer"},
-        "first_post_contact_frame": {"type": "integer"},
         "contact_normal": {"$ref": "#/$defs/vec2"},
         "camera": {
           "type": "object", "required": ["K", "world_to_camera", "resolution"],
@@ -35,27 +57,50 @@
           }
         },
         "objects": {
-          "type": "object", "required": ["A", "B"],
+          "type": "object", "required": ["A"],
           "additionalProperties": {
             "type": "object", "required": ["mass", "radius", "density", "segmentation_id"],
             "properties": {"mass": {"type": "number", "exclusiveMinimum": 0},
-                           "radius": {"type": "number", "exclusiveMinimum": 0},
-                           "density": {"type": "number", "exclusiveMinimum": 0}}
+                           "radius": {"type": "number", "exclusiveMinimum": 0, "$comment": "radius, or half-extent for a cube"},
+                           "density": {"type": "number", "exclusiveMinimum": 0},
+                           "shape": {"enum": ["sphere", "cube", "cylinder", "tube"]}}
           }
         },
-        "momentum_conserved": {"type": "boolean"},
-        "energy_physical": {"type": "boolean"},
-        "frame_sha256_16": {"type": ["array", "null"]}
-      }
+        "pre_velocity": {"type": "object", "$comment": "{obj: velocity} at event_frame ([2] in f1-f4, [3] otherwise)"},
+        "post_velocity": {"type": "object", "$comment": "{obj: velocity} at first_post_contact_frame"},
+        "frame_sha256_16": {"type": ["array", "null"]},
+        "render_device": {"type": "string"}
+      },
+      "allOf": [
+        {"if": {"properties": {"schema_version": {"const": "physlaw-labels-1"}}},
+         "then": {"required": ["contact_frame", "contact_frame_actual", "contact_normal", "momentum_conserved"]}},
+        {"if": {"properties": {"schema_version": {"const": "physlaw-labels-2"}}},
+         "then": {"required": ["subfamily", "base_group_id", "nuisance", "event_kind", "event_time_s", "event_frame",
+                               "pre_segment", "legal", "violated_law", "violation_magnitude", "flags", "constants",
+                               "pre_state", "post_state", "render_device"],
+                  "properties": {"constants": {"required": ["g", "fps", "masses", "sizes"]}}}},
+        {"if": {"properties": {"family": {"enum": ["f1", "f2", "f3", "f4"]}}},
+         "then": {"required": ["contact_frame", "contact_frame_actual", "contact_normal", "momentum_conserved", "summary"]}}
+      ]
     }
   },
   "$defs": {
     "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+    "vec3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+    "state": {
+      "type": "object", "required": ["frame", "t_s", "objects", "p", "v", "w"],
+      "properties": {"objects": {"type": "array", "items": {"type": "string"}},
+                     "p": {"type": "array", "items": {"$ref": "#/$defs/vec3"}},
+                     "v": {"type": "array", "items": {"$ref": "#/$defs/vec3"}},
+                     "w": {"type": "array", "items": {"$ref": "#/$defs/vec3"}}}
+    },
     "objframe": {
       "type": "object", "required": ["position", "velocity", "pixel", "in_frame"],
       "properties": {
-        "position": {"type": "array", "minItems": 3, "maxItems": 3},
-        "velocity": {"type": "array", "minItems": 3, "maxItems": 3}
+        "position": {"$ref": "#/$defs/vec3"},
+        "velocity": {"$ref": "#/$defs/vec3"},
+        "angular_velocity": {"$ref": "#/$defs/vec3"},
+        "quaternion": {"type": "array", "minItems": 4, "maxItems": 4}
       }
     }
   }
