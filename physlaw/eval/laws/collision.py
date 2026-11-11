@@ -55,6 +55,42 @@ momentum = Law("momentum", _momentum_residual, pass_through, _momentum_family,
                "linear momentum; legal family = frictionless outcomes o(e), hidden e")
 
 
+def momentum_exchange(pre: dict, post: dict, ctx: dict) -> dict:
+    """Momentum-only diagnostics of an outcome (the L1 S_mom ingredients), blind to restitution, energy
+    and impulse direction.
+
+    Any outcome splits uniquely into an INTERACTION part (a change of relative velocity: an equal and
+    opposite impulse, which conserves momentum whatever its size or direction) and a CENTRE-OF-MASS part
+    (dv_cm = dp / M, exactly the momentum created). With q_i = m_i dv_i the momentum change of ball i:
+
+        num = |q_A + q_B|            momentum created, |dp|
+        den = |q_A| + |q_B|          momentum moved around, D
+        eta = num / den in [0, 1]    0: what A loses B gains; 1: no transfer (one ball changes, or both
+                                     are pushed the same way). Bounded by the triangle inequality.
+        d_min = 2 mu u_n             D of the weakest legal collision (e = 0); the interaction gate's unit
+
+    The no-event null has num = den = 0, so eta is undefined there: momentum on its own is satisfied by
+    nothing happening, and eta is only read on outcomes that pass a gate ``den >= kappa * d_min``. eta is
+    invariant to rescaling the outcome, so uniform probe shrinkage does not move it."""
+    m = arr(ctx["m"])
+    q = m[:, None] * (arr(post["v"])[:, :2] - arr(pre["v"])[:, :2])
+    num = float(np.linalg.norm(q.sum(0)))
+    den = float(np.linalg.norm(q, axis=-1).sum())
+    s = _state(pre, ctx)
+    return {"num": num, "den": den, "eta": safe_ratio(num, den), "d_min": 2.0 * s.mu * s.approach_speed}
+
+
+def mass_blind_outcome(pre: dict, post: dict, ctx: dict) -> dict:
+    """The mass-blind reference for S_mom: keep ``post``'s change of relative velocity but split it
+    EQUALLY between the balls ("equal and opposite velocity changes", masses ignored). Its momentum
+    imbalance is eta = |m_A - m_B| / (m_A + m_B): 0 at equal masses, which is why equal-mass scenes
+    cannot show momentum understanding."""
+    v0 = arr(pre["v"])[:, :2]
+    dv = arr(post["v"])[:, :2] - v0
+    h = (dv[0] - dv[1]) / 2.0
+    return {"v": v0 + np.stack([h, -h])}
+
+
 # --------------------------------------------------------------------------- energy
 
 def _ke(m, v) -> float:

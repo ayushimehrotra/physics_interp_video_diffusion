@@ -58,6 +58,7 @@ def safe_ratio(num: float, den: float) -> float:
 
 
 from physlaw.eval.laws.collision import angular_momentum, com, energy, galilean, momentum  # noqa: E402
+from physlaw.eval.laws.collision import mass_blind_outcome, momentum_exchange  # noqa: E402
 from physlaw.eval.laws.freefall import axis_independence, bounce, gravity, mass_independence, pendulum  # noqa: E402
 from physlaw.eval.laws.incline import ramp_energy, rolling  # noqa: E402
 
@@ -90,4 +91,4 @@ def from_labels(labels: dict) -> tuple[dict, dict, dict]:
     return pre, post, ctx
 
 
-__all__ = ["Law", "LAWS", "from_labels", *LAWS]
+__all__ = ["Law", "LAWS", "from_labels", "momentum_exchange", "mass_blind_outcome", *LAWS]

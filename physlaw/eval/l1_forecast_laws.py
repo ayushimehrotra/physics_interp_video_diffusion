@@ -20,21 +20,39 @@ post-event location) is secondary and leaks where the ball goes (its mask floor 
 
 Scores per twin (the forecast is shared by a group's twins; the LEGAL twins are the law test, the
 violating twins' floors show whether the probes can see a violation in real video):
-  * S_outcome (primary)  E = ||v̂' − v'|| / ||v' − v_pre|| (4-vector); the no-event null has E = 1, so
-                         S = 1 − (E_fc − E_floor) / (1 − E_floor). Per legal twin (e is not visible).
-  * S_family (primary)   d = laws.momentum.family_distance: distance to the legal family {o(e), e ∈ [0, 1]}
+  * S_mom (primary, momentum only)  momentum imbalance eta = |q_A + q_B| / (|q_A| + |q_B|), q_i = m_i dv̂_i
+                         (laws.momentum_exchange): the fraction of the predicted momentum exchange that is
+                         unbalanced. Blind to restitution, energy and impulse direction, invariant to rescaling.
+                         Reported as a package, because momentum alone is satisfied by nothing happening:
+                           - interaction rate: share of clips whose forecast moves D = |q_A| + |q_B| >= kappa *
+                             2 mu u_n (kappa x the weakest legal collision). Did the model predict a collision?
+                           - S_mom = 1 − (eta_fc − eta_floor) / (eta_blind − eta_floor) on clips that pass the
+                             gate (forecast AND floor decode) with mass ratio >= min_mass_ratio; each eta pooled
+                             as a ratio of sums over those clips (small-D clips do not dominate). eta_floor = the
+                             probes on the real legal frames (probe noise); eta_blind = the mass-blind rule "keep
+                             the true relative-velocity change, split it equally" (eta = |m_A−m_B|/(m_A+m_B)),
+                             so 1 = momentum as conserved as the probe can tell, 0 = no better than ignoring mass.
+                           - by mass-ratio bin, by kappa (sensitivity), bootstrap CI over groups, and the per-group
+                             sums so models can be re-scored on their COMMON gated groups
+                             (:func:`momentum_on_common_groups`): gating otherwise lets each model pick its scenes.
+                         Never computed from P-forecast (a probe trained on forecasts could do the physics itself).
+                         On violating twins only the etas are reported (the floor there is the real violation).
+  * S_family (secondary) collision-law consistency (momentum AND restitution in [0, 1]):
+                         d = laws.momentum.family_distance, the distance to the legal family {o(e), e ∈ [0, 1]}
                          normalised so the §5.2 null (pass-through) has d_null = 1;
                          S = 1 − (d_fc − d_floor) / (d_null − d_floor), d_floor = the probes on the real
                          post-event frames (of this option). Also ê, the family's argmin restitution.
-  * S_momentum (demoted) a forecast that ignores the collision conserves momentum exactly in F1, so this
-                         cannot show understanding on its own. Reference = shuffled-group forecast (built
-                         behaviour; STATUS v2 disagreement 4). CoM and angular-momentum residuals carry the
-                         same caveat and are reported the same way.
+                         Not a momentum-only score: e > 1 forecasts conserve momentum but score d > 0, and with
+                         unequal masses part of a momentum violation is absorbed as a shift of ê.
+  * Dropped: S_outcome (its ceiling is set by the hidden e, not the model: a law-perfect forecast assuming
+             e* scores 1 − |e − e*| / (1 + e)) and the momentum residual r_p = |dp| / |p| (the no-event null
+             scores it perfectly). CoM and angular-momentum residuals carry r_p's caveat (reported, not
+             primary; reference = shuffled-group forecast).
   * energy               scored only when decoded forecast speeds have 80-120% of the spread of the decoded
                          real frames (otherwise "not scorable": shrunk forecasts never create energy).
 Bootstrap 95% CIs over groups. ``legal`` pools both legal twins per group.
 Selection rule: DiTs give one space per (SNR, layer); for each probe option and pool the space is selected on
-half the groups and scored on the other half (probes.select.heldout_select), separately for S_outcome and
+half the groups and scored on the other half (probes.select.heldout_select), separately for S_mom and
 S_family. The number of spaces searched is reported.
 """
 from __future__ import annotations
@@ -51,10 +69,18 @@ from physlaw.probes.select import heldout_select
 
 LEGAL = ("conserve_e1", "conserve_e015")
 VIOLATING = ("mom_violate_e1", "mom_violate_e015", "energy_create")
-RES_LAWS = ("momentum", "energy", "com", "angular_momentum")
+RES_LAWS = ("energy", "com", "angular_momentum")   # residual laws (the r_p momentum residual is dropped)
 POOLS = {"frame": {"A": "frame.post", "B": "frame.post"}, "roi": {"A": "roi_A.post", "B": "roi_B.post"}}
 SPREAD_OK = (0.8, 1.2)
 WEAK_FLOOR = 0.8          # d_floor above this: S_family flagged as uninformative in the table
+WEAK_MOM_FLOOR = 0.8      # eta_floor above this x eta_blind: S_mom flagged ‡ (the real-frame probes already lose
+                          # >= 80% of the mass-blind gap); eta_floor >= eta_blind: S_mom undefined
+# S_mom settings (overridable under ``momentum:`` in the L1 config). min_mass_ratio 1.25: below it the
+# mass-blind rule has eta_blind < 0.11, nearly as good as physics, so those scenes cannot show momentum.
+# F1 (64 groups): 54 groups >= 1.25; bins [1.25, 2) 23, [2, 4) 16, >= 4 15.
+MOM_DEFAULTS = {"kappa": 0.25, "kappa_sensitivity": (0.1, 0.25, 0.5), "min_mass_ratio": 1.25,
+                "mass_ratio_bins": (1.25, 2.0, 4.0)}
+_MOM_KEYS = ("fc_num", "fc_den", "fl_num", "fl_den", "bl_num", "bl_den")
 
 
 def residuals(v_hat: np.ndarray, m: np.ndarray, vpre: np.ndarray, vpost: np.ndarray) -> dict:
@@ -82,6 +108,9 @@ def _load_spaces(cache_dir, recs, clips, model_cfg, mf):
     PP = ("roi_A.post", "roi_B.post", "frame.post")
     zs = [np.load(cache_dir / r["file"]) for r in recs]
     spaces = {}
+    if model_cfg.get("kind") == "diffusion" and "fc_pooled" not in first.files:
+        raise RuntimeError(f"{cache_dir}: diffusion cache has no forecast (fc_pooled); L1 needs stage 4 pass 2 "
+                           "(scripts/04_cache_activations.py without --no-forecast adds it to the existing cache)")
     if "fc_pooled" in first.files:     # diffusion: one space per (SNR, layer) key, pooled per twin by stage 4
         lkeys = [str(l) for l in first["layers"]]
         fkeys = [str(x) for x in first["fc_keys"]]
@@ -164,8 +193,8 @@ def _per_clip(v_fc, v_fl, states, clips, row, ugroups, res_laws=RES_LAWS):
         for src, v in (("forecast", v_fc[i]), ("floor", v_fl[i]), ("null", pre["v"])):
             x = {"v": v, "p": pre["p"]}
             d[src] = {ln: laws.LAWS[ln].residual(pre, x, ctx) for ln in res_laws}
-            d[src]["E_out"] = float(np.linalg.norm(v - post["v"]) / np.linalg.norm(post["v"] - pre["v"]))
             d[src]["d_family"], d[src]["e_hat"] = laws.momentum.family_distance(x, pre, ctx)
+        d["mom"] = _mom_clip(pre, post, ctx, v_fc[i], v_fl[i])
         per[c] = d
     for c in clips:      # shuffle: other groups' decoded forecast (same twin type) against this group's physics
         g, t = c.split("/")
@@ -176,16 +205,103 @@ def _per_clip(v_fc, v_fl, states, clips, row, ugroups, res_laws=RES_LAWS):
     return per
 
 
-def _twin_scores(per, gs_rows, n_boot, rng, energy_ok, res_laws=RES_LAWS):
+def _mom_clip(pre, post, ctx, v_fc, v_fl) -> dict:
+    """S_mom ingredients of one clip: momentum created (num) and moved (den) by the decoded forecast, the
+    floor decode of the real frames and the mass-blind reference (built on the clip's TRUE outcome)."""
+    p = pre["p"]
+    fc = laws.momentum_exchange(pre, {"v": v_fc, "p": p}, ctx)
+    fl = laws.momentum_exchange(pre, {"v": v_fl, "p": p}, ctx)
+    bl = laws.momentum_exchange(pre, laws.mass_blind_outcome(pre, post, ctx), ctx)
+    m = np.asarray(ctx["m"], float)
+    return {"fc_num": fc["num"], "fc_den": fc["den"], "fl_num": fl["num"], "fl_den": fl["den"],
+            "bl_num": bl["num"], "bl_den": bl["den"], "d_min": fc["d_min"], "mass_ratio": float(m.max() / m.min())}
+
+
+def _eta_S(t):
+    """t [..., 6] pooled sums in _MOM_KEYS order -> (eta [..., 3] for forecast / floor / blind, S_mom [...])."""
+    t = np.asarray(t, float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        eta = np.where(t[..., 1::2] > 0, t[..., 0::2] / t[..., 1::2], np.nan)
+    return eta, _S(eta[..., 0], eta[..., 1], eta[..., 2])
+
+
+def _mom_group_sums(per, gs_rows, kappa, lo, hi=np.inf):
+    """Per group, the _MOM_KEYS sums over its clips that pass the interaction gate (forecast AND floor decode
+    move >= kappa * d_min) and have mass ratio in [lo, hi). Returns ([n_groups, 6], clips used per group)."""
+    S = np.zeros((len(gs_rows), len(_MOM_KEYS)))
+    n = np.zeros(len(gs_rows), int)
+    for gi, cs in enumerate(gs_rows):
+        for c in cs:
+            m = per[c]["mom"]
+            if not lo <= m["mass_ratio"] < hi:
+                continue
+            if m["fc_den"] < kappa * m["d_min"] or m["fl_den"] < kappa * m["d_min"]:
+                continue
+            S[gi] += [m[k_] for k_ in _MOM_KEYS]
+            n[gi] += 1
+    return S, n
+
+
+def _momentum_scores(per, gs_rows, n_boot, rng, mcfg, score=True) -> dict:
+    """The S_mom package for one twin (or the pooled legal twins); see the module docstring."""
+    kappa, rmin = float(mcfg["kappa"]), float(mcfg["min_mass_ratio"])
+    groups = [cs[0].split("/")[0] for cs in gs_rows]
+    clips = [c for cs in gs_rows for c in cs]
+    gate = lambda c, src, k_: per[c]["mom"][f"{src}_den"] >= k_ * per[c]["mom"]["d_min"]
+    G, n = _mom_group_sums(per, gs_rows, kappa, rmin)
+    eta, S = _eta_S(G.sum(0))
+    res = {"kappa": kappa, "min_mass_ratio": rmin,
+           "interaction_rate": float(np.mean([gate(c, "fc", kappa) for c in clips])),
+           "interaction_rate_floor": float(np.mean([gate(c, "fl", kappa) for c in clips])),
+           "n_scored_groups": int((n > 0).sum()), "n_scored_clips": int(n.sum()),
+           "eta": {"forecast": float(eta[0]), "floor": float(eta[1]), "mass_blind": float(eta[2])},
+           "floor_over_blind": float(eta[1] / eta[2]) if eta[2] > 0 else float("nan"),
+           "S_mom_informative": bool(eta[1] < WEAK_MOM_FLOOR * eta[2]),
+           "group_sums": {g: [float(x) for x in G[i]] for i, g in enumerate(groups) if n[i] > 0}}
+    if not score:
+        return res
+    res["S"] = float(S)
+    res["S_ci95"] = [np.nan, np.nan]
+    if n_boot and (n > 0).any():
+        _, Sb = _eta_S(G[rng.integers(0, len(G), (n_boot, len(G)))].sum(1))
+        if np.isfinite(Sb).any():
+            res["S_ci95"] = [float(np.nanquantile(Sb, 0.025)), float(np.nanquantile(Sb, 0.975))]
+    res["S_by_kappa"] = {str(k_): float(_eta_S(_mom_group_sums(per, gs_rows, float(k_), rmin)[0].sum(0))[1])
+                         for k_ in mcfg["kappa_sensitivity"]}
+    edges = [float(x) for x in mcfg["mass_ratio_bins"]] + [np.inf]
+    res["by_mass_ratio"] = {}
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        Gb, nb = _mom_group_sums(per, gs_rows, kappa, lo, hi)
+        eb, Sb = _eta_S(Gb.sum(0))
+        res["by_mass_ratio"][f"[{lo:g}, {hi:g})"] = {"n_clips": int(nb.sum()), "S": float(Sb),
+                                                     "eta_forecast": float(eb[0]), "eta_floor": float(eb[1]),
+                                                     "eta_blind": float(eb[2])}
+    return res
+
+
+def momentum_on_common_groups(entries: list[dict]) -> list[dict]:
+    """Re-score S_mom for several models on the groups EVERY one of them scored (the gate otherwise lets each
+    model choose its scenes). ``entries``: each model's ``variants[...]["twins"]["legal"]["momentum"]``,
+    all at the same kappa."""
+    common = sorted(set.intersection(*(set(e["group_sums"]) for e in entries))) if entries else []
+    out = []
+    for e in entries:
+        t = np.array([e["group_sums"][g] for g in common]).sum(0) if common else np.zeros(len(_MOM_KEYS))
+        eta, S = _eta_S(t)
+        out.append({"n_common_groups": len(common), "S": float(S), "eta_forecast": float(eta[0]),
+                    "eta_floor": float(eta[1]), "eta_blind": float(eta[2])})
+    return out
+
+
+def _twin_scores(per, gs_rows, n_boot, rng, energy_ok, res_laws=RES_LAWS, mcfg=None, score_momentum=True):
     """gs_rows: list over groups of the clip keys pooled for that group (1 per twin; 2 for ``legal``)."""
-    keys = ("E_out", "d_family", "e_hat", *res_laws)
+    keys = ("d_family", "e_hat", *res_laws)
     arr = {src: {k_: np.array([np.mean([per[c][src][k_] for c in cs]) for cs in gs_rows]) for k_ in keys
                  if k_ in per[gs_rows[0][0]][src]} for src in ("forecast", "floor", "null", "shuffle")}
 
     def scores(ix):
         m = {src: {k_: v[ix].mean(-1) for k_, v in d.items()} for src, d in arr.items()}
-        out = {"outcome": _S(m["forecast"]["E_out"], m["floor"]["E_out"], 1.0),
-               "family": _S(m["forecast"]["d_family"], m["floor"]["d_family"], 1.0)}
+        out = {"family": _S(m["forecast"]["d_family"], m["floor"]["d_family"], 1.0)}
         for ln in [l for l in res_laws if l != "energy" or energy_ok]:
             out[ln] = _S(m["forecast"][ln], m["floor"][ln], m["shuffle"][ln])
         return out
@@ -196,7 +312,8 @@ def _twin_scores(per, gs_rows, n_boot, rng, energy_ok, res_laws=RES_LAWS):
           for k_, b in B.items()}
     mean = {src: {k_: float(v.mean()) for k_, v in d.items()} for src, d in arr.items()}
     med = {src: {k_: float(np.median(v)) for k_, v in d.items()} for src, d in arr.items()}
-    return {"n": n, "S": S, "S_ci95": ci, "mean": mean, "median": med}
+    return {"n": n, "S": S, "S_ci95": ci, "mean": mean, "median": med,
+            "momentum": _momentum_scores(per, gs_rows, n_boot, rng, mcfg or MOM_DEFAULTS, score_momentum)}
 
 
 def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
@@ -206,7 +323,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
     n_seeds = int(cfg.get("fold_seeds_l1", 4))
     n_boot = int(cfg["bootstrap"]["n"])
     n_splits = int(cfg.get("selection", {}).get("n_splits", 50))
-    res_laws = tuple(cfg.get("laws", RES_LAWS))
+    res_laws = tuple(ln for ln in cfg.get("laws", RES_LAWS) if ln != "momentum")   # momentum -> S_mom
+    mcfg = {**MOM_DEFAULTS, **dict(cfg.get("momentum", None) or {})}
     recs = complete_groups(load_index(cache_dir))
     clips = [r["clip"] for r in recs]
     row = {c: i for i, c in enumerate(clips)}
@@ -223,7 +341,7 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
     Ypre = {o: np.array([states[c][0]["v"][oi] for c in clips]) for oi, o in enumerate("AB")}
     true_speed = np.linalg.norm(np.stack([Y["A"], Y["B"]], 1), axis=-1)
     options = ["P-real-mm"] + (["P-pred-real"] if any("pr" in s for s in spaces.values()) else [])
-    out = {"n_groups": len(ugroups), "n_clips": len(clips), "options": options,
+    out = {"n_groups": len(ugroups), "n_clips": len(clips), "options": options, "momentum_cfg": mcfg,
            "protocol": {"k_folds": k, "fold_seeds": n_seeds, "test_groups_per_fold": len(ugroups) / k,
                         "cross_fitting_note": "5-fold x 4 seeds cross-fitting (spec §5: allowed below 100 groups)",
                         "n_spaces": len(spaces), "selection_splits": n_splits, "bootstrap": n_boot},
@@ -259,13 +377,17 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
                        "energy_scorable": energy_ok, "speed_spread_true": float(true_speed.std()),
                        "corr_forecast_vs_post": float(np.corrcoef(v_fc.ravel(), np.stack([Y["A"], Y["B"]], 1).ravel())[0, 1]),
                        "twins": {}}
-                res["twins"]["legal"] = _twin_scores(per, legal_rows, n_boot, rng, energy_ok, res_laws)
+                res["twins"]["legal"] = _twin_scores(per, legal_rows, n_boot, rng, energy_ok, res_laws, mcfg)
                 for t in twins:
-                    res["twins"][t] = _twin_scores(per, [[f"{g}/{t}"] for g in ugroups], n_boot, rng, energy_ok, res_laws)
+                    res["twins"][t] = _twin_scores(per, [[f"{g}/{t}"] for g in ugroups], n_boot, rng, energy_ok,
+                                                   res_laws, mcfg, score_momentum=t in LEGAL)
                 res["_per"] = per
                 out["variants"][f"{space}|{opt}|{pname}"] = res
-                log(f"[L1] {space}|{opt}|{pname}: floor R² {res['probe_r2_floor']:.3f}, S_outcome(legal) "
-                    f"{res['twins']['legal']['S']['outcome']:+.2f}, S_family(legal) {res['twins']['legal']['S']['family']:+.2f}")
+                lm = res["twins"]["legal"]["momentum"]
+                log(f"[L1] {space}|{opt}|{pname}: floor R² {res['probe_r2_floor']:.3f}, interaction rate "
+                    f"{lm['interaction_rate']:.2f}, S_mom(legal) {lm['S']:+.2f} (eta fc/floor/blind "
+                    f"{lm['eta']['forecast']:.3f}/{lm['eta']['floor']:.3f}/{lm['eta']['mass_blind']:.3f}, "
+                    f"{lm['n_scored_groups']} groups), S_family(legal) {res['twins']['legal']['S']['family']:+.2f}")
 
     # selection rule over spaces, per (option, pool), on the legal rows
     for opt in options:
@@ -273,28 +395,42 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
             vs = [v for v in out["variants"] if v.endswith(f"|{opt}|{pname}")]
             if not vs:
                 continue
-            sel = {}
-            for score, key in (("outcome", "E_out"), ("family", "d_family")):
-                def f(v, gids, key=key):
-                    per = out["variants"][v]["_per"]
-                    cs = [f"{g}/{t}" for g in gids for t in LEGAL]
-                    fc = np.mean([per[c]["forecast"][key] for c in cs])
-                    fl = np.mean([per[c]["floor"][key] for c in cs])
-                    return float(_S(fc, fl, 1.0))
-                sel[score] = heldout_select(f, vs, ugroups, n_splits=n_splits)
+            def f_mom(v, gids):
+                rows_ = [[f"{g}/{t}" for t in LEGAL] for g in gids]
+                G, _ = _mom_group_sums(out["variants"][v]["_per"], rows_, float(mcfg["kappa"]),
+                                       float(mcfg["min_mass_ratio"]))
+                return float(_eta_S(G.sum(0))[1])
+
+            def f_fam(v, gids):
+                per = out["variants"][v]["_per"]
+                cs = [f"{g}/{t}" for g in gids for t in LEGAL]
+                fc = np.mean([per[c]["forecast"]["d_family"] for c in cs])
+                fl = np.mean([per[c]["floor"]["d_family"] for c in cs])
+                return float(_S(fc, fl, 1.0))
+            sel = {score: heldout_select(f, vs, ugroups, n_splits=n_splits)
+                   for score, f in (("momentum", f_mom), ("family", f_fam))}
             out["selected"][f"{opt}|{pname}"] = sel
     for v in out["variants"].values():
         v.pop("_per")
     return out
 
 
+def _fmt_s(x: float) -> str:
+    return f"{x:+.2f}" if np.isfinite(x) else "undefined"
+
+
 def table(res: dict) -> str:
     pr = res["protocol"]
     rows = [f"n_groups = {res['n_groups']} ({pr['cross_fitting_note']}; ~{pr['test_groups_per_fold']:.0f} test groups "
             f"per fold); spaces searched = {pr['n_spaces']}; bootstrap {pr['bootstrap']} over groups. "
-            "Primary: S_outcome and S_family on the frame pool (leak-free). The ROI pool sits at the TRUE post-event "
-            "location and leaks it (secondary). S_momentum / CoM / angular momentum: a forecast that ignores the "
-            "collision conserves them, so they are reported, not primary (reference: shuffled-group forecast).", ""]
+            "Primary: S_mom (momentum only) on the frame pool (leak-free): interaction rate (does the forecast predict "
+            "a collision), then S_mom = 1 − (η_fc − η_floor) / (η_blind − η_floor) on gated clips with unequal masses, "
+            "η = |m_A dv_A + m_B dv_B| / (|m_A dv_A| + |m_B dv_B|) pooled as a ratio of sums; 1 = as conserved as the "
+            "probe can tell, 0 = no better than the mass-blind rule. Secondary: S_family (collision law: momentum AND "
+            "restitution in [0, 1]). The ROI pool sits at the TRUE post-event location and leaks it (secondary). "
+            "S_outcome and the r_p momentum residual are not reported (hidden-e ceiling; perfect for the no-event null). "
+            "CoM / angular momentum: conserved by a forecast that ignores the collision, so reported, not primary "
+            "(reference: shuffled-group forecast).", ""]
     rows += ["## Selected space (held-out rule)", "",
              "| probe option | pool | score | selected space (picks) | held-out S [2.5%, 97.5% of splits] | variants searched | groups select / eval |",
              "|---|---|---|---|---|---|---|"]
@@ -307,7 +443,7 @@ def table(res: dict) -> str:
                         f"{s['n_select_groups']} / {s['n_eval_groups']} |")
     for vname, v in res["variants"].items():
         space, opt, pname = vname.split("|")
-        sel = res["selected"].get(f"{opt}|{pname}", {}).get("family", {}).get("selected")
+        sel = res["selected"].get(f"{opt}|{pname}", {}).get("momentum", {}).get("selected")
         if pr["n_spaces"] > 1 and vname != sel:
             continue          # DiTs: only the selected space is tabled (all are in l1.json)
         f = lambda d, kk: (f"{d['S'][kk]:+.2f} [{d['S_ci95'][kk][0]:+.2f}, {d['S_ci95'][kk][1]:+.2f}]"
@@ -317,18 +453,38 @@ def table(res: dict) -> str:
                  + (f", space {space}" if pr["n_spaces"] > 1 else ""), "",
                  f"Probe R² on real post-event frames (floor decode) {v['probe_r2_floor']:.3f}; corr(decoded forecast, true post v) "
                  f"{v['corr_forecast_vs_post']:.2f}.{en}", "",
-                 "| twin | n | S_outcome [95% CI] | S_family [95% CI] | d_family forecast / floor | ê forecast / floor (median) | "
-                 "S_momentum (demoted) | S_com | S_angmom | S_energy |",
-                 "|---|---|---|---|---|---|---|---|---|---|"]
+                 "| twin | n | interaction rate fc / floor | η forecast / floor / mass-blind | S_mom [95% CI] (clips scored) | "
+                 "S_family, collision law [95% CI] | d_family forecast / floor | ê forecast / floor (median) | "
+                 "S_com | S_angmom | S_energy |",
+                 "|---|---|---|---|---|---|---|---|---|---|---|"]
         for t, d in v["twins"].items():
-            m, md = d["mean"], d["median"]
+            m, md, mo = d["mean"], d["median"], d["momentum"]
             weak = " †" if m["floor"]["d_family"] > WEAK_FLOOR else ""
-            rows.append(f"| {t} | {d['n']} | {f(d, 'outcome')} | {f(d, 'family')}{weak} | {m['forecast']['d_family']:.3f} / "
+            mweak = " ‡" if not mo.get("S_mom_informative", True) else ""
+            smom = ("— (violating twin: floor η is the real violation)" if "S" not in mo else
+                    f"{mo['S']:+.2f} [{mo['S_ci95'][0]:+.2f}, {mo['S_ci95'][1]:+.2f}] ({mo['n_scored_clips']}){mweak}"
+                    if np.isfinite(mo["S"]) else
+                    f"undefined: η_floor ≥ η_blind ({mo['n_scored_clips']}){mweak}" if mo["n_scored_clips"] else
+                    "n/a (no clip passes the gate)")
+            rows.append(f"| {t} | {d['n']} | {mo['interaction_rate']:.2f} / {mo['interaction_rate_floor']:.2f} | "
+                        f"{mo['eta']['forecast']:.3f} / {mo['eta']['floor']:.3f} / {mo['eta']['mass_blind']:.3f} | {smom} | "
+                        f"{f(d, 'family')}{weak} | {m['forecast']['d_family']:.3f} / "
                         f"{m['floor']['d_family']:.3f} | {md['forecast']['e_hat']:.2f} / {md['floor']['e_hat']:.2f} | "
-                        f"{f(d, 'momentum')} | {f(d, 'com')} | {f(d, 'angular_momentum')} | "
+                        f"{f(d, 'com')} | {f(d, 'angular_momentum')} | "
                         f"{f(d, 'energy') if v['energy_scorable'] else 'not scorable'} |")
+        lm = v["twins"]["legal"]["momentum"]
+        rows += ["", f"S_mom (legal) by mass ratio (κ = {lm['kappa']:g}): " + "; ".join(
+                     f"{b} S {_fmt_s(x['S'])}, η fc {x['eta_forecast']:.3f} / floor {x.get('eta_floor', np.nan):.3f} / blind "
+                     f"{x['eta_blind']:.3f} ({x['n_clips']} clips)"
+                     for b, x in lm["by_mass_ratio"].items()),
+                 "S_mom (legal) by gate κ: " + "; ".join(f"κ={k_} {_fmt_s(s)}" for k_, s in lm["S_by_kappa"].items())]
     rows += ["", f"† d_floor > {WEAK_FLOOR}: the probes cannot place REAL legal outcomes much nearer the family than the "
-             "no-event null (d_null = 1), so S_family has almost no range there and is uninformative."]
+             "no-event null (d_null = 1), so S_family has almost no range there and is uninformative.",
+             f"‡ η_floor > {WEAK_MOM_FLOOR} × η_blind: decoding the REAL legal frames already loses most of the gap to the "
+             "mass-blind rule, so S_mom has almost no range (clipped to ±1) and is uninformative; 'undefined' when "
+             "η_floor ≥ η_blind. Better probes or more groups are needed before S_mom can rank models there.",
+             "Cross-model S_mom must be compared on the groups every model scored: "
+             "l1_forecast_laws.momentum_on_common_groups over each model's twins.legal.momentum."]
     rows += ["", "## P-forecast (information ceiling: probes trained ON forecasts; never a law score)", "",
              "| space / pool | post v R² (A, B) | pre v R² (A, B) | ROI mask floor, post v R² (A, B) |", "|---|---|---|---|"]
     for key, c in res["ceiling"].items():

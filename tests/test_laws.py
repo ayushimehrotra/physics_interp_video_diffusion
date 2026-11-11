@@ -155,3 +155,80 @@ def test_pendulum():
 def test_registry_api():
     for name, law in L.LAWS.items():
         assert law.NAME == name and callable(law.residual) and callable(law.null_outcome)
+
+
+# --------------------------------------------------------------------------- S_mom (momentum only)
+
+def _rand_collision(rng):
+    mA, mB = rng.uniform(0.2, 3.0, 2)
+    n = rng.normal(size=2); n /= np.linalg.norm(n)
+    vB = rng.normal(size=2)
+    vA = vB + n * rng.uniform(0.2, 3.0) + np.array([-n[1], n[0]]) * rng.normal()
+    pre = {"v": np.stack([vA, vB])}
+    ctx = {"m": np.array([mA, mB]), "n": n, "e_range": (0.0, 1.0)}
+    return pre, ctx, cp.PreState(mA, mB, vA, vB, n)
+
+
+def test_momentum_exchange_isolates_momentum():
+    rng = np.random.default_rng(1)
+    for _ in range(200):
+        pre, ctx, st = _rand_collision(rng)
+        mA, mB = ctx["m"]
+        post = lambda o: {"v": pre["v"] + np.asarray(o).reshape(2, 2)}
+        for e in (0.0, 0.4, 1.0, 1.5):                       # any restitution, energy-creating included
+            for scale in (1.0, 0.3):                         # uniform shrinkage does not move eta
+                x = L.momentum_exchange(pre, post(scale * cp.legal_outcome(st, e)), ctx)
+                assert x["eta"] == pytest.approx(0.0, abs=1e-9)
+        j = rng.normal(size=2)                               # tangential / any-direction impulse conserves too
+        assert L.momentum_exchange(pre, post(np.r_[-j / mA, j / mB]), ctx)["eta"] == pytest.approx(0.0, abs=1e-9)
+        # the gate's unit is D of the e = 0 collision
+        x0 = L.momentum_exchange(pre, post(cp.legal_outcome(st, 0.0)), ctx)
+        assert x0["den"] == pytest.approx(x0["d_min"], rel=1e-9)
+        # only A changes: no transfer, eta = 1
+        assert L.momentum_exchange(pre, post(np.r_[1.0, 0.5, 0.0, 0.0]), ctx)["eta"] == pytest.approx(1.0)
+        # drift on a legal outcome: eta = |dp| / D by hand
+        o = cp.legal_outcome(st, 0.5) + np.r_[0.2, -0.1, 0.2, -0.1]
+        dvA, dvB = o[:2], o[2:]
+        hand = np.linalg.norm(mA * dvA + mB * dvB) / (mA * np.linalg.norm(dvA) + mB * np.linalg.norm(dvB))
+        assert L.momentum_exchange(pre, post(o), ctx)["eta"] == pytest.approx(hand, rel=1e-9)
+        # mass-blind reference: same relative-velocity change, eta = |mA - mB| / (mA + mB)
+        legal = post(cp.legal_outcome(st, 0.7))
+        bl = L.mass_blind_outcome(pre, legal, ctx)
+        dA, dB = bl["v"] - pre["v"]
+        assert dA - dB == pytest.approx((legal["v"] - pre["v"])[0] - (legal["v"] - pre["v"])[1])
+        assert L.momentum_exchange(pre, bl, ctx)["eta"] == pytest.approx(abs(mA - mB) / (mA + mB), rel=1e-9)
+    # the no-event null moves nothing: eta undefined (must be gated out)
+    pre, ctx, _ = _rand_collision(rng)
+    x = L.momentum_exchange(pre, {"v": pre["v"].copy()}, ctx)
+    assert x["den"] == 0 and np.isnan(x["eta"])
+
+
+def test_l1_momentum_scores_package():
+    """S_mom = 1 for a law-perfect (shrunk) forecast, ~0 for the mass-blind rule, gated null not scored."""
+    from physlaw.eval import l1_forecast_laws as l1
+    rng = np.random.default_rng(2)
+    per, rows = {}, []
+    kinds = {"perfect": lambda st, o, pre, post, ctx: o * 0.6,
+             "blind": lambda st, o, pre, post, ctx: (L.mass_blind_outcome(pre, post, ctx)["v"] - pre["v"]).reshape(4),
+             "null": lambda st, o, pre, post, ctx: np.zeros(4)}
+    res = {}
+    for kind, fc in kinds.items():
+        per, rows = {}, []
+        for g in range(40):
+            pre, ctx, st = _rand_collision(rng)
+            if max(ctx["m"]) / min(ctx["m"]) < 1.3:
+                ctx["m"] = ctx["m"] * np.array([1.0, 2.0])
+                st = cp.PreState(*ctx["m"], *pre["v"], ctx["n"])
+            o = cp.legal_outcome(st, 0.5)
+            post = {"v": pre["v"] + o.reshape(2, 2)}
+            v_fc = pre["v"] + fc(st, o, pre, post, ctx).reshape(2, 2)
+            v_fl = post["v"] + rng.normal(scale=1e-3, size=(2, 2))
+            c = f"g{g}/conserve_e1"
+            per[c] = {"mom": l1._mom_clip({**pre, "p": np.zeros((2, 2))}, post, ctx, v_fc, v_fl)}
+            rows.append([c])
+        res[kind] = l1._momentum_scores(per, rows, 200, rng, l1.MOM_DEFAULTS)
+    assert res["perfect"]["interaction_rate"] == 1.0 and res["perfect"]["S"] == pytest.approx(1.0, abs=0.02)
+    assert res["blind"]["S"] == pytest.approx(0.0, abs=0.02)
+    assert res["null"]["interaction_rate"] == 0.0 and res["null"]["n_scored_clips"] == 0 and np.isnan(res["null"]["S"])
+    common = l1.momentum_on_common_groups([res["perfect"], res["blind"]])
+    assert common[0]["n_common_groups"] == 40 and common[0]["S"] > common[1]["S"]

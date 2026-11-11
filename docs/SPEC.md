@@ -349,7 +349,7 @@ Give the model only pre-event frames; take `forecast()` activations for post-eve
 
 #### Scores
 
-1. **Outcome score E** (as implemented; primary): E = ‖v̂′ − v′‖ / ‖v′_null − v′‖, where v′_null is the no-event null. S_outcome = 1 − E. 1 = perfect, 0 = no better than the null.
+1. ~~**Outcome score E**~~ (dropped from L1, 2026-11-11; see item 3): E = ‖v̂′ − v′‖ / ‖v′_null − v′‖. Still used by output-level evaluation (§6) until that level is reviewed.
 2. **Law-family score** (new; primary): separates knowing the **law** from knowing a **hidden parameter**.
    - Each law defines a legal family of outcomes given the pre-event state, parameterized by quantities not visible before the event.
    - d(x) = min over the family of the normalized distance from x to a family member.
@@ -363,7 +363,7 @@ Give the model only pre-event frames; take `forecast()` activations for post-eve
 | F8 | Bottom speed √(2gh) (unique) | None | Speed held at ramp-entry value |
 | F9 | Period 2π√(L/g) (unique) | None | Frozen bob |
 
-3. **Momentum residual S_momentum** (reported, **not primary**): a forecast that ignores the collision conserves momentum exactly in F1, so this score cannot show understanding on its own. Report it next to S_outcome with that caveat.
+3. **Momentum-only score S_mom** (new, 2026-11-11; **primary for momentum**; replaces the momentum residual r_p = |Δp|/|p|, which the no-event null scores perfectly, and S_outcome, whose ceiling 1 − |e − e*|/(1+e) is set by the hidden e). With q_i = m_i Δv̂_i, the momentum imbalance η = |q_A + q_B| / (|q_A| + |q_B|) ∈ [0, 1] is blind to restitution, energy and impulse direction and invariant to rescaling. Report as a package: (a) **interaction rate**, the share of clips whose forecast moves |q_A| + |q_B| ≥ κ·2μu_n (κ = 0.25; sensitivity 0.1, 0.5); (b) **S_mom = 1 − (η_fc − η_floor)/(η_blind − η_floor)** on gated clips with mass ratio ≥ 1.25, each η pooled as a ratio of sums; η_floor = probes on real legal frames; η_blind = the mass-blind rule (true relative-velocity change split equally; η = |m_A − m_B|/(m_A + m_B)); (c) by mass-ratio bin [1.25, 2), [2, 4), ≥ 4; (d) cross-model comparisons on the groups every model scored. Never from P-forecast. S_family (item 2) is then the secondary collision-law score (momentum and restitution in [0, 1]).
 4. **Energy residual**: report only when decoded forecast speeds are within 20% of the real spread; otherwise mark "not scorable" (shrunk forecasts never create energy).
 5. CoM and angular momentum residuals (F1): same caveat as momentum; report beside S_family.
 
