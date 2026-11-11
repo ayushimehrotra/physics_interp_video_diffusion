@@ -1,11 +1,13 @@
 """L4 causal propagation (spec §5.6): push the model's mass-ratio representation of object A before the event and
 check that its forecast changes as momentum conservation predicts.
 
-1. Direction. Ridge from object A's pre-event ROI pool (stage 4 cache, one clip per group) at the injection layer to
+1. Direction. Ridge from object A's pre-event ROI pool (stage 4 cache, every clip) at the injection layer to
    log(m_A / m_B); u = the weight vector in raw activation units, normalised. ``layer: auto`` takes the layer with the
-   best grouped-CV R². ``direction_data`` names the family the direction is fitted on (F3 hides mass in the pre-event
-   frames, so it is fitted where mass is visible, e.g. F1); on the evaluated family itself it is cross-fitted (the
-   direction for a group never saw that group).
+   best grouped-CV R². Fitted on the evaluated family (spec: F3, identical look, mass through density only, so the
+   direction is not confounded with visible size), cross-fitted by group; ``direction_data`` can name another family
+   (F1 only as a labelled stand-in: there radius and density vary independently, so mass ratio is confounded with
+   size). Note: F3 twins share their pre-event frames, so the CV R² of the direction (reported) shows how much of
+   the ratio the pre-event activations carry at all.
 2. Intervention. A torch forward hook on the injection block adds alpha * sd * u (sd = sd of the projection on u over
    the direction's training clips; alpha in ``alphas_sd``) to object A's ROI tokens in the pre-event token-frames,
    then forecast() is rerun. Encoders: the hook acts on the context encoder only. DiTs: on the context tokens at every
@@ -240,23 +242,22 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
                 for g in groups_all}
     first = {g: next(i for i, r in enumerate(recs) if r["group"] == g) for g in groups_all}
 
-    # direction source: one row per group (the pre-event context is shared by a group's twins)
+    # direction source: every clip, labelled with its own mass ratio (F3: a group's twins share the pre-event
+    # activations and differ only in the hidden ratio), CV grouped by twin group
     same = not cfg.get("direction_data")
     if same:
         sA, slab, spools, slayers = A, labels, pools, layers
-        srows = np.array([first[g] for g in groups_all])
-        sgroups = np.array(groups_all)
+        sgroups = np.array([r["group"] for r in recs])
     else:
         sdata = resolve_path(cfg["direction_data"])
         srecs, slab, sA, spools, slayers = load_family(_sibling(cache_dir, sdata.name, mcfg), sdata)
-        sg = [r["group"] for r in srecs]
-        srows = np.array([sg.index(g) for g in sorted(set(sg))])
-        sgroups = np.array(sorted(set(sg)))
+        sgroups = np.array([r["group"] for r in srecs])
+    srows = np.arange(len(sgroups))
     sy = np.array([log_q(slab[i]) for i in srows])
     pa = spools.index("roi_A.pre")
     cand = [l for l in slayers if l != "-1"] if cfg["layer"] == "auto" else [str(cfg["layer"])]
     layer, _, _ = fit_select({l: sA[srows, pa, slayers.index(l)].astype(np.float64) for l in cand}, sy, sgroups,
-                             np.arange(len(srows)), ridge_alphas, k)
+                             srows, ridge_alphas, k)
     SX = sA[srows, pa, slayers.index(layer)].astype(np.float64)
     EX = A[:, pools.index("roi_A.pre"), layers.index(layer)].astype(np.float64) if layer in layers else None
     log(f"[L4] injection layer {layer} (searched {len(cand)}); direction from {'this family' if same else cfg['direction_data']}")

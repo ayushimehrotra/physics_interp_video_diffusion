@@ -165,3 +165,41 @@ def test_aggregate_reads_heldout_formats(tmp_path):
     r = aggregate.run(tmp_path)["rows"][0]
     assert r["l1"] == {"S_family.P-real-mm": 0.3, "S_outcome.P-real-mm": 0.1}       # frame pool only (leak-free)
     assert r["l2"]["x vs y"] == 0.7 and r["l2b"]["x vs y"] == 0.8 and r["encoded_unused"]["x vs y"] == 0.1
+
+
+def test_track_a_summary_scores_outcome(tmp_path):
+    """Stage 9 track A end to end on synthetic rows: law residuals and S_outcome (regression: L1's score helper)."""
+    va, vb, n = [1.0, 0.0], [0.0, 0.0], [1.0, 0.0]
+    post = {"conserve_e1": ([0.0, 0.0], [0.5, 0.0]), "conserve_e015": ([0.4, 0.0], [0.3, 0.0])}   # m_A = 1, m_B = 2
+    for g in ("g0", "g1"):
+        for t, (pa, pb) in post.items():
+            d = tmp_path / g / t
+            d.mkdir(parents=True)
+            lab = _labels(va, vb, pa, pb, n)
+            lab["physlaw"]["family"] = "f1"
+            lab["collision"] = {"contact_point_world": [0.0, 0.0, 0.0]}
+            (d / "labels.json").write_text(json.dumps(lab))
+    real = [{"group": g, "twin": t, "measurable": True, "v_post": [pa, pb]} for g in ("g0", "g1") for t, (pa, pb) in post.items()]
+    gen = [{"group": g, "seed": 0, "measurable": True, "v_post": [[0.5, 0.0], [0.25, 0.0]]} for g in ("g0", "g1")]
+    res = O.track_a_summary(gen, real, tmp_path, ["momentum"], n_boot=50)
+    d = res["twins"]["conserve_e1"]
+    assert d["res_momentum_floor"] == pytest.approx(0.0) and d["E_out_floor"] == pytest.approx(0.0)
+    # generated: halfway between the null (no collision) and the elastic outcome -> E = 0.5, S_outcome = 0.5
+    assert d["E_out_generated"] == pytest.approx(0.5) and d["S_outcome"] == pytest.approx(0.5)
+    assert d["S_outcome_ci95"] == pytest.approx([0.5, 0.5])
+
+
+def test_transfer_velocity_uses_the_image_plane():
+    side = {"physlaw": {"pre_velocity": {"A": [1.0, 0.0, -2.0]},
+                        "camera": {"world_to_camera": [[1, 0, 0, 0], [0, 0, -1, 4.3], [0, 1, 0, 20], [0, 0, 0, 1]]}}}
+    top = {"physlaw": {"pre_velocity": {"A": [1.0, 2.0, 0.0]},
+                       "camera": {"world_to_camera": [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 20.65], [0, 0, 0, 1]]}}}
+    assert L3.clip_target(side, "velocity").tolist() == [1.0, -2.0]          # F7 side view: (v_x, v_z)
+    assert L3.clip_target(top, "velocity").tolist() == [1.0, 2.0]            # F1 top-down: (v_x, v_y)
+    assert L3.clip_target({"physlaw": {"pre_velocity": {"A": [3.0, 4.0]}}}, "velocity").tolist() == [3.0, 4.0]
+
+
+def test_l4_direction_defaults_to_the_evaluated_family():
+    from physlaw.config import load_config
+    cfg = load_config("configs/eval/l4_causal.yaml")
+    assert cfg["families"] == ["f3"] and cfg["direction_data"] is None       # spec §5.6: fitted on F3 itself

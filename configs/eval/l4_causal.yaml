@@ -4,7 +4,8 @@ level: l4
 families: [f3]
 alphas_sd: [-2, -1, 0, 1, 2]       # shift along the mass-ratio direction, in sd of the activations' projection on it
 layer: auto                        # injection block: best grouped-CV R² for log(m_A/m_B) from roi_A.pre, or a layer key
-direction_data: data/f1            # family the direction is fitted on (F3 hides mass before the event); null = this one
+direction_data: null               # family the direction is fitted on; null = the evaluated one (spec: F3, mass not
+                                   # confounded with look). data/f1 only as a labelled stand-in (mass ~ visible size)
 probe_data: null                   # family the post-velocity probes are trained on; null = this one, cross-fitted
 twins: null                        # evaluated twins (null: all; F3's twins are its mass ratios)
 e_ref: twin                        # restitution in the momentum prediction: the twin's own, or a number

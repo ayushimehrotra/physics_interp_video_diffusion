@@ -83,6 +83,17 @@ def post_accel(labels, o: str, window_s: float = 1.0) -> np.ndarray:
     return np.polyfit(t, v, 1)[0] if len(fr) >= 3 else np.full(3, np.nan)
 
 
+def plane_axes(labels) -> tuple[int, int]:
+    """The two world axes spanning the image plane: all but the one most aligned with the camera's viewing direction
+    (labels-1 F1 clips carry 2-D velocities: (0, 1))."""
+    v = labels["physlaw"]["pre_velocity"]["A"]
+    cam = labels["physlaw"].get("camera")
+    if len(v) < 3 or not cam:
+        return (0, 1)
+    depth = int(np.argmax(np.abs(np.asarray(cam["world_to_camera"], float)[2, :3])))
+    return tuple(a for a in range(3) if a != depth)
+
+
 def object_target(labels, o: str, name: str, window_s: float = 1.0) -> float:
     if name == "accel_z":
         return float(post_accel(labels, o, window_s)[2])
@@ -107,8 +118,8 @@ def clip_target(labels, name: str) -> np.ndarray:
         return np.array([pl["objects"]["A"]["radius"]])
     if name == "log_mass":
         return np.array([np.log(pl["objects"]["A"]["mass"])])
-    if name == "velocity":
-        return np.asarray(pl["pre_velocity"]["A"][:2], float)
+    if name == "velocity":                           # the two in-image-plane components (F1: x, y; side views: x, z)
+        return np.asarray(pl["pre_velocity"]["A"], float)[list(plane_axes(labels))]
     if name == "accel":
         return np.array([np.linalg.norm(post_accel(labels, "A"))])
     for path in (f"physlaw.{name}", f"physlaw.constants.{name}", f"physlaw.edit.{name}", f"physlaw.scene.{name}",

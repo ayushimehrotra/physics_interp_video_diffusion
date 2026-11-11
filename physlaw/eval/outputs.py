@@ -400,7 +400,8 @@ def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000) -> 
     floor (L1's r_p / r_E / E_out plus every law in ``laws``), S_outcome with a group-bootstrap CI."""
     import json
     from collections import Counter
-    from physlaw.eval.l1_forecast_laws import _score
+    from physlaw.eval.l1_forecast_laws import _S
+    _score = lambda fc, fl, ref: float(_S(fc, fl, ref))
     lab = {}
     def labels(g, t):
         if (g, t) not in lab:
