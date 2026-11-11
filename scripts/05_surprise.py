@@ -67,10 +67,11 @@ def main():
     ap.add_argument("--data", required=True)
     ap.add_argument("--workers", type=int, default=24)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--cache", default=None, help="default cache/<model>/<family> (stage 4's --out)")
     a = ap.parse_args()
     cfg = load_config(a.model)
     data = resolve_path(a.data)
-    out = REPO / "cache" / cfg.name / data.name
+    out = Path(a.cache) if a.cache else REPO / "cache" / cfg.name / data.name
     out.mkdir(parents=True, exist_ok=True)
     f = out / "_pixel_baselines.jsonl"
     done = set()

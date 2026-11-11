@@ -309,7 +309,7 @@ def test_model_configs_dispatch_and_pin(path):
     assert cfg.get("revision"), f"{path.name}: no pinned revision"
     pins = dict(cfg.get("sha256") or {})
     for blk in ("checkpoint", "dit_weights", "lora"):
-        if cfg.get(blk):
+        if cfg.get(blk) and not (blk == "lora" and cfg.get("positive_control")):   # PC2: our own training output
             assert cfg[blk].get("sha256"), f"{path.name}: {blk} has no sha256"
     assert pins or cfg.get("checkpoint"), f"{path.name}: no sha256 pins"
     assert all(len(h) == 64 for h in pins.values())
