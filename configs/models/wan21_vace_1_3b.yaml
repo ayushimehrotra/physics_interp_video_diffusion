@@ -1,0 +1,41 @@
+# Wan2.1-VACE-1.3B (spec §4.2 group 4): output track A route for Wan2.1-T2V-1.3B through its OFFICIAL sibling
+# (``track_a_mode: variant``; physlaw/models/wan_vace.py). Apache-2.0, not gated. diffusers WanVACEPipeline
+# (diffusers >= 0.34; physics_venv 0.35.1). VACE "firstclip" extension: the window's pre-contact frames given and
+# masked known (0), the rest grey (127.5) and masked to generate (255) (ali-vilab/VACE frameref.py).
+# OFFICIAL settings, github.com/Wan-Video/Wan2.1 generate.py (VACE task defaults; = the model card's README):
+# VACE-1.3B "Supports 480P" -> 832*480; frame_num 81; 16 fps (shared_config); sample_steps 50; sample_shift 16
+# ("vace" in task); sample_guide_scale 5.0; the shared negative prompt. (The diffusers docstring example instead
+# uses 30 steps and flow_shift 3.0 for 480P: not used.) Transformer + text encoder bf16, VAE fp32 (card).
+name: wan2.1-vace-1.3b
+kind: generator
+output_track: A
+track_a_mode: variant     # official frame-conditioned sibling of Wan2.1-T2V-1.3B
+hf_id: Wan-AI/Wan2.1-VACE-1.3B-diffusers
+revision: ec4d2cb062b548996b179d493fdd05340de702a1
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-VACE-1.3B-diffusers
+dtype: bfloat16
+official:
+  height: 480
+  width: 832
+  num_frames: 81          # 4N+1; 5.0 s at 16 fps
+  fps: 16
+  num_inference_steps: 50
+  guidance_scale: 5.0
+  scheduler: UniPCMultistepScheduler   # flow_prediction (shipped), flow_shift set below as generate.py does
+  flow_shift: 16.0
+  negative_prompt: "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+input:
+  center_on_contact: true             # 81 frames at 16 fps (241 master frames) around contact: ~40 context frames
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # Wan2.1 VAE (eval Geometry only)
+track_a:
+  context: all            # every pre-contact frame of the window, masked known
+  align: 1                # VACE masks per pixel frame: no latent alignment needed
+prompt_template: scene    # physlaw.models.dit.scene_prompt: pre-contact facts only
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-VACE-1.3B-diffusers@ec4d2cb062b548996b179d493fdd05340de702a1 (Hub LFS sha256); verified by physlaw.models.registry.
+sha256:
+  text_encoder/model-00001-of-00003.safetensors: a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58
+  text_encoder/model-00002-of-00003.safetensors: d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7
+  text_encoder/model-00003-of-00003.safetensors: 0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f
+  transformer/diffusion_pytorch_model-00001-of-00002.safetensors: 192804a4e10b5bb0a13f5c224bc4ec9707b3b8cc0def8eea005dbce7c9d6752a
+  transformer/diffusion_pytorch_model-00002-of-00002.safetensors: dadaf1d5e9ccf826e2c497aa9fc2756a044f606d0aa919e5405a734a121bcf7e
+  vae/diffusion_pytorch_model.safetensors: d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793

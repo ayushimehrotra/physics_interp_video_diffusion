@@ -17,6 +17,9 @@ Context conditioning (forecast() / generate(), and the clean-context surprise):
     TI2V image-to-video pipeline holds the first latent frame clean at timestep 0; PhysRVG's video-to-video
     pipeline holds the first 2 (5 frames). Here every context latent frame is held clean at timestep 0, for
     sampling and for the clean-context surprise (in distribution).
+  * Output track A (generate() with a ``track_a`` block, configs/models/physrvg.yaml): exactly PhysRVG's trained
+    context, 2 latent frames = 5 frames ending at the last pre-contact frame (``track_a_mode: native``); the base
+    Wan2.2-TI2V-5B at PhysRVG's settings gets the same clamp, flagged ``track_a_mode: hack`` (pair comparison).
 Sampling follows the diffusers pipelines step for step (sequential cond / uncond passes, CFG in the transformer's
 dtype, UniPC with the official flow_shift); activations of the conditional pass are captured at the steps nearest
 each encode SNR (keys as encode()).
@@ -164,6 +167,31 @@ class WanAdapter(DiTAdapter):
                 lat = self.sched.step(v, t, lat, return_dict=False)[0]
         lat[:, :kl] = z0[:, :kl]
         return acts, lat
+
+    def generate(self, video, context_end_frame: int, seed: int, **sample_kw):
+        """Track A. With a ``track_a`` block (PhysRVG, and Wan2.2-TI2V-5B at its settings as the flagged hack): the
+        model gets exactly ``track_a.context`` frames (PhysRVG's trained 5 = 2 latent frames, held clean at timestep
+        0) ending at the last pre-contact frame (window index context_end_frame - 1), and samples its own
+        num_frames clip from the first of them; the real window frames before the context are put in front
+        (track_a.splice), so the clip stays aligned with input_frames(). Without the block: the stage-4 path
+        (every whole pre-contact latent frame as context)."""
+        if not self.cfg.get("track_a"):
+            return super().generate(video, context_end_frame, seed, **sample_kw)
+        from physlaw.models.track_a import context_len, splice
+        torch = self.torch
+        x = self._x(video)
+        n = context_len(self.cfg, context_end_frame)
+        s = context_end_frame - n
+        win = x[:, :, s: s + self.n_frames]
+        if win.shape[2] < self.n_frames:     # frames after the context only set the latent shape (never sampled from)
+            pad = win[:, :, -1:].expand(-1, -1, self.n_frames - win.shape[2], -1, -1)
+            win = torch.cat([win, pad], 2)
+        win = win.contiguous()
+        self._lat_cache = self._ctx_cache = None
+        _, lat = self._sample(win, n, seed, capture=False, **sample_kw)
+        self._lat_cache = self._ctx_cache = None
+        real = ((x[0, :, :s].float().clamp(-1, 1) + 1) * 127.5).round().byte().permute(1, 2, 3, 0).cpu().numpy()
+        return splice(real, self.decode(lat), s, self.n_frames)
 
 
 class WanI2VAdapter(WanAdapter):

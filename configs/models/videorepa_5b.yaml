@@ -6,6 +6,8 @@
 # dynamic CFG, VAE tiling, bf16).
 defaults: cogvideox_5b.yaml
 name: videorepa-5b
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # text only; track A only by latent replacement (--allow-hack)
 lora:
   hf_id: aHapBean/VideoREPA
   revision: 5438a0208c973fa5bec7d74486694f03e72ec939

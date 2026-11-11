@@ -1,0 +1,24 @@
+=== 09:57:01 vjepa2_vitl (vjepa2-vitl) stage4
+    10:12:01 pred-real vjepa2-vitl
+    10:30:10 maskfeat vjepa2-vitl
+    10:32:26 L1 vjepa2-vitl
+    10:40:23 DONE vjepa2-vitl
+=== 10:40:23 videomae_v2_giant (videomaev2-giant) stage4
+    10:52:58 pred-real videomaev2-giant
+    11:03:15 maskfeat videomaev2-giant
+    11:04:16 L1 videomaev2-giant
+    11:06:00 DONE videomaev2-giant
+=== 11:06:02 untrained_vitl (untrained-vitl) stage4
+    11:18:27 maskfeat untrained-vitl
+    11:19:05 L1 untrained-vitl
+    11:20:34 DONE untrained-vitl
+=== 11:20:36 cogvideox_2b (cogvideox-2b) stage4
+    11:22:34 FAIL stage4 cogvideox-2b
+=== 11:22:34 queue finished
+=== 11:23:08 cogvideox_2b (cogvideox-2b) stage4
+    11:23:20 FAIL stage4 cogvideox-2b
+=== 11:23:20 queue finished
+=== 11:25:07 cogvideox_2b (cogvideox-2b) stage4
+    11:25:28 FAIL stage4 cogvideox-2b
+=== 11:25:28 queue finished
+=== 11:28:27 cogvideox_2b (cogvideox-2b) stage4

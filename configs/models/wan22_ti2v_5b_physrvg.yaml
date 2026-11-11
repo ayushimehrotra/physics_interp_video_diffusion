@@ -2,5 +2,7 @@
 # identical settings; physrvg.yaml has the sources). wan22_ti2v_5b.yaml is the base at its own official settings.
 defaults: physrvg.yaml
 name: wan2.2-ti2v-5b-physrvg-settings
+output_track: A           # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # base TI2V-5B (first frame only natively) on PhysRVG's 2-latent clamp: pair comparison, flagged
 dit_weights: null
 lora: null

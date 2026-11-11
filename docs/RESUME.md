@@ -30,7 +30,8 @@ Known state to repair before running anything:
 | Part | State |
 |---|---|
 | **Families** | F1 collisions: 64 groups rendered, frozen (`data/f1`). F2 restitution, F3 hidden mass, F4 Galilean (Kubric two-sphere scene, `generate.py`); F6 friction, F7 free fall / projectile / bounce, F8 ramp, F10 rolling (closed form, `physlaw/data/families/`, PyBullet cross-check). Configs `configs/data/f*.yaml`. Only 2–3 low-quality test groups per family exist (CPU, 320×184, 2026-11-10). **F9 pendulum not built**: Kubric's PyBullet bodies refuse every constraint (hinge impossible). |
-| **Models** | Adapters for V-JEPA 2 (L, g, untrained), VideoMAE-v2 (base, giant), CogVideoX (2b, 5b, 1.5-5B-I2V), Wan (2.1 T2V 1.3B/14B, 2.1 I2V 14B, 2.2 TI2V 5B, 2.2 I2V A14B), PhysRVG, VideoREPA-5B, **Cosmos-Predict2.5-2B** (track A), positive controls PC1 / PC2. Weights for all but Cosmos in `/workspace/models`, verified 2026-11-11. |
+| **Models** | Adapters for V-JEPA 2 (L, g, untrained), VideoMAE-v2 (base, giant), CogVideoX (2b, 5b, 1.5-5B-I2V), Wan (2.1 T2V 1.3B/14B, 2.1 I2V 14B, 2.2 TI2V 5B, 2.2 I2V A14B), PhysRVG, VideoREPA-5B, **Cosmos-Predict2.5-2B**, **Wan2.1-VACE-1.3B / 14B**, **LTX-Video 0.9.8 13B distilled**, positive controls PC1 / PC2. Weights for all but Cosmos, VACE-14B and LTX (VACE-1.3B / LTX downloading) in `/workspace/models`, verified 2026-11-11. |
+| **Output tracks** | Every generator config has `output_track` + `track_a_mode` (2026-11-11, `physlaw/models/track_a.py`, spec §4.2 group 4). Track A: Cosmos (native), PhysRVG (native, its trained 5-frame / 2-latent context), Wan2.2-TI2V-5B at PhysRVG settings (**hack**, same clamp), Wan2.1-VACE-1.3B / 14B (variant), LTX-Video 13B distilled (native, 49 frames at 24 fps). Track B: Wan2.2-I2V-A14B, Wan2.1-I2V-14B, CogVideoX1.5-5B-I2V. CogVideoX-2b / 5b, VideoREPA, Wan2.1-T2V, Wan2.2-TI2V-5B: none (stage 07 `--allow-hack` only). |
 | **Levels** | L0, L1, L2, L2b, **L3** (Galilean F4, mass independence F6/F7, transfer), **L4** (mass-direction steering, F1 direction → F3), outputs track A / B (stages 07–09, readouts for F1–F3, F7, F8), aggregation (stage 11, `results/leaderboard.md`). |
 | **Laws** | `physlaw/eval/laws/`: momentum (+ S_mom), energy, CoM, angular momentum, Galilean, gravity, axis independence, mass independence, bounce, pendulum, ramp energy, rolling. `physlaw/data/io.law_inputs(labels)` feeds them for every family. |
 | **Positive controls** | PC1 (ViT-S V-JEPA-style, trained on legal clips only) and PC2 (Wan2.2-TI2V-5B LoRA, RigidBench recipe): built, code-path tested, not trained. Pass: L1 S_family ≥ 0.5 and L2 adjusted win ≥ 0.7 on F1 momentum. |
@@ -95,7 +96,7 @@ Smoke outputs (2026-11-11) are in `smoke/`; full-protocol tables are in `results
   almost as separable (0.89–0.94): motion, not law.
 * **L1 (old scores).** No decoded forecast is closer to the legal family than "no collision" on the frame pool;
   the forecast does hold outcome information (V-JEPA 2 forecast-trained ROI probe R² 0.74).
-* **Outputs.** CogVideoX-2b track A gate 0/20. Wan2.2-I2V-A14B track B: strict 0/22, loose 8/22, all 8 with
+* **Outputs.** CogVideoX-2b track A gate 0/20 (latent replacement; now `output_track: none`, `--allow-hack` only). Wan2.2-I2V-A14B track B: strict 0/22, loose 8/22, all 8 with
   violations (loose medians: momentum residual 1.00, CoM 0.72).
 * **Readout validation on real clips:** F1 312/320 strict; F2 44/44; F3 10/10; F7 11/11; F8 5/5; F4 11/18
   (short windows: readout not validated for boosts).
@@ -153,7 +154,8 @@ Time estimates per H100; rendering dominates, so spread families across GPUs.
 1. **Render 10 groups per family** (F2, F3, F4, F6, F7, F8, F10) at master quality, one family per GPU:
    ~30–45 min each. Validate with `02_validate_data.py`.
 2. **Repair caches** (§0.1) and run stage 4 on the new families, 8–10 groups: V-JEPA2-L (minutes per family),
-   CogVideoX-2b (~1 h per family; `--limit`), Cosmos (track A only: download, gate on 20 F1 clips first).
+   CogVideoX-2b (~1 h per family; `--limit`), track A gates on 20 F1 clips: Cosmos (download), PhysRVG +
+   TI2V-5B clamp, Wan2.1-VACE-1.3B, LTX-Video 13B distilled (`configs/eval/outputs.yaml` track_a.models).
 3. **L1 pool choice**: contact vs roi vs frame on V-JEPA2-L / CogVideoX-2b with `+cal`. Adopt contact if its
    η_floor beats mass-blind by ≥ 0.1 with mask-only R² ≈ 0. Then set the gate from floor noise.
 4. **L2 momentum** (F1, no new data): e015 primary, dose η, ideal-observer bands, model − pixel-baseline win rate;

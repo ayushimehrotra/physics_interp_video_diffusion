@@ -1,7 +1,8 @@
 """L0 states (spec §5): can per-object states be decoded from pooled activations?
 
 Targets, per object o in {A, B} and phase in {pre, post}:
-  velocity (2-D world xy, one block), speed, direction (cos, sin), log_mass, radius.
+  velocity (2-D world xy, one block), speed, direction (cos, sin), log_mass, radius,
+  momentum (m·v, 2-D) and momentum_partial (m·v residualised on [1, v, m, log m]; see momentum_partial()).
 Grid per target: layers x {roi_<o>.<phase>, roi_pair.<phase>, frame.<phase>}.
 Score: out-of-fold R^2, grouped 5-fold by twin group, 12 fold seeds, nested alpha
 (physlaw.probes.grid, identical to ridge.fit_probe).
@@ -47,7 +48,7 @@ from physlaw.probes.observer import OBSERVERS, observer_matrix
 from physlaw.probes.ridge import adam_linear_probe, r2_score
 from physlaw.probes.select import heldout_select, holm
 
-TARGETS = ("velocity", "speed", "direction", "log_mass", "radius")
+TARGETS = ("velocity", "speed", "direction", "log_mass", "radius", "momentum", "momentum_partial")
 OBJECTS = ("A", "B")
 PHASES = ("pre", "post")
 POOL_KINDS = ("roi_own", "roi_pair", "frame")
@@ -98,17 +99,43 @@ def load_pooled(cache_dir: Path, recs: list[dict]):
     return np.stack(A).astype(np.float32), pools, layers, lat
 
 
+def momentum_partial(v: np.ndarray, m: np.ndarray) -> np.ndarray | None:
+    """Partial momentum: p = m·v [n, 2] minus its least-squares fit on [1, v_x, v_y, m, log m] across clips.
+
+    Fitted on the labels only (no features, so no leakage), separately per (object, phase) by the caller.
+    It keeps the part of the product m·v that no linear combination of v and m explains, so a probe's R² on
+    it is the partial R² of momentum beyond v and m: does the representation encode the product, not just its
+    factors? A linear probe on features that linearly encode v and m (and log m) scores ≈ 0 on it.
+    Returns None when the residual is degenerate (≈ 0 variance, e.g. mass constant for this object, where m·v
+    is linear in v): R² on it would be meaningless, and the block is dropped.
+    """
+    v, m = np.asarray(v, float), np.asarray(m, float)
+    p = m[:, None] * v
+    D = np.column_stack([np.ones(len(m)), v, m, np.log(m)])
+    coef, *_ = np.linalg.lstsq(D, p, rcond=None)
+    r = p - D @ coef
+    sst = ((p - p.mean(0)) ** 2).sum()
+    if sst <= 0 or (r ** 2).sum() <= 1e-10 * sst:
+        return None
+    return r
+
+
 def targets(labels: list[dict]) -> dict[str, np.ndarray]:
     out = {}
     for o in OBJECTS:
+        m = np.array([l["physlaw"]["objects"][o]["mass"] for l in labels], float)
         for ph in PHASES:
             v = np.array([l["physlaw"][f"{ph}_velocity"][o] for l in labels], float)[:, :2]
             s = np.linalg.norm(v, axis=1)
             out[f"{o}.{ph}.velocity"] = v
             out[f"{o}.{ph}.speed"] = s
             out[f"{o}.{ph}.direction"] = v / np.maximum(s, 1e-9)[:, None]
-            out[f"{o}.{ph}.log_mass"] = np.log([l["physlaw"]["objects"][o]["mass"] for l in labels])
+            out[f"{o}.{ph}.log_mass"] = np.log(m)
             out[f"{o}.{ph}.radius"] = np.array([l["physlaw"]["objects"][o]["radius"] for l in labels])
+            out[f"{o}.{ph}.momentum"] = m[:, None] * v
+            pp = momentum_partial(v, m)
+            if pp is not None:
+                out[f"{o}.{ph}.momentum_partial"] = pp
     return out
 
 

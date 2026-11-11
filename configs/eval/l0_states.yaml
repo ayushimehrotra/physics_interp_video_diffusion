@@ -1,7 +1,7 @@
 defaults: _probe.yaml
 level: l0
 families: [f1]
-targets: [velocity, speed, direction, log_mass, radius]
+targets: [velocity, speed, direction, log_mass, radius, momentum, momentum_partial]
 one_twin_refit_below: 200        # spec §5.1: post-event targets refit on one twin per group below this many groups
 velocity_protocols:
   # spec §5.1 velocity protocol check (RigidBench: unregularised linear probe, Adam, 20 epochs, on

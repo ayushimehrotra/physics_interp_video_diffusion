@@ -5,6 +5,8 @@
 # expand_timesteps: one timestep per token, so the context is held clean at timestep 0 (physlaw/models/wan.py).
 name: wan2.2-ti2v-5b
 kind: diffusion
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # first frame only natively; its track A run is wan22_ti2v_5b_physrvg.yaml (flagged hack)
 hf_id: Wan-AI/Wan2.2-TI2V-5B-Diffusers
 revision: b8fff7315c768468a5333511427288870b2e9635
 local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.2-TI2V-5B-Diffusers

@@ -8,3 +8,18 @@ nuisance_frac: 0.2
 twins:
   e_sim: 1.0
   levels: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  # Energy-creating arms continuing the ladder past e = 1 (same exact restitution edit: momentum conserved,
+  # KE_post/KE_pre - 1 = (mu u_n^2 / 2KE_pre)(e^2 - 1)); legal: false, violated_law: energy. Required twins: like
+  # the legal arms they must keep both spheres in frame for acceptance.min_post_inframe_s, else the GROUP is
+  # resampled. `impossible_levels: []` reproduces the legal-only ladder exactly.
+  impossible_levels: [1.1, 1.2, 1.3, 1.4, 1.5]
+  # Momentum violators in the same twin group (twins.f2_violators): F1's split edit (common drift along n) on
+  # the legal outcome at each listed e, named mom_violate_e<e:g>_<pos|neg>. `violators: []` reproduces the
+  # ladder-only F2 exactly (own RNG stream; a violator failing acceptance is DROPPED, never rejects the group).
+  # neg = drift against v_cm . n (F1's KE-reducing sign, usually slower); pos = along it (always more KE).
+  # One split magnitude per group from violator_split_delta_range; a sign whose s' leaves
+  # [margin, 1 - margin] is shrunk to fit, or skipped if that is below the range minimum.
+  violators: [1.0, 0.5, 0.15]
+  violator_signs: [pos, neg]
+  violator_split_delta_range: [0.10, 0.35]
+  violator_split_margin: 0.05

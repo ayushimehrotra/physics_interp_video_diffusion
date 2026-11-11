@@ -217,7 +217,19 @@ def build_twins(family: str, cfg, p, geo, masses, animation, spheres, seed: int,
             if not tw[name].energy_physical:
                 return None, pre, e_sim, f"{name}_creates_energy"
     elif family == "f2":
-        tw = TW.f2_twins(pre, post["a"], post["b"], e_sim, tuple(t.levels))
+        tw = TW.f2_twins(pre, post["a"], post["b"], e_sim, tuple(t.levels),
+                         impossible_levels=tuple(float(x) for x in (t.get("impossible_levels") or [])))
+        e_viol = list(t.get("violators") or [])
+        if e_viol:
+            # momentum violators sharing the ladder's pre-contact segment (F1's split edit, both drift signs).
+            # Drawn from their own stream, so the ladder and the accepted attempt are those of violators: [].
+            rng = np.random.default_rng([seed, attempt, 7927])
+            rng_range = tuple(t.get("violator_split_delta_range", (0.10, 0.35)))
+            mag = float(rng.uniform(*rng_range))
+            vt, _ = TW.f2_violators(pre, post["a"], post["b"], e_sim, tuple(float(x) for x in e_viol), mag,
+                                    margin=float(t.get("violator_split_margin", 0.05)), min_magnitude=float(rng_range[0]),
+                                    signs=tuple(t.get("violator_signs", ("pos", "neg"))))
+            tw = {**tw, **vt}
     elif family == "f3":
         tw = TW.f3_twins(pre, float(t.e), tuple(t.ratios))
     elif family == "f4":
@@ -233,9 +245,9 @@ def build_twins(family: str, cfg, p, geo, masses, animation, spheres, seed: int,
 
 def _law_of(family: str, name: str, twin, pre) -> tuple[bool, str | None, float]:
     """(legal, violated_law, violation_magnitude) of a collision twin."""
-    if family == "f1" and name.startswith("mom_violate"):
+    if family in ("f1", "f2") and name.startswith("mom_violate"):
         return False, "momentum", TW.momentum_residual(pre, twin.v_a, twin.v_b)
-    if family == "f1" and name == "energy_create":
+    if (family == "f1" and name == "energy_create") or (family == "f2" and twin.record.get("kind") == "energy_create"):
         return False, "energy", TW.kinetic_energy(pre, twin.v_a, twin.v_b) / TW.ke_pre(pre)
     return True, None, 0.0
 
@@ -281,20 +293,44 @@ def collision_scene(cfg, p, geo, masses, animation, spheres, contact: float, tw:
     return sc
 
 
-def feasibility(cfg, tw, pre, p, animation, spheres, contact_frame: float) -> str | None:
-    """F1-F3: every twin keeps both spheres in frame long enough; violations are large enough."""
+def _twin_reject_reason(cfg, twin, name, pre, p, anim, spheres, contact_frame: float) -> str | None:
     first_post = int(math.ceil(contact_frame))
     need = first_post + int(round(cfg.acceptance.min_post_inframe_s * KS.FRAME_RATE))
+    KS.rekeyframe_positions_only(spheres, anim, contact_frame, {"a": _vec3(twin.v_a), "b": _vec3(twin.v_b)})
+    until = inframe_until(anim, spheres, p, first_post)
+    if min(until.values()) < need:
+        return f"{name}_leaves_frame_at_{min(until.values())}_needs_{need}"
+    if not twin.momentum_conserved:
+        r = TW.momentum_residual(pre, twin.v_a, twin.v_b)
+        if r < cfg.acceptance.min_violation_residual:
+            return f"{name}_violation_residual_{r:.3g}_below_threshold"
+    return None
+
+
+def drop_optional_twins(cfg, tw, pre, p, animation, spheres, contact_frame: float) -> dict[str, str]:
+    """F2 violators (``record.optional``): the F1 acceptance (in frame, min violation residual) per twin;
+    a failing one is DROPPED instead of rejecting the group, so the legal ladder's sampling is that of
+    ``violators: []``. Mutates ``tw``; returns {dropped name: reason}."""
+    anim = {k: copy.deepcopy(v) for k, v in animation.items()}
+    dropped = {}
+    for name in [n for n, t in tw.items() if t.record.get("optional")]:
+        reason = _twin_reject_reason(cfg, tw[name], name, pre, p, anim, spheres, contact_frame)
+        if reason:
+            dropped[name] = reason
+            del tw[name]
+    return dropped
+
+
+def feasibility(cfg, tw, pre, p, animation, spheres, contact_frame: float) -> str | None:
+    """F1-F3: every twin keeps both spheres in frame long enough; violations are large enough.
+    Optional twins (F2 violators) are not checked here: see :func:`drop_optional_twins`."""
     anim = {k: copy.deepcopy(v) for k, v in animation.items()}   # keys are Kubric objects
     for name, twin in tw.items():
-        KS.rekeyframe_positions_only(spheres, anim, contact_frame, {"a": _vec3(twin.v_a), "b": _vec3(twin.v_b)})
-        until = inframe_until(anim, spheres, p, first_post)
-        if min(until.values()) < need:
-            return f"{name}_leaves_frame_at_{min(until.values())}_needs_{need}"
-        if not twin.momentum_conserved:
-            r = TW.momentum_residual(pre, twin.v_a, twin.v_b)
-            if r < cfg.acceptance.min_violation_residual:
-                return f"{name}_violation_residual_{r:.3g}_below_threshold"
+        if twin.record.get("optional"):
+            continue
+        reason = _twin_reject_reason(cfg, twin, name, pre, p, anim, spheres, contact_frame)
+        if reason:
+            return reason
     return None
 
 
@@ -753,6 +789,13 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
                 raise RuntimeError(f"replay of accepted scene failed: {reason}")
             tw, pre, e_sim, _ = build_twins(family, cfg, p, geo, masses, animation, spheres, seed, attempt)
             contact = float(meas["contact_frame"])
+            dropped = drop_optional_twins(cfg, tw, pre, p, animation, spheres, contact)
+            if family == "f2":     # violators whose split did not fit either magnitude (twins.f2_violators)
+                for e_v in cfg.twins.get("violators") or []:
+                    for sg in cfg.twins.get("violator_signs", ("pos", "neg")):
+                        nm = TW.violator_name(float(e_v), sg)
+                        if nm not in tw and nm not in dropped:
+                            dropped[nm] = "split_does_not_fit"
             sc = collision_scene(cfg, p, geo, masses, animation, spheres, contact, tw, pre, fmt)
             sc.constants["e_sim"] = float(e_sim)
             h = {"scene": kscene, "renderer": renderer, "camera": camera, "floor": floor,
@@ -829,6 +872,8 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
                "summaries": summaries}
         if family in COLLISION_FAMILIES:
             rec["contact_frame"] = contact_target
+            if dropped:
+                rec["dropped_twins"] = dropped
 
         if render and float(cfg.get("nuisance_frac", 0.0)) > 0 and NZ.selected(seed, float(cfg.nuisance_frac)):
             rec["nuisance"] = render_nuisance(cfg, sc, h, ndir, scratch, pool, common, legacy, seed)

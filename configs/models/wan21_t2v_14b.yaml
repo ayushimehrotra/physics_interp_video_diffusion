@@ -5,6 +5,8 @@
 # only size, so the two compare at equal input). Its own UMT5 text_encoder/ (download the full repo).
 name: wan2.1-t2v-14b
 kind: diffusion
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # text only; track A via the official sibling wan21_vace_14b.yaml; latent replacement needs --allow-hack
 hf_id: Wan-AI/Wan2.1-T2V-14B-Diffusers
 revision: 38ec498cb3208fb688890f8cc7e94ede2cbd7f68
 local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-T2V-14B-Diffusers

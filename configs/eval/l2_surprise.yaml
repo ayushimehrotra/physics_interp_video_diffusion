@@ -2,15 +2,51 @@ defaults: _probe.yaml
 level: l2
 families: [f1]
 # Per family (spec §5.3): the legal-vs-legal calibration pair (also scored as the control, which must sit at
-# chance after adjustment) and the violation contrasts. magnitude: labels physlaw.summary key for the
-# dose-response (difference violating - legal); stratify: boolean physlaw label to split the contrast on.
+# chance after adjustment) and the violation contrasts. magnitude: the dose-response magnitude: `eta` = the
+# momentum-exchange imbalance of the violating twin from its true labels (laws.momentum_exchange), else a labels
+# physlaw.summary key (difference violating - legal); stratify: boolean physlaw label to split the contrast on;
+# primary: the headline contrast (listed first). e015 is primary for momentum: a law-perfect observer assuming
+# the wrong restitution still wins it 0.95-1.00 for any e, but wins the e1 contrast only 0.53 if it assumes e = 0
+# (ideal_observer in l2.json).
 contrasts:
   f1:
     calibration: [conserve_e1, conserve_e015]
     list:
-      - {viol: mom_violate_e1, legal: conserve_e1, magnitude: momentum_residual, stratify: energy_physical}
-      - {viol: mom_violate_e015, legal: conserve_e015, magnitude: momentum_residual, stratify: energy_physical}
+      - {viol: mom_violate_e015, legal: conserve_e015, magnitude: eta, stratify: energy_physical, primary: true}
+      - {viol: mom_violate_e1, legal: conserve_e1, magnitude: eta, stratify: energy_physical}
       - {viol: energy_create, legal: conserve_e015, magnitude: ke_ratio}
+  # F2: legal restitution ladder e0.0..e1.0 + momentum violators mom_violate_e<e>_<pos|neg> in the SAME twin group
+  # (configs/data/f2_restitution.yaml twins.violators). The legal-vs-one-twin comparison is unfair to a model that
+  # expects another e, and F1 violators are mostly slower than their legal twin; the group contrasts fix both.
+  f2:
+    calibration: [e1.0, e0.0]            # single pair for the generic motion_adjusted block (list contrasts below)
+    list:                                # F1-style same-e pairs, kept for comparison with F1 and for L2b
+      - {viol: mom_violate_e0.5_neg, legal: e0.5, magnitude: eta, stratify: energy_physical}
+      - {viol: mom_violate_e0.5_pos, legal: e0.5, magnitude: eta, stratify: energy_physical}
+      - {viol: mom_violate_e1_neg, legal: e1.0, magnitude: eta, stratify: energy_physical}
+      - {viol: mom_violate_e1_pos, legal: e1.0, magnitude: eta, stratify: energy_physical}
+    ladder: [e0.0, e0.1, e0.2, e0.3, e0.4, e0.5, e0.6, e0.7, e0.8, e0.9, e1.0]
+    # β of the group contrasts' motion adjustment is fitted on these legal-vs-legal ladder pairs only...
+    ladder_calibration: [[e1.0, e0.0], [e1.0, e0.5], [e0.5, e0.0], [e0.8, e0.2], [e0.9, e0.1]]
+    # ...and these adjacent levels (never in the fit) are the held-out legal controls: adjusted win CI must hold 0.5
+    heldout_controls: [[e0.4, e0.3], [e0.7, e0.6], [e1.0, e0.9]]
+    group_contrasts:
+      # violator vs the ladder twin closest in post-contact KE (match: ke) or total speed |v_A|+|v_B| (match: speed).
+      # Left out (counted in n_unmatched): |log gap| > max_log_gap, and with require_bracketed a violator outside the
+      # ladder's range (neg violators slower than e0.0, pos faster than e1.0; matched to the edge twin, an observer
+      # assuming the edge e would win on speed alone). balance_faster: violators faster / slower than their partner
+      # (in the match scalar) get equal total weight, so an observer of that scalar alone sits at 0.5 (measured on
+      # 60 groups: ke-only observers 0.50 / 0.52 / 0.50; speed-only 0.39-0.65 with match: ke, 0.49-0.54 with match: speed).
+      - {name: speed_matched, kind: speed_matched, viol_prefix: mom_violate, match: ke, max_log_gap: 0.1,
+         require_bracketed: true, balance_faster: true, primary: true}
+      # violator more surprising than the least surprising ladder twin; chance = K/(K+1), rank chance 0.5
+      - {name: family_min, kind: family_min, viol_prefix: mom_violate}
+      # surprise along the extended ladder, legal e0.0..e1.0 then energy-creating e1.1..e1.5 (data/f2 twins.impossible_levels),
+      # in e order. Statistic NOT implemented yet (to be specified): l2_surprise reports it as pending.
+      - {name: energy_kink, kind: energy_kink,
+         twins: [e0.0, e0.1, e0.2, e0.3, e0.4, e0.5, e0.6, e0.7, e0.8, e0.9, e1.0, e1.1, e1.2, e1.3, e1.4, e1.5],
+         legal_max_e: 1.0}
+group_n_boot: 1000                      # bootstrap draws (over groups) of the F2 group contrasts
 primary_covariates: speed+copy_last     # the motion-adjusted summary (held-out distance selection) uses this set
 # Added baseline: replication/RESUME.md (2026-11-02) found a copy-last-frame predictor
 # reproduces every impossible-vs-legal energy asymmetry on V-JEPA2. Report it beside every contrast.

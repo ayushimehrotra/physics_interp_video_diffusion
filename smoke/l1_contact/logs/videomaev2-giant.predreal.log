@@ -1,0 +1,18 @@
+[04] model=videomaev2-giant clips=320 groups=64 out=/workspace/meta/physlaw/cache/videomaev2-giant/f1 hash=4531024ff411
+[04] pred_real 20/320  1.59 s/clip
+[04] pred_real 40/320  1.65 s/clip
+[04] pred_real 60/320  1.72 s/clip
+[04] pred_real 80/320  1.74 s/clip
+[04] pred_real 100/320  1.74 s/clip
+[04] pred_real 120/320  1.73 s/clip
+[04] pred_real 140/320  1.74 s/clip
+[04] pred_real 160/320  1.74 s/clip
+[04] pred_real 180/320  1.74 s/clip
+[04] pred_real 200/320  1.75 s/clip
+[04] pred_real 220/320  1.75 s/clip
+[04] pred_real 240/320  1.75 s/clip
+[04] pred_real 260/320  1.75 s/clip
+[04] pred_real 280/320  1.76 s/clip
+[04] pred_real 300/320  1.75 s/clip
+[04] pred_real 320/320  1.75 s/clip
+[04] finished 320 clips in 9.3 min

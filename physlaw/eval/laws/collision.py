@@ -80,6 +80,29 @@ def momentum_exchange(pre: dict, post: dict, ctx: dict) -> dict:
     return {"num": num, "den": den, "eta": safe_ratio(num, den), "d_min": 2.0 * s.mu * s.approach_speed}
 
 
+def mass_free_momentum(pre: dict, post: dict, ctx: dict | None = None) -> dict:
+    """Momentum checks that need NO masses (generated video, hidden mass): for any positive masses,
+    m_A dv_A = -m_B dv_B forces dv_A and dv_B to be antiparallel, and a smooth central contact puts both
+    along the contact normal n.
+
+        antiparallel = -cos(dv_A, dv_B)          1 = exactly opposite (conservation possible), -1 = same direction
+        normal_A/B   = |dv . n| / |dv|           1 = along the contact normal (needs ctx["n"])
+        implied_ratio = |dv_B| / |dv_A|          the m_A / m_B momentum would need (compare with the true ratio)
+        log_ratio_err = log(implied_ratio) - log(m_A/m_B)   (needs ctx["m"]); 0 for a conserving outcome
+    NaN where a ball does not move."""
+    dv = arr(post["v"])[:, :2] - arr(pre["v"])[:, :2]
+    na, nb = np.linalg.norm(dv, axis=-1)
+    out = {"antiparallel": safe_ratio(-float(dv[0] @ dv[1]), na * nb),
+           "implied_ratio": safe_ratio(nb, na)}
+    if ctx is not None and "n" in ctx:
+        n = arr(ctx["n"])[:2] / np.linalg.norm(arr(ctx["n"])[:2])
+        out["normal_A"], out["normal_B"] = safe_ratio(abs(float(dv[0] @ n)), na), safe_ratio(abs(float(dv[1] @ n)), nb)
+    if ctx is not None and "m" in ctx and np.isfinite(out["implied_ratio"]) and out["implied_ratio"] > 0:
+        m = arr(ctx["m"])
+        out["log_ratio_err"] = float(np.log(out["implied_ratio"]) - np.log(m[0] / m[1]))
+    return out
+
+
 def mass_blind_outcome(pre: dict, post: dict, ctx: dict) -> dict:
     """The mass-blind reference for S_mom: keep ``post``'s change of relative velocity but split it
     EQUALLY between the balls ("equal and opposite velocity changes", masses ignored). Its momentum

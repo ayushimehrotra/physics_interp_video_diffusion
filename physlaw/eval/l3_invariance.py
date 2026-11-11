@@ -13,6 +13,14 @@ are chosen by inner CV on the training groups only, then the probe predicts grou
                       within-condition error mean |decoded - true| / sd on held-out u = 0 clips. A boosted clip is
                       predicted by the fold whose test groups hold its u = 0 partner (folds are grouped by the pair key,
                       so the probe never saw the scene). L2 is repeated per boost level on the boosted twins.
+* momentum_invariance probes for the post-event velocities (v_A', v_B'), trained on u = 0 clips with the same
+                      held-out (pool, layer) selection and scene-grouped cross-fitting, decode every clip (boosted
+                      clips by the fold that held out their u = 0 partner). Per clip eta = |m_A dv_A + m_B dv_B| /
+                      (|m_A dv_A| + |m_B dv_B|) (laws.momentum_exchange) with the TRUE masses and pre velocities, and
+                      the mass-free antiparallel score -cos(dv_A, dv_B) (laws.mass_free_momentum). Per boost level:
+                      mean, and the paired difference boosted - u = 0 partner with a scene-bootstrap CI. Dv and the
+                      masses are boost-invariant, so the true eta is 0 everywhere and the law predicts difference 0:
+                      any difference is the representation's (e.g. velocity decoding error that grows with speed).
 * mass_independence   per-object probes on REAL post-event frames (encode() FINAL, own ROI pool) for the target
                       (``accel_z`` fall acceleration, ``decel`` slide deceleration, ``dv`` velocity change), applied to
                       forecast() pooled the same way (and moment-matched, ``_mm``, as L1). Slope of the decoded target
@@ -122,6 +130,8 @@ def clip_target(labels, name: str) -> np.ndarray:
         return np.asarray(pl["pre_velocity"]["A"], float)[list(plane_axes(labels))]
     if name == "accel":
         return np.array([np.linalg.norm(post_accel(labels, "A"))])
+    if name in ("pre_velocity", "post_velocity"):    # collision families (top-down): [v_A x, y, v_B x, y]
+        return np.concatenate([np.asarray(pl[name][o], float)[:2] for o in "AB"])
     for path in (f"physlaw.{name}", f"physlaw.constants.{name}", f"physlaw.edit.{name}", f"physlaw.scene.{name}",
                  f"sampled_parameters.{name}"):
         v = get(labels, path)
@@ -258,7 +268,7 @@ def crossfit(Xc: dict, Y: np.ndarray, groups: np.ndarray, fit_rows: np.ndarray, 
 
 def _boot(vals_by_group: dict, n: int = 2000, seed: int = 0):
     gs = sorted(vals_by_group)
-    if len(gs) < 2:
+    if len(gs) < 2 or n <= 0:
         return None
     rng = np.random.default_rng(seed)
     b = [np.mean(np.concatenate([vals_by_group[g] for g in rng.choice(gs, len(gs))])) for _ in range(n)]
@@ -318,6 +328,77 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
         out["levels"][str(lv)] = int((level == lv).sum())
     if cache_dir is not None and gc.get("l2_contrasts"):
         out["l2_by_level"] = l2_by_level(cache_dir, data_dir, recs, level, gc["l2_contrasts"], log)
+    return out
+
+
+def _momentum_scores(v_pre: np.ndarray, v_post: np.ndarray, m: np.ndarray, n: np.ndarray) -> tuple[float, float]:
+    """(eta, antiparallel) of one clip: true pre velocities [2, 2], (decoded) post velocities [2, 2], true masses [2],
+    contact normal [2] (laws.momentum_exchange / laws.mass_free_momentum)."""
+    from physlaw.eval import laws
+    pre, post, ctx = {"v": v_pre}, {"v": v_post}, {"m": m, "n": n}
+    return laws.momentum_exchange(pre, post, ctx)["eta"], laws.mass_free_momentum(pre, post, ctx)["antiparallel"]
+
+
+def momentum_invariance_scores(dec_post: np.ndarray, v_pre: np.ndarray, masses: np.ndarray, normals: np.ndarray,
+                               level: np.ndarray, pair: np.ndarray, pgroup: np.ndarray, base: str,
+                               n_boot: int = 2000) -> dict:
+    """Per-level momentum scores of decoded post velocities and their paired difference to the u = 0 partner.
+
+    dec_post [n, 2, 2] (A, B decoded post velocities), v_pre [n, 2, 2] (true), masses [n, 2] (true), normals [n, 2].
+    eta and the mass-free antiparallel score are computed per clip; for each boost level: their means, and the
+    paired difference (boosted - partner at the base level), mean with a bootstrap CI over ``pgroup``. Dv and the
+    masses are boost-invariant, so the true eta is 0 at every level and the law predicts a zero difference."""
+    sc = np.array([_momentum_scores(v_pre[i], dec_post[i], masses[i], normals[i]) for i in range(len(dec_post))])
+    eta, anti = sc[:, 0], sc[:, 1]
+    base_row = {pair[i]: i for i in np.where(level == base)[0]}
+    out = {}
+    for lv in sorted(set(level)):
+        rows = np.where(level == lv)[0]
+        d = {"n": int(len(rows))}
+        for name, s in (("eta", eta), ("antiparallel", anti)):
+            ok = rows[np.isfinite(s[rows])]
+            d[f"{name}_mean"] = float(s[ok].mean()) if len(ok) else None
+            d[f"{name}_ci95"] = _boot({g: s[ok][pgroup[ok] == g] for g in set(pgroup[ok])}, n_boot) if len(ok) else None
+            if lv == base:
+                continue
+            pr = [(i, base_row[pair[i]]) for i in ok if pair[i] in base_row and np.isfinite(s[base_row[pair[i]]])]
+            diff = np.array([s[i] - s[j] for i, j in pr])
+            gi = np.array([pgroup[i] for i, _ in pr])
+            d[f"{name}_n_paired"] = len(pr)
+            d[f"{name}_diff"] = float(diff.mean()) if len(pr) else None
+            d[f"{name}_diff_ci95"] = _boot({g: diff[gi == g] for g in set(gi)}, n_boot) if len(pr) else None
+        out[str(lv)] = d
+    return out
+
+
+def momentum_invariance(recs, labels, A, pools, layers, cfg, log=print) -> dict:
+    """Momentum conservation under boosts: probes for the post-event velocities (v_A', v_B', the in-plane x, y
+    components of the twin's ``physlaw.post_velocity``) trained on u = 0 clips (galilean's levels, pairs and CV unit;
+    same held-out (pool, layer) selection, cross-fitted by scene) decode every clip; eta / antiparallel per clip with
+    the TRUE masses and pre velocities (:func:`momentum_invariance_scores`)."""
+    gc, mc = cfg["galilean"], cfg.get("momentum_invariance") or {}
+    base = str(gc["base_level"])
+    level = np.array([str(get(l, gc["boost_key"], base)) for l in labels])
+    pair = np.array(["/".join(str(get(l, k)) for k in gc["pair_keys"]) for l in labels])
+    pgroup = np.array([str(get(l, gc["cv_key"], r["group"])) for l, r in zip(labels, recs)])
+    Xc = cells(A, pools, layers, mc.get("pools", gc["pools"]), mc.get("layers", gc.get("layers", "all")))
+    fit_rows = np.where(level == base)[0]
+    if not len(fit_rows):
+        raise RuntimeError(f"momentum_invariance: no clips at base level {base!r} of {gc['boost_key']}")
+    Y = np.stack([clip_target(l, "post_velocity") for l in labels])                  # [n, 4]: A x, y, B x, y
+    pred, chosen = crossfit(Xc, Y, pgroup, fit_rows, int(cfg["probe"]["k_folds"]), int(cfg["fold_seeds"]),
+                            tuple(float(a) for a in cfg["probe"]["alphas"]))
+    v_pre = np.stack([clip_target(l, "pre_velocity") for l in labels]).reshape(-1, 2, 2)
+    masses = np.array([[l["physlaw"]["objects"][o]["mass"] for o in "AB"] for l in labels], float)
+    normals = np.array([np.asarray(l["physlaw"]["contact_normal"][:2], float) for l in labels])
+    n_boot = int(cfg.get("bootstrap", {}).get("n", 2000))
+    out = {"n_cells": len(Xc), "cells": _cell_count(chosen), "within_r2_post_velocity": r2_score(Y[fit_rows], pred[fit_rows]),
+           "by_level": momentum_invariance_scores(pred.reshape(-1, 2, 2), v_pre, masses, normals, level, pair, pgroup,
+                                                  base, n_boot),
+           "true": {lv: {k: v[k] for k in ("eta_mean", "antiparallel_mean")} for lv, v in momentum_invariance_scores(
+               Y.reshape(-1, 2, 2), v_pre, masses, normals, level, pair, pgroup, base, 0).items()}}
+    log(f"[L3 momentum] post-velocity R² (u0, held out) {out['within_r2_post_velocity']:.3f}; " + "; ".join(
+        f"{lv}: eta {v['eta_mean']}" + (f" diff {v['eta_diff']}" if "eta_diff" in v else "") for lv, v in out["by_level"].items()))
     return out
 
 
@@ -478,6 +559,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, log=print) -> dict:
             log(f"[L3] {an}: skipped ({out[an]['skipped']})")
         elif an == "galilean":
             out["galilean"] = galilean(recs, labels, A, pools, layers, cfg, cache_dir, data_dir, log)
+        elif an == "momentum_invariance":
+            out["momentum_invariance"] = momentum_invariance(recs, labels, A, pools, layers, cfg, log)
         elif an == "mass_independence":
             out["mass_independence"] = mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family, log)
         elif an == "transfer":
@@ -491,7 +574,7 @@ def table(res: dict) -> str:
     rows = []
     if res.get("stand_in"):
         rows += [f"**Stand-in run:** {res['stand_in']}", ""]
-    for an in ("galilean", "mass_independence", "transfer"):
+    for an in ("galilean", "momentum_invariance", "mass_independence", "transfer"):
         if "skipped" in res.get(an, {}):
             rows += [f"{an}: skipped ({res[an]['skipped']})", ""]
     g = res.get("galilean")
@@ -509,6 +592,22 @@ def table(res: dict) -> str:
                             (f" [{ic[0]:.3f}, {ic[1]:.3f}]" if ic else "") + f" | {f(v['transfer_error'])} | {f(v['invariance_over_within'])} |")
         if g.get("l2_by_level"):
             rows += ["", "L2 per boost level (adjusted win rate, first metric per contrast): see l3.json `galilean.l2_by_level`."]
+        rows.append("")
+    mi = res.get("momentum_invariance")
+    if mi and "skipped" not in mi:
+        f = lambda x, s="+.3f": "-" if x is None else format(x, s)
+        c = lambda ci: f" [{ci[0]:+.3f}, {ci[1]:+.3f}]" if ci else ""
+        rows += ["## Momentum invariance under boosts", "",
+                 f"Post-velocity probes trained on u = 0 (held-out R² {mi['within_r2_post_velocity']:.3f}; cells searched "
+                 f"{mi['n_cells']}); eta = |m_A dv_A + m_B dv_B| / (|m_A dv_A| + |m_B dv_B|) with true masses and pre "
+                 "velocities (true eta 0 at every level; law: diff 0); antiparallel = -cos(dv_A, dv_B) (mass-free, true 1). "
+                 "diff = boosted - its u = 0 partner, CI over scenes.", "",
+                 "| level | n | eta [95% CI] | eta diff [95% CI] | antiparallel [95% CI] | antiparallel diff [95% CI] | true eta |",
+                 "|---|---|---|---|---|---|---|"]
+        for lv, v in mi["by_level"].items():
+            rows.append(f"| {lv} | {v['n']} | {f(v['eta_mean'], '.3f')}{c(v['eta_ci95'])} | {f(v.get('eta_diff'))}{c(v.get('eta_diff_ci95'))} | "
+                        f"{f(v['antiparallel_mean'])}{c(v['antiparallel_ci95'])} | {f(v.get('antiparallel_diff'))}{c(v.get('antiparallel_diff_ci95'))} | "
+                        f"{f(mi['true'][lv]['eta_mean'], '.3f')} |")
         rows.append("")
     m = res.get("mass_independence")
     if m and "skipped" not in m:

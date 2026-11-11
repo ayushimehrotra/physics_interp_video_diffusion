@@ -3,7 +3,8 @@ level: l1
 families: [f1, f2, f3]
 laws: [energy, com, angular_momentum]   # residual laws (physlaw.eval.laws); momentum is scored as S_mom below
 momentum:                 # S_mom (l1_forecast_laws module docstring)
-  kappa: 0.25             # interaction gate: forecast must move >= kappa * 2 mu u_n (weakest legal collision)
+  gate_ref: floor         # forecast must move >= kappa x what the same probe reads from the real clip (d_min: absolute)
+  kappa: 0.25             # gate fraction; the floor decode itself must move >= kappa * 2 mu u_n (weakest legal collision)
   kappa_sensitivity: [0.1, 0.25, 0.5]
   min_mass_ratio: 1.25    # below: mass-blind eta < 0.11, scene cannot show momentum (54/64 F1 groups pass)
   mass_ratio_bins: [1.25, 2.0, 4.0]

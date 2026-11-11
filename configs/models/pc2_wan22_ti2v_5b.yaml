@@ -4,6 +4,8 @@
 #   train: scripts/10_train_positive_control.py --config configs/models/pc2_wan22_ti2v_5b.yaml
 defaults: wan22_ti2v_5b.yaml
 name: pc2-wan2.2-ti2v-5b
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # positive control: internals only
 positive_control: pc2
 lora:
   path: ${env:PHYSLAW_MODELS,/root/models}/pc2-wan2.2-ti2v-5b/lora   # stage 10 output (PEFT format)

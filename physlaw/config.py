@@ -73,8 +73,10 @@ def _deep_update(dst: dict, src: dict) -> None:
 
 
 LOCATION_KEYS = ("local_path", "path")   # where weights live on disk: not part of a model's identity
-PIN_KEYS = ("sha256",)                    # top-level per-file weight hashes: they verify the pinned revision, so
+PIN_KEYS = ("sha256",                     # top-level per-file weight hashes: they verify the pinned revision, so
                                           # adding them (2026-11-10) leaves existing caches' hashes unchanged
+            "output_track", "track_a_mode", "track_a", "track_b_adapter")   # output-track routing (2026-11-11):
+                                          # which generation path stage 07 uses, not what stage 4 caches
 
 
 def _strip_locations(d):

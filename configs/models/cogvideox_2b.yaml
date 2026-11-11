@@ -1,6 +1,8 @@
 # CogVideoX-2b T2V at its OFFICIAL settings (model card / scheduler_config.json).
 name: cogvideox-2b
 kind: diffusion
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # text only; latent replacement failed the gate (0/20); --allow-hack reproduces it
 hf_id: zai-org/CogVideoX-2b
 revision: 1137dacfc2c9c012bed6a0793f4ecf2ca8e7ba01
 local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-2b   # plain-file copy of that snapshot, every file hash-verified

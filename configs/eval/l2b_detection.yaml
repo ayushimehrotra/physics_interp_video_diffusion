@@ -4,4 +4,11 @@ level: l2b
 l2b:
   fold_seeds: 4            # grouped 5-fold x 4 seeds (cross-fitting allowed below 100 groups, spec §5)
   n_permutations: 500      # within-group label swaps, max over layers x pools
+  norm_routes: true        # fitted_norm (ridge -> true Δp, score |Δp̂|) and composed_norm (ridge -> dv_A, dv_B, true masses)
   # lambdas: default = probe.alphas (logistic L2 penalty grid, standardised features)
+  # Transfer test: train on one contrast, score the other (grouped); compare with the kinematic baseline's transfer
+  # (F1 violators are slower in both contrasts, so speed alone transfers partly).
+  transfer:
+    f1:
+      - {train: [mom_violate_e1, conserve_e1], test: [mom_violate_e015, conserve_e015]}
+      - {train: [mom_violate_e015, conserve_e015], test: [mom_violate_e1, conserve_e1]}

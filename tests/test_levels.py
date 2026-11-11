@@ -183,10 +183,12 @@ def test_track_a_summary_scores_outcome(tmp_path):
     gen = [{"group": g, "seed": 0, "measurable": True, "v_post": [[0.5, 0.0], [0.25, 0.0]]} for g in ("g0", "g1")]
     res = O.track_a_summary(gen, real, tmp_path, ["momentum"], n_boot=50)
     d = res["twins"]["conserve_e1"]
-    assert d["res_momentum_floor"] == pytest.approx(0.0) and d["E_out_floor"] == pytest.approx(0.0)
+    lg = d["legacy"]                                   # r_p / E_out / S_outcome: legacy fields since 2026-11-11
+    assert d["res_momentum_floor"] == pytest.approx(0.0) and lg["E_out_floor"] == pytest.approx(0.0)
     # generated: halfway between the null (no collision) and the elastic outcome -> E = 0.5, S_outcome = 0.5
-    assert d["E_out_generated"] == pytest.approx(0.5) and d["S_outcome"] == pytest.approx(0.5)
-    assert d["S_outcome_ci95"] == pytest.approx([0.5, 0.5])
+    assert lg["E_out_generated"] == pytest.approx(0.5) and lg["S_outcome"] == pytest.approx(0.5)
+    assert lg["S_outcome_ci95"] == pytest.approx([0.5, 0.5])
+    assert "S_outcome" not in d and "momentum" in d
 
 
 def test_transfer_velocity_uses_the_image_plane():
@@ -199,7 +201,9 @@ def test_transfer_velocity_uses_the_image_plane():
     assert L3.clip_target({"physlaw": {"pre_velocity": {"A": [3.0, 4.0]}}}, "velocity").tolist() == [3.0, 4.0]
 
 
-def test_l4_direction_defaults_to_the_evaluated_family():
+def test_l4_direction_defaults_to_f1_mass_beyond_size():
     from physlaw.config import load_config
     cfg = load_config("configs/eval/l4_causal.yaml")
-    assert cfg["families"] == ["f3"] and cfg["direction_data"] is None       # spec §5.6: fitted on F3 itself
+    assert cfg["families"] == ["f3"] and cfg["direction_data"] == "f1"       # F3 hides mass before contact
+    assert cfg["direction_target"] == "residual" and cfg["direction"] == "generative"
+    assert L4._family_dir("f1").name == "f1"

@@ -10,6 +10,8 @@
 # Pair partner with IDENTICAL settings (spec §4.2 group 3): wan22_ti2v_5b_physrvg.yaml (base weights).
 defaults: wan22_ti2v_5b.yaml
 name: physrvg
+output_track: A           # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: native      # v2v: exactly its trained 2 latent / 5 frame context (track_a below)
 dit_weights:
   hf_id: HappyP4nda/PhysRVG
   revision: d8caf2dd7db30d7470d474875c84e6a4eb21b9c6
@@ -30,5 +32,13 @@ official:
   guidance_scale: null    # do_cfg=False: one conditional pass per step
   negative_prompt: ""
 input:
-  center_on_contact: true             # 3.0 s around contact: ~6 context latent frames, ~6 after
+  center_on_contact: true             # 3.0 s around contact (stage 4: ~6 context latent frames, ~6 after)
+# Output track A (physlaw/models/wan.py WanAdapter.generate): exactly the trained v2v context, the first 2 latent
+# frames = 5 frames (pipeline_wan_v2v.py condition_mask[:, :, :2] = 0), ending at the last pre-contact frame of the
+# window; PhysRVG then samples its own 49 frames from there (44 new). At 16 fps (not the paper's 15: 15 does not
+# divide the 48 fps master); stage 4 (internals) keeps every whole pre-contact latent clean as before.
+track_a:
+  context: 5
+  align: 4
+  min_context: 5
 prompt: "The video shows rigid body motion."

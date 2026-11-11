@@ -1,7 +1,8 @@
 """Model config -> adapter class, and weight pinning (spec §4.3).
 
 Dispatch: ``cfg.adapter`` ("module:Class" under physlaw.models) if set, else by ``kind`` (controls), else by the
-base model's exact ``hf_id``. Fine-tunes (VideoREPA, PhysRVG) keep their base's hf_id and add weights on top.
+base model's exact ``hf_id``. Stage 07 track B uses ``cfg.track_b_adapter`` instead when set (``role="track_b"``).
+Fine-tunes (VideoREPA, PhysRVG) keep their base's hf_id and add weights on top.
 
 Pinning: every config pins ``hf_id`` + ``revision`` and ``sha256: {file: hex}`` for its weight files (paths relative to
 ``local_path``; LoRA / DiT override files under their own blocks, as videomae_v2_giant.yaml's ``checkpoint``).
@@ -33,11 +34,15 @@ ADAPTERS_BY_HF_ID = {
     "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers": "wan:WanI2VAdapter",
     "Wan-AI/Wan2.2-I2V-A14B-Diffusers": "wan:WanI2VAdapter",
     "nvidia/Cosmos-Predict2.5-2B": "cosmos_predict:CosmosPredictAdapter",
+    "Wan-AI/Wan2.1-VACE-1.3B-diffusers": "wan_vace:WanVACEAdapter",
+    "Wan-AI/Wan2.1-VACE-14B-diffusers": "wan_vace:WanVACEAdapter",
+    "Lightricks/LTX-Video-0.9.8-13B-distilled": "ltx:LTXConditionAdapter",
 }
 
 
-def adapter_class(cfg):
-    ref = cfg.get("adapter") or ADAPTERS_BY_KIND.get(cfg.get("kind")) or ADAPTERS_BY_HF_ID.get(cfg.get("hf_id"))
+def adapter_class(cfg, role: str | None = None):
+    ref = ((cfg.get("track_b_adapter") if role == "track_b" else None) or cfg.get("adapter")
+           or ADAPTERS_BY_KIND.get(cfg.get("kind")) or ADAPTERS_BY_HF_ID.get(cfg.get("hf_id")))
     if ref is None:
         raise NotImplementedError(f"no adapter for {cfg['name']} (kind={cfg.get('kind')}, hf_id={cfg.get('hf_id')}); "
                                   "see docs/RESUME.md")
@@ -45,10 +50,10 @@ def adapter_class(cfg):
     return getattr(importlib.import_module(f"physlaw.models.{mod}"), cls)
 
 
-def load_adapter(cfg, device: str = "cuda", verify: bool = True):
+def load_adapter(cfg, device: str = "cuda", verify: bool = True, role: str | None = None):
     if verify:
         verify_weights(cfg)
-    return adapter_class(cfg).load(cfg, device)
+    return adapter_class(cfg, role).load(cfg, device)
 
 
 # --------------------------------------------------------------------------- pinning

@@ -8,7 +8,8 @@
 # (704 x 1280, conditional_frame_timestep 0.0001, the shipped UniPC scheduler). The model was trained at 720p, 16 fps.
 name: cosmos-predict2.5-2b
 kind: generator
-output_track: A        # scripts/07_generate_outputs.py
+output_track: A           # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: native      # Video2World: the last 5 context frames (2 latent frames), trained
 hf_id: nvidia/Cosmos-Predict2.5-2B
 revision: 0d37c7498f54cee3c599d438d895a0a4a8608064   # head of branch diffusers/base/post-trained (2026-11-10)
 local_path: ${env:PHYSLAW_MODELS,/root/models}/Cosmos-Predict2.5-2B

@@ -82,7 +82,7 @@ WEAK_MOM_FLOOR = 0.8      # eta_floor above this x eta_blind: S_mom flagged ‡ 
 # S_mom settings (overridable under ``momentum:`` in the L1 config). min_mass_ratio 1.25: below it the
 # mass-blind rule has eta_blind < 0.11, nearly as good as physics, so those scenes cannot show momentum.
 # F1 (64 groups): 54 groups >= 1.25; bins [1.25, 2) 23, [2, 4) 16, >= 4 15.
-MOM_DEFAULTS = {"kappa": 0.25, "kappa_sensitivity": (0.1, 0.25, 0.5), "min_mass_ratio": 1.25,
+MOM_DEFAULTS = {"kappa": 0.25, "gate_ref": "floor", "kappa_sensitivity": (0.1, 0.25, 0.5), "min_mass_ratio": 1.25,
                 "mass_ratio_bins": (1.25, 2.0, 4.0)}
 _MOM_KEYS = ("fc_num", "fc_den", "fl_num", "fl_den", "bl_num", "bl_den")
 
@@ -235,7 +235,18 @@ def _mom_clip(pre, post, ctx, v_fc, v_fl) -> dict:
     bl = laws.momentum_exchange(pre, laws.mass_blind_outcome(pre, post, ctx), ctx)
     m = np.asarray(ctx["m"], float)
     return {"fc_num": fc["num"], "fc_den": fc["den"], "fl_num": fl["num"], "fl_den": fl["den"],
-            "bl_num": bl["num"], "bl_den": bl["den"], "d_min": fc["d_min"], "mass_ratio": float(m.max() / m.min())}
+            "bl_num": bl["num"], "bl_den": bl["den"], "d_min": fc["d_min"], "mass_ratio": float(m.max() / m.min()),
+            "fc_anti": laws.mass_free_momentum(pre, {"v": v_fc}, ctx)["antiparallel"],
+            "fl_anti": laws.mass_free_momentum(pre, {"v": v_fl}, ctx)["antiparallel"]}
+
+
+def _gate(m: dict, src: str, kappa: float, gate_ref: str = "floor") -> bool:
+    """Interaction gate. Floor decode (real collision): D_fl >= kappa * 2 mu u_n. Forecast: D_fc >= kappa * D_fl
+    (gate_ref "floor": relative to what the SAME probe reads from the real clip, so probe shrinkage and noise
+    set the bar) or D_fc >= kappa * 2 mu u_n (gate_ref "d_min": absolute; probe noise alone can clear it)."""
+    if src == "fl":
+        return m["fl_den"] >= kappa * m["d_min"]
+    return m["fc_den"] >= kappa * (m["fl_den"] if gate_ref == "floor" else m["d_min"])
 
 
 def _eta_S(t):
@@ -246,7 +257,7 @@ def _eta_S(t):
     return eta, _S(eta[..., 0], eta[..., 1], eta[..., 2])
 
 
-def _mom_group_sums(per, gs_rows, kappa, lo, hi=np.inf):
+def _mom_group_sums(per, gs_rows, kappa, lo, hi=np.inf, gate_ref="floor"):
     """Per group, the _MOM_KEYS sums over its clips that pass the interaction gate (forecast AND floor decode
     move >= kappa * d_min) and have mass ratio in [lo, hi). Returns ([n_groups, 6], clips used per group)."""
     S = np.zeros((len(gs_rows), len(_MOM_KEYS)))
@@ -256,7 +267,7 @@ def _mom_group_sums(per, gs_rows, kappa, lo, hi=np.inf):
             m = per[c]["mom"]
             if not lo <= m["mass_ratio"] < hi:
                 continue
-            if m["fc_den"] < kappa * m["d_min"] or m["fl_den"] < kappa * m["d_min"]:
+            if not (_gate(m, "fc", kappa, gate_ref) and _gate(m, "fl", kappa, gate_ref)):
                 continue
             S[gi] += [m[k_] for k_ in _MOM_KEYS]
             n[gi] += 1
@@ -268,12 +279,18 @@ def _momentum_scores(per, gs_rows, n_boot, rng, mcfg, score=True) -> dict:
     kappa, rmin = float(mcfg["kappa"]), float(mcfg["min_mass_ratio"])
     groups = [cs[0].split("/")[0] for cs in gs_rows]
     clips = [c for cs in gs_rows for c in cs]
-    gate = lambda c, src, k_: per[c]["mom"][f"{src}_den"] >= k_ * per[c]["mom"]["d_min"]
-    G, n = _mom_group_sums(per, gs_rows, kappa, rmin)
+    gref = str(mcfg.get("gate_ref", "floor"))
+    gate = lambda c, src, k_: _gate(per[c]["mom"], src, k_, gref)
+    gated = [c for c in clips if gate(c, "fc", kappa) and gate(c, "fl", kappa)]
+    anti = lambda k_: float(np.nanmean([per[c]["mom"][k_] for c in gated])) if gated else float("nan")
+    G, n = _mom_group_sums(per, gs_rows, kappa, rmin, gate_ref=gref)
     eta, S = _eta_S(G.sum(0))
     res = {"kappa": kappa, "min_mass_ratio": rmin,
            "interaction_rate": float(np.mean([gate(c, "fc", kappa) for c in clips])),
            "interaction_rate_floor": float(np.mean([gate(c, "fl", kappa) for c in clips])),
+           "gate_ref": gref,
+           "antiparallel": {"forecast": anti("fc_anti"), "floor": anti("fl_anti"),
+                            "note": "mass-free: -cos(dv_A, dv_B) on gated clips, any mass ratio; 1 = opposite pushes"},
            "n_scored_groups": int((n > 0).sum()), "n_scored_clips": int(n.sum()),
            "eta": {"forecast": float(eta[0]), "floor": float(eta[1]), "mass_blind": float(eta[2])},
            "floor_over_blind": float(eta[1] / eta[2]) if eta[2] > 0 else float("nan"),
@@ -287,12 +304,12 @@ def _momentum_scores(per, gs_rows, n_boot, rng, mcfg, score=True) -> dict:
         _, Sb = _eta_S(G[rng.integers(0, len(G), (n_boot, len(G)))].sum(1))
         if np.isfinite(Sb).any():
             res["S_ci95"] = [float(np.nanquantile(Sb, 0.025)), float(np.nanquantile(Sb, 0.975))]
-    res["S_by_kappa"] = {str(k_): float(_eta_S(_mom_group_sums(per, gs_rows, float(k_), rmin)[0].sum(0))[1])
+    res["S_by_kappa"] = {str(k_): float(_eta_S(_mom_group_sums(per, gs_rows, float(k_), rmin, gate_ref=gref)[0].sum(0))[1])
                          for k_ in mcfg["kappa_sensitivity"]}
     edges = [float(x) for x in mcfg["mass_ratio_bins"]] + [np.inf]
     res["by_mass_ratio"] = {}
     for lo, hi in zip(edges[:-1], edges[1:]):
-        Gb, nb = _mom_group_sums(per, gs_rows, kappa, lo, hi)
+        Gb, nb = _mom_group_sums(per, gs_rows, kappa, lo, hi, gate_ref=gref)
         eb, Sb = _eta_S(Gb.sum(0))
         res["by_mass_ratio"][f"[{lo:g}, {hi:g})"] = {"n_clips": int(nb.sum()), "S": float(Sb),
                                                      "eta_forecast": float(eb[0]), "eta_floor": float(eb[1]),
@@ -423,7 +440,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
             def f_mom(v, gids):
                 rows_ = [[f"{g}/{t}" for t in LEGAL] for g in gids]
                 G, _ = _mom_group_sums(out["variants"][v]["_per"], rows_, float(mcfg["kappa"]),
-                                       float(mcfg["min_mass_ratio"]))
+                                       float(mcfg["min_mass_ratio"]),
+                                       gate_ref=str(mcfg.get("gate_ref", "floor")))
                 return float(_eta_S(G.sum(0))[1])
 
             def f_fam(v, gids):

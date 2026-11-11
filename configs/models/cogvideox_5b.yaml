@@ -4,6 +4,8 @@
 # vae.enable_tiling(). 3-D rotary embeddings (transformer config). Pair partner of videorepa_5b.yaml.
 name: cogvideox-5b
 kind: diffusion
+output_track: none        # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # text only; track A only by latent replacement (--allow-hack)
 hf_id: zai-org/CogVideoX-5b
 revision: 8fc5b281006c82b82d34fd2543d2f0ebb4e7e321
 local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-5b   # downloaded without text_encoder/

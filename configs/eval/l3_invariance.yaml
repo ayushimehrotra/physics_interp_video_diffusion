@@ -7,7 +7,7 @@ fold_seeds: 2                 # outer CV repeats (each with held-out (pool, laye
 bootstrap: {n: 2000}
 min_groups: 4                 # fewer groups: the analysis is skipped (test runs may lower it)
 analyses:
-  f4: [galilean]
+  f4: [galilean, momentum_invariance]
   f6: [mass_independence, transfer]
   f7: [mass_independence, transfer]
   f1: [transfer]              # clean -> nuisance
@@ -21,6 +21,9 @@ galilean:                             # F4: a group holds every boost level (twi
   pools: [roi_pair.all, frame.all]
   layers: all
   l2_contrasts: {calibration: ["{level}_e1", "{level}_e015"], list: []}   # L2 per boost level (F4: legal twins only)
+momentum_invariance:                  # F4: eta / antiparallel of decoded post velocities per boost level (levels, pairs,
+  pools: [roi_pair.all, frame.all]    # CV unit from galilean); probes for physlaw.post_velocity A, B (x, y) on u = 0
+  layers: all
 mass_independence:                    # per-object target over window_s after the event; twins as the data generator names them
   families:
     f7: {subfamily: drop, target: accel_z, window_s: 0.2, objects: [A, B], legal: [legal, legal_e04], violating: [heavy_x13]}

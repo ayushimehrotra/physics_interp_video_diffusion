@@ -9,14 +9,25 @@ laws:
   f7: {projectile: [gravity, axis_independence], drop: [gravity, mass_independence], bounce: [bounce]}
   f8: [ramp_energy]
 bootstrap: {n: 2000}
+# Momentum package on generated outcomes (physlaw/eval/outputs.py, "Momentum package"); replaces r_p / S_outcome.
+#   kappa: interaction gate, track A D = |m_A dv_A| + |m_B dv_B| >= kappa * 2 mu u_n; track B |dv_A - dv_B| >= kappa * |u_n|
+#   min_mass_ratio: track A S_mom pools clips with m_max / m_min >= this (below, the mass-blind rule is nearly right)
+#   e_tol: track B "e_hat <= 1" share counts e_hat <= 1 + e_tol (readout noise: real Wan-geometry e = 1 clips 0.91,
+#          e = 1.5 energy_create clips 0.05)
+momentum: {kappa: 0.25, min_mass_ratio: 1.25, e_tol: 0.1}
 # Track A (§6.2): continue the real pre-event context with the adapter's generate().
 track_a:
+  # Roster (configs/models/<stem>.yaml; output_track A, track_a_mode in brackets): native multi-frame conditioning,
+  # the official VACE sibling of Wan2.1-T2V, and the flagged TI2V-5B clamp (PhysRVG's pair partner).
+  models: [cosmos_predict25_2b, physrvg, ltx_video_13b_distilled, wan21_vace_1_3b, wan21_vace_14b,
+           wan22_ti2v_5b_physrvg]   # native, native, native, variant, variant, hack
   seeds_per_clip: 4
   # feasibility gate: seed-0 generations of the first n_clips groups; below min_pass_rate measurable, no extra seeds
   gate: {n_clips: 20, min_pass_rate: 0.5}
 # Track B (§6.3): frame 0 + the minimal prompt through the generator's adapter (output_track: B); strict and loose
 # gates (stage 8).
 track_b:
+  models: [wan22_i2v_a14b, wan21_i2v_14b, cogvideox15_5b_i2v]   # output_track B
   n_groups: 20
   seeds: [0]
 # Tracker (§6.1): colour tracker in physlaw/eval/outputs.py, validated per family on real clips (stage 8 --real).

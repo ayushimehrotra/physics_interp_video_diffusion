@@ -2,6 +2,8 @@
 # frames, off the supported 16N+1 lengths; that result does not carry over.
 name: cogvideox1.5-5b-i2v
 kind: diffusion
+output_track: B           # scripts/07_generate_outputs.py; models/track_a.py
+track_a_mode: hack        # frame 0 + prompt via the official I2V pipeline (track_b_adapter); latent replacement A needs --allow-hack
 hf_id: zai-org/CogVideoX1.5-5B-I2V
 local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX1.5-5B-I2V
 revision: 46c90528707aebbe69066390b4fe7e7d24c9c2a4   # from the download's .cache/huggingface metadata
@@ -19,6 +21,7 @@ official:
   # CogVideoX-5B-I2V"); the checkpoint's scheduler_config.json default is DDIM. Repo recommendation used.
   scheduler: CogVideoXDPMScheduler
   use_dynamic_cfg: true
+track_b_adapter: cogvideox_i2v:CogVideoX15I2VPipelineAdapter   # stage 07 track B: the official I2V pipeline call
 input:
   center_on_contact: false
 token_grid: {patch: 2, patch_t: 2, vae_spatial: 8, vae_temporal: 4}

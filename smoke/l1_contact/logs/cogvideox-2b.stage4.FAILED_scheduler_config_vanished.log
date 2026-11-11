@@ -1,0 +1,38 @@
+[04] model=cogvideox-2b clips=320 groups=64 out=/workspace/meta/physlaw/cache/cogvideox-2b/f1 hash=72e33cd011b3
+Loading pipeline components...:   0%|                                                                                                   | 0/4 [00:00<?, ?it/s]Loading pipeline components...:  25%|██████████████████████▊                                                                    | 1/4 [00:12<00:38, 12.71s/it]Loading pipeline components...:  50%|█████████████████████████████████████████████▌                                             | 2/4 [00:14<00:12,  6.18s/it]Loading pipeline components...:  50%|█████████████████████████████████████████████▌                                             | 2/4 [00:14<00:14,  7.16s/it]
+Traceback (most recent call last):
+  File "/workspace/meta/physlaw/scripts/04_cache_activations.py", line 212, in <module>
+    main()
+  File "/workspace/meta/physlaw/scripts/04_cache_activations.py", line 126, in main
+    m = load_adapter(cfg)
+        ^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physlaw/physlaw/models/registry.py", line 56, in load_adapter
+    return adapter_class(cfg, role).load(cfg, device)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physlaw/physlaw/models/cogvideox.py", line 90, in load
+    pipe = _load_pipe(CogVideoXPipeline, cfg, "float16", device)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physlaw/physlaw/models/cogvideox.py", line 54, in _load_pipe
+    pipe = pipe_cls.from_pretrained(src, torch_dtype=dtype, device_map=device, text_encoder=None, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/diffusers/pipelines/pipeline_utils.py", line 1025, in from_pretrained
+    loaded_sub_model = load_sub_model(
+                       ^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/diffusers/pipelines/pipeline_loading_utils.py", line 849, in load_sub_model
+    loaded_sub_model = load_method(os.path.join(cached_folder, name), **loading_kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/diffusers/schedulers/scheduling_utils.py", line 151, in from_pretrained
+    config, kwargs, commit_hash = cls.load_config(
+                                  ^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/root/envs/physics_venv/lib/python3.12/site-packages/diffusers/configuration_utils.py", line 386, in load_config
+    raise EnvironmentError(
+OSError: Error no file named scheduler_config.json found in directory /workspace/models/CogVideoX-2b/scheduler.

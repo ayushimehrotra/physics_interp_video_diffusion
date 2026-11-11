@@ -269,16 +269,23 @@ Status: **DONE**, **RUNNING**, **ADD**. Priority as in Section 2.3.
 | Wan2.2-TI2V-5B | PhysRVG (weights: HappyP4nda/PhysRVG) | RL reward for rigid-body collisions | P0 |
 | CogVideoX-5B | VideoREPA-5B (released LoRA adapter, github.com/aHapBean/VideoREPA) | Aligns DiT token relations to VideoMAE-v2 | P0 |
 
-Run L0, L1, L2, L2b on both members of each pair with identical settings. VideoREPA's teacher (VideoMAE-v2) is at chance on L2 in this benchmark; report whether the student gains law sensitivity the teacher lacks. Both pairs are text-to-video or TI2V: skip output track A for them.
+Run L0, L1, L2, L2b on both members of each pair with identical settings. VideoREPA's teacher (VideoMAE-v2) is at chance on L2 in this benchmark; report whether the student gains law sensitivity the teacher lacks. Output track A: PhysRVG is natively video-conditioned (its v2v pipeline holds the first 2 latent frames = 5 frames clean), so it runs track A on exactly that context (Group 4); its base runs the same 2-latent clamp, flagged `track_a_mode: hack`, as the pair comparison. The CogVideoX-5B / VideoREPA pair is text-to-video: no track A (latent replacement only with `--allow-hack`).
 
 Follow-up (not in this spec's milestones): a VideoREPA variant aligned to V-JEPA 2 instead of VideoMAE-v2, using VideoREPA's public training code.
 
 #### Group 4. Output track A (scene continuation)
 
-| Model | Priority | Notes |
-|---|---|---|
-| Cosmos-Predict2.5 Video2World | P0 | Natively multi-frame conditioned; the remaining route to track A after CogVideoX latent replacement, held-frame SDEdit and reconstruction guidance all failed |
-| LTX-Video (multi-frame conditioning) | P1 | Backup if Cosmos fails the gate |
+Track A needs a model that continues several REAL frames (velocities visible); a model conditioned on one frame cannot be track A. Every generator config states `output_track` (A / B / none) and `track_a_mode`: `native` (the model's own trained multi-frame conditioning), `variant` (an official frame-conditioned sibling of a text-only model), `hack` (conditioning the model was not trained for; flagged in every output record) or `n/a`. Stage 07 refuses track A for `none` / B models unless `--allow-hack`. Context = frames handed to the model, ending at the last pre-contact frame of its input window (`physlaw/models/track_a.py`; contact at master frame 120 in the examples).
+
+| Model (config) | Mode | Context | fps | Priority | Notes |
+|---|---|---|---|---|---|
+| Cosmos-Predict2.5-2B Video2World (`cosmos_predict25_2b`) | native | last 5 frames (2 latents) of the whole pre-contact latents | 16 | P0 | Gated weights; own venv (diffusers ≥ 0.39) |
+| PhysRVG (`physrvg`) | native | 5 frames = 2 latents (its trained v2v context), masters 105–117 | 16 | P0 | Paper: 15 fps; 15 does not divide the 48 fps master |
+| Wan2.2-TI2V-5B at PhysRVG settings (`wan22_ti2v_5b_physrvg`) | **hack** | same 2-latent clamp | 16 | P0 | First frame only natively; pair comparison with PhysRVG |
+| Wan2.1-VACE-1.3B / 14B (`wan21_vace_1_3b`, `wan21_vace_14b`) | variant | every pre-contact window frame (40, masters 0–117), mask 0; rest grey, mask 1 | 16 | P0 / P1 | Official siblings of Wan2.1-T2V-1.3B / 14B (text only) |
+| LTX-Video 0.9.8 13B distilled (`ltx_video_13b_distilled`) | native | last 49 pre-contact frames (8k+1), masters 22–118 | 24 | P1 | Single pass at 480 × 832 (the card's multi-scale refinement skipped) |
+
+Not track A: CogVideoX-2b / 5b, VideoREPA-5B, Wan2.1-T2V-1.3B / 14B, Wan2.2-TI2V-5B (own settings) are `output_track: none` (latent replacement, gate 0/20 on CogVideoX-2b, only with `--allow-hack`).
 
 #### Group 5. Output track B (self-consistency from frame 0)
 
@@ -286,6 +293,7 @@ Follow-up (not in this spec's milestones): a VideoREPA variant aligned to V-JEPA
 |---|---|---|
 | Wan2.2-I2V-A14B | P0 | Started (22 clips). Finish 20 groups × 4 seeds |
 | Wan2.1-I2V-14B | P1 | ADD |
+| CogVideoX1.5-5B-I2V (official I2V pipeline, `track_b_adapter`) | P2 | ADD |
 
 #### Group 6. Controls (Section 4.4)
 
@@ -426,11 +434,11 @@ Validated per family on real legal and violating clips before use. F1 (16 fps): 
 
 ### 6.2 Track A: scene continuation
 
-Generate from the real pre-event context; score with the same laws as L1 using the readout. Run a feasibility gate first (20 clips); if fewer than 50% are measurable, report the gate result and skip extra seeds. Generators: Group 4.
+Generate from the real pre-event context; score with the same laws as L1 using the readout. Run a feasibility gate first (20 clips); if fewer than 50% are measurable, report the gate result and skip extra seeds. Generators: Group 4 (`output_track: A`); report `track_a_mode` with every result and keep `hack` rows (TI2V-5B clamp, `--allow-hack` runs) apart from native / variant ones. The generated clip is aligned with the model's input window: real frames before the context, then the model's output.
 
 ### 6.3 Track B: self-consistency from frame 0
 
-Generate from frame 0 with the minimal prompt; score whether the generated event obeys each law given its own generated pre-event state. Report strict and loose gates. Generators: Group 5.
+Generate from frame 0 with the minimal prompt; score whether the generated event obeys each law given its own generated pre-event state. Report strict and loose gates. Generators: Group 5 (`output_track: B`).
 
 ### 6.4 External output benchmarks (optional)
 

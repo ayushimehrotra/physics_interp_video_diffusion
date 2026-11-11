@@ -1,0 +1,30 @@
+# Wan2.1-VACE-14B (spec §4.2 group 4): output track A route for Wan2.1-T2V-14B (``track_a_mode: variant``); same
+# code path and settings as wan21_vace_1_3b.yaml (generate.py VACE defaults: 81 frames, 16 fps, 50 steps, shift 16,
+# guidance 5). VACE-14B supports 480P and 720P; 832*480 is used so the 1.3B and 14B compare at equal input (as the
+# T2V pair). Apache-2.0, not gated.
+defaults: wan21_vace_1_3b.yaml
+name: wan2.1-vace-14b
+output_track: A
+track_a_mode: variant     # official frame-conditioned sibling of Wan2.1-T2V-14B
+hf_id: Wan-AI/Wan2.1-VACE-14B-diffusers
+revision: db79b90c60bbb45ceec9e41b9d5a4df934538ac4
+local_path: ${env:PHYSLAW_MODELS,/root/models}/Wan2.1-VACE-14B-diffusers
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-VACE-14B-diffusers@db79b90c60bbb45ceec9e41b9d5a4df934538ac4 (Hub LFS sha256); verified by physlaw.models.registry.
+sha256:
+  text_encoder/model-00001-of-00003.safetensors: a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58
+  text_encoder/model-00002-of-00003.safetensors: d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7
+  text_encoder/model-00003-of-00003.safetensors: 0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f
+  transformer/diffusion_pytorch_model-00001-of-00013.safetensors: bd8bbb8834a274525ab65cbb063f21aa58973a054bfd1638bfe395504c9d9b99
+  transformer/diffusion_pytorch_model-00002-of-00013.safetensors: 8d24b40a5ea6bb21cdc0115128241ffeb44184b2419f4b1585af1573ed5c7839
+  transformer/diffusion_pytorch_model-00003-of-00013.safetensors: 7f550f93b3c36c13015dd551109ff63528251864c9513acc2e0a502807b8a91c
+  transformer/diffusion_pytorch_model-00004-of-00013.safetensors: 6a701d601e2cbe3da3515b24d59f56deb5ca2c973c778ff7911f579ec5b8ec11
+  transformer/diffusion_pytorch_model-00005-of-00013.safetensors: 7eb65433e529b975f84897f6572af1ae148d82e7fd0ee7c5f4191158736b104f
+  transformer/diffusion_pytorch_model-00006-of-00013.safetensors: aae199dea0aeb96347e9af9e3cb90679c1c8c2f42c76ee3cead2ea240c909d07
+  transformer/diffusion_pytorch_model-00007-of-00013.safetensors: 53c24e663dece6ff0737b03e5cc670118998231877ba7bad29824ff0500589d4
+  transformer/diffusion_pytorch_model-00008-of-00013.safetensors: 333eaca9dce56bf3083bbab4630aa081b7c403a27ba94894a7756d631529fd9a
+  transformer/diffusion_pytorch_model-00009-of-00013.safetensors: 8af811e7ed2ab64a3f6d07827d1b975a9804b78d63c2b3989024bc1b67ac6e5d
+  transformer/diffusion_pytorch_model-00010-of-00013.safetensors: e8b631e38f0ad21a63c631069658d4be4b55e0cb15e8f5848567482b5862ba63
+  transformer/diffusion_pytorch_model-00011-of-00013.safetensors: 21032fe150df6f3ac26780fb8ca38d05c4a9585a1b774ceadb5d42bc96ff1b27
+  transformer/diffusion_pytorch_model-00012-of-00013.safetensors: e48bce2ab6bb0885d72ff5e79c56c29335051e5ad715a03807267e248addaff8
+  transformer/diffusion_pytorch_model-00013-of-00013.safetensors: e0e39ee859fc696ebd2c0982202a5d1cf8206eeb82b3b582d954707b9f980f12
+  vae/diffusion_pytorch_model.safetensors: d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793

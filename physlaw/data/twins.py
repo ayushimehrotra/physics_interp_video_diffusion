@@ -216,8 +216,12 @@ def f1_twins(pre: PreState, post_a, post_b, e_sim: float, delta_split: float, *,
     return {k: out[k] for k in F1_TWINS}
 
 
-def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS) -> dict[str, Twin]:
-    """F2: the legal outcome at each restitution level, identical pre-contact segments."""
+def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS, impossible_levels=()) -> dict[str, Twin]:
+    """F2: the legal outcome at each restitution level, identical pre-contact segments.
+
+    ``impossible_levels`` (e > 1) continue the ladder past e = 1 with the same exact restitution edit:
+    momentum conserved to round-off, KE_post - KE_pre = (1/2) mu (e^2 - 1) u_n^2 > 0 (energy created). Named like
+    the ladder (``e1.1`` ...), record kind ``energy_create``, energy_physical False."""
     pre.check()
     out = {}
     for e in levels:
@@ -228,7 +232,93 @@ def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS) -> d
             va, vb, rec = _restitution(pre, post_a, post_b, e_sim, e)
             rec = {"kind": "restitution", **rec}
         out[name] = Twin(name, va, vb, float(e), True, True, rec)
+    for e in impossible_levels:
+        e = float(e)
+        if e <= 1.0:
+            raise ValueError(f"impossible level {e} must exceed 1 (a legal level belongs in `levels`)")
+        name = f"e{e:.1f}"
+        va, vb, rec = _restitution(pre, post_a, post_b, e_sim, e)
+        ke = kinetic_energy(pre, va, vb)
+        out[name] = Twin(name, va, vb, e, True, ke <= ke_pre(pre) + 1e-12,
+                         {"kind": "energy_create", "lambda": (1.0 + e) / (1.0 + e_sim),
+                          "ke_ratio_vs_pre": ke / ke_pre(pre), **rec})
     return out
+
+
+def momentum_eta(pre: PreState, v_a, v_b) -> float:
+    """Momentum-exchange imbalance η = |q_A + q_B| / (|q_A| + |q_B|), q_i = m_i dv_i.
+
+    numpy twin of ``physlaw.eval.laws.momentum_exchange`` (that package needs torch-free imports
+    of the eval tree; the data code stays standalone). 0 on a legal outcome, 1 with no transfer."""
+    q_a = pre.m_a * (np.asarray(v_a, float)[:2] - pre.v_a)
+    q_b = pre.m_b * (np.asarray(v_b, float)[:2] - pre.v_b)
+    den = float(np.linalg.norm(q_a) + np.linalg.norm(q_b))
+    return float(np.linalg.norm(q_a + q_b) / den) if den > 0 else float("nan")
+
+
+def post_speed_norm(v_a, v_b) -> float:
+    """Frobenius norm of both post velocities (the ``viol_slower`` statistic of L2's ideal observers)."""
+    return float(np.linalg.norm(np.stack([np.asarray(v_a, float)[:2], np.asarray(v_b, float)[:2]])))
+
+
+def violator_name(e: float, sign_tag: str) -> str:
+    return f"mom_violate_e{e:g}_{sign_tag}"
+
+
+def _fit_delta(split_honest: float, delta: float, margin: float, min_mag: float) -> float | None:
+    """``delta`` if s' = s - delta stays in [margin, 1 - margin]; else the largest same-sign
+    magnitude that fits, or None when that is below ``min_mag``."""
+    lo, hi = split_honest - (1.0 - margin), split_honest - margin
+    if lo - 1e-12 <= delta <= hi + 1e-12:
+        return delta
+    room = hi if delta > 0 else -lo
+    return math.copysign(room, delta) if room >= min_mag else None
+
+
+def f2_violators(pre: PreState, post_a, post_b, e_sim: float, e_levels, magnitude: float, *,
+                 margin: float = 0.05, min_magnitude: float = 0.10, signs=("pos", "neg")) -> tuple[dict[str, Twin], dict]:
+    """F2 momentum violators: the F1 split edit (common drift along n) on the legal outcome at each e.
+
+    Sign is two-sided in speed. ``neg``: drift against v_cm . n (:func:`ke_reducing_sign`, F1's
+    choice), lowers |v_cm|, so the violator is usually SLOWER than its legal base; ``pos``: drift
+    along v_cm . n, always FASTER (KE_post = KE_cm + (M/2)|v_cm'|^2 and |v_cm'| grows). One shared
+    split magnitude per group; a sign whose s' = s - delta leaves [margin, 1 - margin] is shrunk to
+    the largest that fits, or skipped when that is below ``min_magnitude``.
+
+    Returns (twins, skipped) where skipped maps a would-be name to the reason.
+    """
+    pre.check()
+    post_a, post_b = CP._xy(post_a), CP._xy(post_b)
+    s_honest = pre.m_a / (pre.m_a + pre.m_b)
+    kr = ke_reducing_sign(pre)
+    sign_of = {"neg": kr, "pos": -kr}
+    out: dict[str, Twin] = {}
+    skipped: dict[str, str] = {}
+    for e in e_levels:
+        e = float(e)
+        if abs(e - e_sim) < 1e-12:
+            va, vb = post_a.copy(), post_b.copy()
+        else:
+            va, vb, _ = _restitution(pre, post_a, post_b, e_sim, e)
+        ke_legal, sp_legal = kinetic_energy(pre, va, vb), post_speed_norm(va, vb)
+        for tag in signs:
+            name = violator_name(e, tag)
+            delta = _fit_delta(s_honest, sign_of[tag] * float(magnitude), margin, min_magnitude)
+            if delta is None:
+                skipped[name] = "split_does_not_fit"
+                continue
+            va2, vb2, srec = CP.split_edit(pre, va, vb, delta)
+            ke = kinetic_energy(pre, va2, vb2)
+            rec = {"kind": "split", "base_e": e, "base": f"legal_e{e:g}", "drift_sign": tag,
+                   "drift_along_vcm": tag == "pos", "delta_shrunk": bool(abs(delta) < abs(magnitude) - 1e-12),
+                   "eta": momentum_eta(pre, va2, vb2),
+                   "ke_ratio_vs_legal": ke / ke_legal if ke_legal > 0 else float("inf"),
+                   "speed_ratio_vs_legal": post_speed_norm(va2, vb2) / sp_legal if sp_legal > 0 else float("inf"),
+                   "ke_ratio_vs_pre": ke / ke_pre(pre),
+                   "optional": True, **srec}
+            rec["faster_than_legal"] = bool(rec["speed_ratio_vs_legal"] > 1.0)
+            out[name] = Twin(name, va2, vb2, e, False, ke <= ke_pre(pre) + 1e-12, rec)
+    return out, skipped
 
 
 def f3_twins(pre: PreState, e: float, ratios=F3_RATIOS, m_total: float | None = None) -> dict[str, Twin]:

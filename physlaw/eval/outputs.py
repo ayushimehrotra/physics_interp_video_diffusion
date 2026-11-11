@@ -395,9 +395,12 @@ def _boot_ci(vals_by_group: dict, stat, n_boot: int, seed: int = 0):
     return [float(np.nanquantile(bo, 0.025)), float(np.nanquantile(bo, 0.975))]
 
 
-def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000) -> dict:
-    """Per legal twin: drop rates (generated, real), mean residuals of the generated outcome vs the real-clip
-    floor (L1's r_p / r_E / E_out plus every law in ``laws``), S_outcome with a group-bootstrap CI."""
+def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000, mom_cfg: dict | None = None) -> dict:
+    """Per legal twin: drop rates (generated, real), the S_mom package (``momentum``, primary; see
+    :func:`track_a_momentum`), mean residuals of the generated outcome vs the real-clip floor for every law in
+    ``laws``, and under ``legacy`` L1's r_p / r_E / E_out and S_outcome (kept for comparison, not law tests: r_p
+    scores "nothing happened" as perfect, S_outcome's ceiling depends on the hidden e). ``legal`` pools the twins'
+    momentum package."""
     import json
     from collections import Counter
     from physlaw.eval.l1_forecast_laws import _S
@@ -413,30 +416,273 @@ def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000) -> 
             return self_residuals(r, L, laws)
         return {**score(r["v_post"], L), **law_residuals(L, laws_for(laws, r), r["v_post"], r.get("x_post"))}
     all_laws = sorted({l for v in laws.values() for l in v}) if isinstance(laws, dict) else list(laws)
-    out = {"n_groups": len({r["group"] for r in gen_rows}), "laws": all_laws, "twins": {}}
+    mcfg = {**MOM_DEFAULTS, **(mom_cfg or {})}
+    out = {"n_groups": len({r["group"] for r in gen_rows}), "laws": all_laws, "momentum_config": mcfg, "twins": {}}
     keys = ("r_p", "r_E", "E_out", *TRAJ_KEYS, *(f"res_{l}" for l in all_laws))
-    for t in sorted({r["twin"] for r in real_rows}, key=lambda x: (LEGAL.index(x) if x in LEGAL else len(LEGAL), x)):
+    twins = sorted({r["twin"] for r in real_rows}, key=lambda x: (LEGAL.index(x) if x in LEGAL else len(LEGAL), x))
+    mom = track_a_momentum(gen_rows, real_rows, labels, twins, mcfg, n_boot)
+    for t in twins:
         G = [{**r, **scored(r, t)} if r["measurable"] else r for r in gen_rows]
         R = [{**r, **scored(r, t)} if r["measurable"] else r for r in real_rows if r["twin"] == t]
         Gm, Rm = [r for r in G if r["measurable"]], [r for r in R if r["measurable"]]
         d = {"n_generated": len(G), "measurable_generated": len(Gm), "drop_rate_generated": 1 - len(Gm) / max(len(G), 1),
              "drop_reasons_generated": dict(Counter(r.get("reason", "ok") for r in G if not r["measurable"])),
              "n_real": len(R), "measurable_real": len(Rm), "drop_rate_real": 1 - len(Rm) / max(len(R), 1)}
+        if t in mom:
+            d["momentum"] = mom[t]
+        legacy = {}
         if Gm and Rm:
             for kk in keys:
                 g_, r_ = [r[kk] for r in Gm if np.isfinite(r.get(kk, np.nan))], [r[kk] for r in Rm if np.isfinite(r.get(kk, np.nan))]
                 if g_ and r_:
-                    d[f"{kk}_generated"], d[f"{kk}_floor"] = float(np.mean(g_)), float(np.mean(r_))
-        if "E_out_generated" in d:
-            d["S_outcome"] = _score(d["E_out_generated"], d["E_out_floor"], 1.0)
-            fl = d["E_out_floor"]
+                    tgt = legacy if kk in LEGACY_KEYS else d
+                    tgt[f"{kk}_generated"], tgt[f"{kk}_floor"] = float(np.mean(g_)), float(np.mean(r_))
+        if "E_out_generated" in legacy:
+            legacy["S_outcome"] = _score(legacy["E_out_generated"], legacy["E_out_floor"], 1.0)
+            fl = legacy["E_out_floor"]
             by_g = {}
             for r in Gm:
                 by_g.setdefault(r["group"], []).append(r["E_out"])
-            d["S_outcome_ci95"] = _boot_ci(by_g, lambda v: _score(float(np.mean(v)), fl, 1.0), n_boot)
+            legacy["S_outcome_ci95"] = _boot_ci(by_g, lambda v: _score(float(np.mean(v)), fl, 1.0), n_boot)
+        if legacy:
+            d["legacy"] = {**legacy, "note": "not law tests: r_p (= res_momentum) is 0 for pass-through; S_outcome's "
+                                             "ceiling is 1 - |e - e*| / (1 + e) (hidden restitution)"}
         out["twins"][t] = d
+    if "legal" in mom:
+        out["momentum_legal"] = mom["legal"]
     out["rows_generated"], out["rows_real"] = gen_rows, real_rows
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Momentum package on generated outcomes (2026-11-11; replaces r_p / S_outcome as the momentum test)
+# --------------------------------------------------------------------------- #
+# Track A (true masses, true contact normal): L1's S_mom on the generated outcome.
+#   q_i = m_i dv_i, D = |q_A| + |q_B|, eta = |q_A + q_B| / D (laws.momentum_exchange).
+#   interaction gate: D >= kappa * d_min, d_min = 2 mu u_n (the weakest legal collision). interaction_rate = share
+#   of measurable generated clips that pass it (did the model make the balls exchange momentum at all?).
+#   S_mom = 1 - (eta_gen - eta_real) / (eta_blind - eta_real), each eta pooled as a ratio of sums over clips that pass
+#   the gate (generated AND the real readout of the same twin) with mass ratio >= min_mass_ratio. eta_real = the same
+#   readout on the real twin (the readout's own floor), eta_blind = the mass-blind rule on the real outcome
+#   (laws.mass_blind_outcome, eta = |m_A - m_B| / (m_A + m_B)). Undefined (NaN) when eta_real >= eta_blind.
+#   Group-bootstrap CI.
+# Track B (masses unknown): mass-free checks (laws.mass_free_momentum) on the clip's own measured states.
+#   contact normal n from the generated contact POSITIONS: the pre-contact straight lines (position_pre at the
+#   contact frame + velocity_pre) are run to the first time the centres are r_A + r_B apart (closest approach if they
+#   never are: contact_miss), n = unit(x_B - x_A) there; the same for the post lines run backwards to separation, and
+#   n = the normalised mean of the two (real F1 at the Wan geometry: error vs the true normal median 2.3 deg, p90 10).
+#   A miss puts n perpendicular to the relative velocity, so u_n = 0 and e_hat is undefined there.
+#   gate: |dv_A - dv_B| >= kappa * |u_n|, u_n = (v_A - v_B) . n (the weakest legal collision changes the relative
+#   velocity by u_n; |v_A - v_B| if u_n = 0).
+#   antiparallel = -cos(dv_A, dv_B) (1 for every legal outcome, any masses), normal alignment = mean of |dv . n| / |dv|,
+#   e_hat = -(v_A' - v_B') . n / u_n and the share e_hat <= 1 + e_tol (no energy creation along n, mass-free),
+#   implied mass ratio |dv_B| / |dv_A| and its spread (SD of the log) across seeds of one group (one scene, one ratio).
+#   Real-clip floors: the same on the real twins (§6.1 validation readouts); ratio spread across the legal twins.
+MOM_DEFAULTS = {"kappa": 0.25, "min_mass_ratio": 1.25, "e_tol": 0.1}   # e_tol: real e = 1 share 0.91, e = 1.5: 0.05
+LEGACY_KEYS = ("r_p", "r_E", "E_out")
+_A_KEYS = ("gen_num", "gen_den", "real_num", "real_den", "bl_num", "bl_den")
+
+
+def mom_clip_a(v_gen, v_real, labels: dict) -> dict:
+    """S_mom ingredients of one generated outcome (track A) against one legal twin. ``v_real``: that twin's real-clip
+    readout (None if not measurable)."""
+    from physlaw.eval import laws as Lw
+    pre, post, ctx = Lw.from_labels(labels)
+    p = pre["p"]
+    g = Lw.momentum_exchange(pre, {"v": np.asarray(v_gen, float), "p": p}, ctx)
+    b = Lw.momentum_exchange(pre, Lw.mass_blind_outcome(pre, post, ctx), ctx)
+    m = np.asarray(ctx["m"], float)
+    out = {"gen_num": g["num"], "gen_den": g["den"], "bl_num": b["num"], "bl_den": b["den"], "d_min": g["d_min"],
+           "mass_ratio": float(m.max() / m.min()),
+           "gen_anti": Lw.mass_free_momentum(pre, {"v": np.asarray(v_gen, float)}, ctx)["antiparallel"],
+           "real_num": np.nan, "real_den": np.nan, "real_anti": np.nan}
+    if v_real is not None:
+        r = Lw.momentum_exchange(pre, {"v": np.asarray(v_real, float), "p": p}, ctx)
+        out.update(real_num=r["num"], real_den=r["den"],
+                   real_anti=Lw.mass_free_momentum(pre, {"v": np.asarray(v_real, float)}, ctx)["antiparallel"])
+    return out
+
+
+def _eta_S3(t):
+    """t [..., 6] pooled sums in _A_KEYS order -> (eta [..., 3] gen / real / blind, S_mom [...])."""
+    from physlaw.eval.l1_forecast_laws import _S
+    t = np.asarray(t, float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        eta = np.where(t[..., 1::2] > 0, t[..., 0::2] / t[..., 1::2], np.nan)
+    return eta, _S(eta[..., 0], eta[..., 1], eta[..., 2])
+
+
+def track_a_momentum(gen_rows, real_rows, labels, twins, cfg: dict | None = None, n_boot: int = 2000,
+                     seed: int = 0) -> dict:
+    """{twin | "legal": S_mom package} for the measurable generated collision outcomes (rows with ``v_post``).
+    ``labels(group, twin)`` -> labels.json dict. "legal" pools the twins (each generated clip once per twin)."""
+    cfg = {**MOM_DEFAULTS, **(cfg or {})}
+    kappa, rmin = float(cfg["kappa"]), float(cfg["min_mass_ratio"])
+    real = {(r["group"], r["twin"]): r for r in real_rows}
+    gen = [r for r in gen_rows if r.get("measurable") and "v_post" in r]
+    per = {}
+    for t in twins:
+        cl = []
+        for r in gen:
+            rr = real.get((r["group"], t))
+            vr = rr["v_post"] if rr and rr.get("measurable") and "v_post" in rr else None
+            cl.append({"group": r["group"], **mom_clip_a(r["v_post"], vr, labels(r["group"], t))})
+        fl = []                                            # every measurable real clip of this twin (floor over all)
+        for rr in real_rows:
+            if rr["twin"] == t and rr.get("measurable") and "v_post" in rr:
+                fl.append(mom_clip_a(rr["v_post"], rr["v_post"], labels(rr["group"], t)))
+        per[t] = (cl, fl)
+    if len(twins) > 1:
+        per["legal"] = ([c for t in twins for c in per[t][0]], [c for t in twins for c in per[t][1]])
+    out = {}
+    for t, (cl, fl) in per.items():
+        if not cl and not fl:
+            continue
+        gate_g = [c["gen_den"] >= kappa * c["d_min"] for c in cl]
+        gate_r = [np.isfinite(c["real_den"]) and c["real_den"] >= kappa * c["d_min"] for c in cl]
+        use = [c for c, a, b in zip(cl, gate_g, gate_r) if a and b and c["mass_ratio"] >= rmin]
+        groups = sorted({c["group"] for c in use})
+        G = np.zeros((len(groups), len(_A_KEYS)))
+        for c in use:
+            G[groups.index(c["group"])] += [c[k] for k in _A_KEYS]
+        eta, S = _eta_S3(G.sum(0)) if len(use) else (np.full(3, np.nan), np.nan)
+        flu = [c for c in fl if c["real_den"] >= kappa * c["d_min"] and c["mass_ratio"] >= rmin]
+        eta_all = (sum(c["real_num"] for c in flu) / sum(c["real_den"] for c in flu)) if flu else np.nan
+        bl_all = (sum(c["bl_num"] for c in flu) / sum(c["bl_den"] for c in flu)) if flu else np.nan
+        gated_any = [c for c, a, b in zip(cl, gate_g, gate_r) if a]
+        nm = lambda v: float(np.nanmean(v)) if len(v) and np.isfinite(v).any() else float("nan")
+        d = {"kappa": kappa, "min_mass_ratio": rmin, "n_measurable_generated": len(cl),
+             "n_interacting": int(sum(gate_g)),
+             "interaction_rate": float(np.mean(gate_g)) if cl else float("nan"),
+             "interaction_rate_real": float(np.mean([c["real_den"] >= kappa * c["d_min"] for c in fl])) if fl else float("nan"),
+             "n_scored_clips": len(use), "n_scored_groups": len(groups),
+             "eta_generated": float(eta[0]), "eta_real": float(eta[1]), "eta_blind": float(eta[2]),
+             "eta_real_all": float(eta_all), "eta_blind_all": float(bl_all), "n_real_all": len(flu),
+             "S_mom": float(S), "S_mom_defined": bool(np.isfinite(eta[1]) and np.isfinite(eta[2]) and eta[1] < eta[2]),
+             "S_mom_ci95": None,
+             "antiparallel_generated": nm([c["gen_anti"] for c in gated_any]),
+             "antiparallel_real": nm([c["real_anti"] for c in fl if c["real_den"] >= kappa * c["d_min"]]),
+             "group_sums": {g: G[i].tolist() for i, g in enumerate(groups)}}
+        if n_boot and len(groups):
+            rng = np.random.default_rng(seed)
+            _, Sb = _eta_S3(G[rng.integers(0, len(G), (n_boot, len(G)))].sum(1))
+            if np.isfinite(Sb).any():
+                d["S_mom_ci95"] = [float(np.nanquantile(Sb, 0.025)), float(np.nanquantile(Sb, 0.975))]
+        out[t] = d
+    return out
+
+
+def _contact_normal(x: np.ndarray, v: np.ndarray, rsum: float) -> tuple[np.ndarray, bool]:
+    """Contact normal (A -> B) from positions x [2, 2] and velocities v [2, 2] at the contact frame: run the straight
+    pre-contact lines to the first time the centres are ``rsum`` apart (backwards if they overlap there); closest
+    approach if they never are (second value True: the lines miss)."""
+    d0, w = x[1] - x[0], v[1] - v[0]
+    a, b, c = float(w @ w), float(2 * d0 @ w), float(d0 @ d0 - rsum ** 2)
+    miss = False
+    if a < 1e-18:
+        s = 0.0
+    else:
+        disc = b * b - 4 * a * c
+        if disc >= 0:
+            s = (-b - np.sqrt(disc)) / (2 * a)
+        else:
+            s, miss = -b / (2 * a), True
+    dn = d0 + w * s
+    nn = float(np.linalg.norm(dn))
+    return (dn / nn if nn > 0 else np.full(2, np.nan)), miss
+
+
+def mass_free_clip(r: dict, labels: dict, cfg: dict | None = None) -> dict:
+    """Track B mass-free momentum fields (``mf_*``) of one measurable readout_self row (needs velocity_pre / _post
+    and position_pre); {} otherwise. Radii (for the contact normal) from the labels: frame 0 is the real scene."""
+    if not r.get("measurable") or "position_pre" not in r or "velocity_post" not in r:
+        return {}
+    from physlaw.eval.laws import mass_free_momentum
+    cfg = {**MOM_DEFAULTS, **(cfg or {})}
+    pl = labels["physlaw"]
+    rsum = float(pl["objects"]["A"]["radius"] + pl["objects"]["B"]["radius"])
+    v0, v1 = np.asarray(r["velocity_pre"], float), np.asarray(r["velocity_post"], float)
+    n, miss = _contact_normal(np.asarray(r["position_pre"], float), v0, rsum)
+    if "position_post" in r:                       # the post lines run BACK to separation: same normal for real
+        n1, miss1 = _contact_normal(np.asarray(r["position_post"], float), -v1, rsum)    # contacts; averaging the two
+        if np.isfinite(n1).all() and np.isfinite(n).all() and np.linalg.norm(n + n1) > 1e-9:   # halves the real p99 error
+            n, miss = (n + n1) / np.linalg.norm(n + n1), miss and miss1
+    if not np.isfinite(n).all():
+        return {}
+    mf = mass_free_momentum({"v": v0}, {"v": v1}, {"n": n})
+    dv = v1 - v0
+    u_n = float((v0[0] - v0[1]) @ n)
+    d_rel = float(np.linalg.norm(dv[0] - dv[1]))
+    d_min = abs(u_n) if abs(u_n) > 1e-9 else float(np.linalg.norm(v0[0] - v0[1]))
+    e_hat = float(-(v1[0] - v1[1]) @ n / u_n) if abs(u_n) > 1e-9 else float("nan")
+    out = {"mf_n": n.tolist(), "mf_contact_miss": miss, "mf_u_n": u_n, "mf_dv_rel": d_rel, "mf_d_min": d_min,
+           "mf_interacts": bool(d_rel >= float(cfg["kappa"]) * d_min),
+           "mf_antiparallel": mf["antiparallel"], "mf_normal_A": mf["normal_A"], "mf_normal_B": mf["normal_B"],
+           "mf_normal": float(np.nanmean([mf["normal_A"], mf["normal_B"]])) if np.isfinite([mf["normal_A"], mf["normal_B"]]).any() else float("nan"),
+           "mf_implied_ratio": mf["implied_ratio"], "mf_e_hat": e_hat}
+    j = dv[1] - dv[0]                                                      # impulse direction (the readout's own e)
+    if np.linalg.norm(j) > 1e-12:
+        nj = j / np.linalg.norm(j)
+        uj = float((v0[0] - v0[1]) @ nj)
+        out["mf_e_hat_impulse"] = float(-(v1[0] - v1[1]) @ nj / uj) if abs(uj) > 1e-9 else float("nan")
+    m = [pl["objects"][o]["mass"] for o in "AB"]
+    if np.isfinite(mf["implied_ratio"]) and mf["implied_ratio"] > 0:
+        out["mf_log_ratio_vs_label"] = float(np.log(mf["implied_ratio"]) - np.log(m[0] / m[1]))
+    if "contact_normal" in pl:                                              # validation of the positional normal
+        nt = np.asarray(pl["contact_normal"], float)[:2]
+        out["mf_normal_err_deg"] = float(np.degrees(np.arccos(np.clip(abs(n @ nt) / np.linalg.norm(nt), -1, 1))))
+    return out
+
+
+def mass_free_stats(rows: list[dict], cfg: dict | None = None, n_boot: int = 2000, seed: int = 0) -> dict:
+    """Pooled track B momentum package over rows carrying ``mf_*`` fields (see :func:`mass_free_clip`). Consistency:
+    rows sharing a ``group`` (seeds of one prompt / frame 0, or the legal twins of a real scene) should imply one
+    mass ratio: ratio_log_sd = pooled within-group SD of log |dv_B| / |dv_A| over groups with >= 2 gated clips."""
+    cfg = {**MOM_DEFAULTS, **(cfg or {})}
+    m = [r for r in rows if "mf_interacts" in r]
+    gt = [r for r in m if r["mf_interacts"]]
+    fin = lambda k: np.array([r[k] for r in gt if np.isfinite(r.get(k, np.nan))], float)
+    d = {"n_measurable": len(m), "n_interacting": len(gt),
+         "interaction_rate": len(gt) / len(m) if m else float("nan"), "n_contact_miss": int(sum(r["mf_contact_miss"] for r in gt))}
+    if not gt:
+        return d
+    tol = float(cfg["e_tol"])
+    for k, name in (("mf_antiparallel", "antiparallel"), ("mf_normal", "normal_alignment"), ("mf_e_hat", "e_hat")):
+        v = fin(k)
+        if len(v):
+            d[f"{name}_mean"], d[f"{name}_median"] = float(v.mean()), float(np.median(v))
+    e = fin("mf_e_hat")
+    if len(e):
+        d["e_le1_share"] = float((e <= 1 + tol).mean())
+        d["e_in_range_share"] = float(((e >= -tol) & (e <= 1 + tol)).mean())     # also not still approaching
+        d["e_tol"] = tol
+    ej = fin("mf_e_hat_impulse")
+    if len(ej):
+        d["e_hat_impulse_median"] = float(np.median(ej))
+    by_g = {}
+    for r in gt:
+        by_g.setdefault(r["group"], []).append(r)
+    stat = lambda key, f: _boot_ci({g: [x[key] for x in v if np.isfinite(x.get(key, np.nan))] for g, v in by_g.items()},
+                                   lambda xs: f(np.asarray(xs, float)) if len(xs) else np.nan, n_boot, seed)
+    if n_boot:
+        d["antiparallel_mean_ci95"] = stat("mf_antiparallel", np.mean)
+        if len(e):
+            d["e_le1_share_ci95"] = stat("mf_e_hat", lambda x: (x <= 1 + tol).mean())
+    lr = fin("mf_implied_ratio")
+    if len(lr):
+        d["implied_ratio_median"] = float(np.median(lr))
+    if any("mf_log_ratio_vs_label" in r for r in gt):
+        d["log_ratio_vs_label_median_abs"] = float(np.median(np.abs(fin("mf_log_ratio_vs_label"))))
+    if any("mf_normal_err_deg" in r for r in gt):
+        d["normal_err_deg_median"] = float(np.median(fin("mf_normal_err_deg")))
+    ss, dof, ng = 0.0, 0, 0
+    for g, v in by_g.items():
+        x = np.log([r["mf_implied_ratio"] for r in v if np.isfinite(r["mf_implied_ratio"]) and r["mf_implied_ratio"] > 0])
+        if len(x) >= 2:
+            ss, dof, ng = ss + float(((x - x.mean()) ** 2).sum()), dof + len(x) - 1, ng + 1
+    d["ratio_consistency_groups"] = ng
+    d["ratio_log_sd"] = float(np.sqrt(ss / dof)) if dof else float("nan")
+    return d
 
 
 class Geometry:
@@ -722,10 +968,12 @@ def _stats(rows: list[dict], keys) -> dict:
     return d
 
 
-def track_b_summary(rows: dict, real_rows: dict, data_dir, laws) -> dict:
-    """rows / real_rows: {gate: [readout rows]}. Generated clips: counts, drop reasons, medians of e, momentum
-    residual, KE ratio and every law residual (own pre state), loose-gate violations. Real clips (§6.1 validation,
-    if given): the same per twin."""
+def track_b_summary(rows: dict, real_rows: dict, data_dir, laws, mom_cfg: dict | None = None, n_boot: int = 2000) -> dict:
+    """rows / real_rows: {gate: [readout rows]}. Generated clips: counts, drop reasons, medians of e, KE ratio and
+    every law residual (own pre state), loose-gate violations, and the mass-free momentum package ``momentum``
+    (:func:`mass_free_stats`; per-row ``mf_*`` fields). Real clips (§6.1 validation, if given): the same per twin, and
+    ``momentum.real_legal`` pools the legal twins (ratio consistency across the twins of one scene). r_momentum
+    (= res_momentum, |dp| / |p| with the label masses) is kept in the rows and medians as a legacy field."""
     import json
     lab = {}
     def labels(g, t="conserve_e1"):
@@ -734,15 +982,24 @@ def track_b_summary(rows: dict, real_rows: dict, data_dir, laws) -> dict:
         return lab[g, t]
     all_laws = sorted({l for v in laws.values() for l in v}) if isinstance(laws, dict) else list(laws)
     keys = ("e", "r_momentum", "ke_ratio", *TRAJ_KEYS, *(f"res_{l}" for l in all_laws))
-    out = {"laws": all_laws, "gates": {}}
+    mcfg = {**MOM_DEFAULTS, **(mom_cfg or {})}
+    out = {"laws": all_laws, "momentum_config": mcfg, "gates": {}}
     for gate in [g for g in GATES if g in rows or g in real_rows]:
-        G = [{**r, **self_residuals(r, labels(r["group"]), laws)} for r in rows.get(gate, [])]
+        G = [{**r, **self_residuals(r, labels(r["group"]), laws), **mass_free_clip(r, labels(r["group"]), mcfg)}
+             for r in rows.get(gate, [])]
         d = {"generated": _stats(G, keys),
-             "measurable_clips": [f"{r['group']}/seed{r['seed']}" for r in G if r["measurable"]], "rows": G}
-        R = [{**r, **self_residuals(r, labels(r["group"], r["twin"]), laws)} for r in real_rows.get(gate, [])]
+             "measurable_clips": [f"{r['group']}/seed{r['seed']}" for r in G if r["measurable"]], "rows": G,
+             "momentum": {"generated": mass_free_stats(G, mcfg, n_boot)}}
+        R = [{**r, **self_residuals(r, labels(r["group"], r["twin"]), laws),
+              **mass_free_clip(r, labels(r["group"], r["twin"]), mcfg)} for r in real_rows.get(gate, [])]
         if R:
-            d["real"] = {t: _stats([r for r in R if r["twin"] == t], keys) for t in sorted({r["twin"] for r in R})}
+            tw = sorted({r["twin"] for r in R})
+            d["real"] = {t: _stats([r for r in R if r["twin"] == t], keys) for t in tw}
             d["real"]["all"] = _stats(R, ())
+            d["momentum"]["real"] = {t: mass_free_stats([r for r in R if r["twin"] == t], mcfg, n_boot) for t in tw}
+            legal = [t for t in tw if t in LEGAL] or [t for t in tw if labels(R[0]["group"], t)["physlaw"].get("legal")]
+            if legal:
+                d["momentum"]["real_legal"] = mass_free_stats([r for r in R if r["twin"] in legal], mcfg, n_boot)
         out["gates"][gate] = d
     return out
 
