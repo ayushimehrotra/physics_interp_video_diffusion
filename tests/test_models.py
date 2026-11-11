@@ -170,11 +170,51 @@ def test_ti2v_clean_context_is_native_i2v():
     assert torch.allclose(lat.permute(0, 2, 1, 3, 4), ref, atol=1e-4)
 
 
+def test_wan_i2v_generate_from_frame0():
+    from diffusers import WanImageToVideoPipeline
+    from physlaw.models.wan import WanI2VAdapter
+    t = tiny_wan(True)
+    p = t.pipe
+    i2v = WanImageToVideoPipeline(tokenizer=None, text_encoder=None, image_encoder=None, image_processor=None,
+                                  transformer=p.transformer, vae=p.vae, scheduler=p.scheduler, expand_timesteps=True)
+    m = type("TinyI2V", (WanI2VAdapter,), {"_encode_text": _fake_text})(_wan_cfg(True), i2v, "cpu")
+    a = twins()[0]
+    v = m.generate(a, 1, seed=0)
+    assert v.shape == (9, 32, 32, 3) and v.dtype == np.uint8
+    assert np.array_equal(v, m.generate(m.to_tensor(a), 1, seed=0))     # uint8 frames or the input tensor
+    with pytest.raises(NotImplementedError):
+        m.encode(a)
+
+
 def test_wan_no_cfg_single_pass():
     m = tiny_wan(True, guidance=None)
     assert m.neg_embeds is None and not m._cfg_on()
     acts = m.forecast(m.to_tensor(twins()[0]), 5)
     assert acts
+
+
+def test_cosmos_generate_alignment():
+    """Video2World gets the context's frames, returns 93 frames from the last 5 context frames on: generate() puts
+    the real frames before them in front, so the clip is aligned with input_frames()."""
+    from physlaw.models.cosmos_predict import CosmosPredictAdapter
+    cfg = load_config(REPO / "configs" / "models" / "cosmos_predict25_2b.yaml")
+    cfg["official"].update(height=32, width=32)
+    seen = {}
+
+    class Pipe:
+        vae = type("V", (), {"dtype": torch.float32})()
+
+        def __call__(self, video, num_frames, **kw):
+            seen.update(video=video, **kw)
+            return type("O", (), {"frames": [np.full((num_frames, 32, 32, 3), 0.5, np.float32)]})()
+
+    m = CosmosPredictAdapter(cfg, Pipe(), "cpu")
+    a = np.random.default_rng(0).integers(0, 256, (93, 32, 32, 3), dtype=np.uint8)
+    k = 41
+    v = m.generate(m.to_tensor(a), k, seed=0)
+    assert v.shape == (93, 32, 32, 3) and seen["video"].shape[2] == k
+    assert np.array_equal(v[: k - 5], a[: k - 5]) and (v[k - 5:] == 128).all()
+    assert seen["num_latent_conditional_frames"] == 2 and seen["guidance_scale"] == 7.0
 
 
 # ------------------------------------------------------------------ LoRA / weights

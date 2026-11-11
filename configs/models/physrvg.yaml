@@ -14,11 +14,13 @@ dit_weights:
   hf_id: HappyP4nda/PhysRVG
   revision: d8caf2dd7db30d7470d474875c84e6a4eb21b9c6
   path: ${env:PHYSLAW_MODELS,/root/models}/PhysRVG/dit/diffusion_pytorch_model.safetensors
+  sha256: 70c14c374fc9f33a29ed713f68cf7e5db4952ea62ecd1787e63a390ef94918d3
 lora:
   hf_id: HappyP4nda/PhysRVG
   revision: d8caf2dd7db30d7470d474875c84e6a4eb21b9c6
   path: ${env:PHYSLAW_MODELS,/root/models}/PhysRVG/lora/adapter_model.safetensors   # + adapter_config.json beside it
   scale: 1.0              # x lora_alpha / r from adapter_config.json (PEFT default scaling)
+  sha256: 3d6507c54984608b944be7ba765d038fff4a92593cb017bb2784235fc95eabee
 official:
   height: 480
   width: 832

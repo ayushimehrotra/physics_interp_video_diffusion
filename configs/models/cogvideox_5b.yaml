@@ -12,6 +12,9 @@ dtype: bfloat16
 # compared, 2026-11-10), so that copy is used.
 text_encoder:
   path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-2b
+  sha256:
+    text_encoder/model-00001-of-00002.safetensors: 4f2751ceeb2a96edd693e539dc5d6bba0b8d3814f49a9b3798403a0cec4b2e3d
+    text_encoder/model-00002-of-00002.safetensors: f63154532130422309532ff56f11945fbea8266c958e3133e8e5aef85c6293c7
 vae_tiling: true
 official:
   width: 720
@@ -32,3 +35,8 @@ prompt: "A static camera looks straight down at a flat grey floor. Two balls rol
 forecast_layers: [10, 21, 32]
 surprise: {n_draws: 2}
 noise_seed: 0
+# Weight pins (spec §4.3): zai-org/CogVideoX-5b@8fc5b281006c82b82d34fd2543d2f0ebb4e7e321; verified by physlaw.models.registry.
+sha256:
+  transformer/diffusion_pytorch_model-00001-of-00002.safetensors: b7101be7e75631130cdf4a63ad798452bdce29716aaa47829e882dd384c398bf
+  transformer/diffusion_pytorch_model-00002-of-00002.safetensors: ebe6c0e34a52c89f8ea8032a3a8a278a9ff1880dc70e1e6f3b840bcfd0396647
+  vae/diffusion_pytorch_model.safetensors: a410e48d988c8224cef392b68db0654485cfd41f345f4a3a81d3e6b765bb995e

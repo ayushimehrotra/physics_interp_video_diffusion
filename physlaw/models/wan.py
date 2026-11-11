@@ -187,7 +187,8 @@ class WanI2VAdapter(WanAdapter):
             f0 = fit_frames(np.asarray(video[:1]), (self.H, self.W), self.token_grid.fit)[0]
         out = self.pipe(image=Image.fromarray(f0), prompt_embeds=self.prompt_embeds,
                         negative_prompt_embeds=self.neg_embeds, height=self.H, width=self.W,
-                        num_frames=self.n_frames, num_inference_steps=self.steps, guidance_scale=self.guidance,
+                        num_frames=self.n_frames, num_inference_steps=self.steps,
+                        guidance_scale=self.guidance if self._cfg_on() else 1.0,
                         generator=torch.Generator(self.device).manual_seed(seed), output_type="np").frames[0]
         return (np.clip(out, 0, 1) * 255).round().astype(np.uint8)
 

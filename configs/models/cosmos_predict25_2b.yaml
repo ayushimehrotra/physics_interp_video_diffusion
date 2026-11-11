@@ -29,3 +29,11 @@ input:
   center_on_contact: false            # 93 frames at 16 fps from frame 0 (277 of 289 master frames)
 token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # Wan2.1 VAE; used for the context length only
 prompt_template: scene     # physlaw.models.dit.scene_prompt: long, literal, pre-contact facts only
+# Weight pins (spec §4.3): nvidia/Cosmos-Predict2.5-2B@0d37c7498f54cee3c599d438d895a0a4a8608064 (Hub LFS sha256, not downloaded); verified by physlaw.models.registry.
+sha256:
+  text_encoder/model-00001-of-00004.safetensors: c28404126221997ae8eb70a23b919c96174d42e35ae1d537e0c95093d50b359a
+  text_encoder/model-00002-of-00004.safetensors: f281081864c10992d3e03874c79d526c84407e049d713747f19eb9c79cd16db3
+  text_encoder/model-00003-of-00004.safetensors: 3bb3a62a8d0e83c6283388ddea99395b221f908f9181b8edd0f7f91d02260ebe
+  text_encoder/model-00004-of-00004.safetensors: 91bacbe1ad798e16daa05023b4e4bec70b53c8cd7d757db86c5bc76c4e0bbf15
+  transformer/diffusion_pytorch_model.safetensors: 469752430ae6615f119c6fbe061bb7851e85f8a4a22918524cc8abd94d53d493
+  vae/diffusion_pytorch_model.safetensors: d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793
