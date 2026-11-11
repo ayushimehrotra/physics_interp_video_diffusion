@@ -2,6 +2,7 @@
 defaults: _master.yaml
 family: f1
 n_groups: 400
+nuisance_frac: 0.0               # deviation: spec 0.2; F1's 64 rendered groups are frozen (docs/STATUS.md)
 seed_offset: 100000
 twins:
   e_sim: 1.0                       # one simulation per group, at e = 1

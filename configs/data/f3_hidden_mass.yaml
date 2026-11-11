@@ -1,3 +1,13 @@
-# f3_hidden_mass: NOT BUILT YET (spec milestone 8). Generator raises NotImplementedError.
+# F3. Hidden mass (spec §2.3): F1 legal outcomes for m_A/m_B in {0.33, 0.5, 1, 2, 3} through density
+# only. Both spheres share radius, material and texture (latent_mass arm), so the pre-contact frames
+# do not depend on mass and the five twins are byte-identical before contact.
 defaults: _master.yaml
 family: f3
+n_groups: 300
+seed_offset: 300000
+nuisance_frac: 0.2
+arm: latent_mass
+twins:
+  e_sim: 1.0                       # the simulated pair (ratio 1) at e = 1
+  e: 1.0                           # restitution of every twin
+  ratios: [0.33, 0.5, 1.0, 2.0, 3.0]

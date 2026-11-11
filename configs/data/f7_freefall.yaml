@@ -1,0 +1,9 @@
+# F7. Free fall, projectiles and floor bounces (spec §2.3; physlaw/data/families/f7_freefall.py).
+defaults: _master.yaml
+family: f7
+seed_offset: 700000
+n_groups: 700
+subfamilies: {projectile: 300, drop: 200, bounce: 200}
+nuisance_frac: 0.2
+acceptance:
+  physics_check_tol: 0.05

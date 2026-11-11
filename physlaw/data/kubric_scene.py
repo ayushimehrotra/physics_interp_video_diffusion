@@ -282,7 +282,8 @@ SAMPLES_PER_PIXEL = 64
 def configure(*, num_frames: int, frame_rate: int, resolution: tuple[int, int],
               contact_frame: int, pre_post_offset_s: float = 0.25,
               sensor_width_mm: float | None = None, samples_per_pixel: int | None = None,
-              contact_tolerance_frames: float | None = None) -> dict:
+              contact_tolerance_frames: float | None = None, camera_distance: float | None = None,
+              aspect: float | None = None, denoise: bool = True) -> dict:
   """Override the module's timing/resolution constants (PhysLaw master format).
 
   ``PRE_FRAME``/``POST_FRAME`` keep the old generator's +/-0.25 s offset from
@@ -290,9 +291,12 @@ def configure(*, num_frames: int, frame_rate: int, resolution: tuple[int, int],
   ``sensor_width_mm`` defaults to keeping the old 50 px per world unit, so the
   vertical field of view (the binding layout constraint) is unchanged at any
   width: 720 px <-> 36 mm, so W px <-> 36 * W / 720 mm.
+  ``aspect`` is the logical frame aspect (W/H by default); a different value means
+  non-square pixels (the PC1 256x256 set shows the master's 832:480 view, squashed).
+  ``camera_distance`` raises the camera (F4 widens the view for its boosts).
   """
   global NUM_FRAMES, FRAME_RATE, RESOLUTION, TARGET_CONTACT_FRAME, PRE_FRAME, POST_FRAME
-  global SENSOR_WIDTH, SAMPLES_PER_PIXEL, CONTACT_TOLERANCE
+  global SENSOR_WIDTH, SAMPLES_PER_PIXEL, CONTACT_TOLERANCE, CAMERA_DISTANCE, ASPECT, DENOISE
   if STEP_RATE % frame_rate:
     raise ValueError(f"STEP_RATE={STEP_RATE} must be a multiple of frame_rate={frame_rate}")
   off = int(round(pre_post_offset_s * frame_rate))
@@ -306,12 +310,19 @@ def configure(*, num_frames: int, frame_rate: int, resolution: tuple[int, int],
     SAMPLES_PER_PIXEL = int(samples_per_pixel)
   if contact_tolerance_frames is not None:
     CONTACT_TOLERANCE = float(contact_tolerance_frames)
+  if camera_distance is not None:
+    CAMERA_DISTANCE = float(camera_distance)
+  ASPECT = float(aspect) if aspect else RESOLUTION[0] / RESOLUTION[1]
+  DENOISE = bool(denoise)
   return {"num_frames": NUM_FRAMES, "frame_rate": FRAME_RATE, "resolution": list(RESOLUTION),
           "target_contact_frame": TARGET_CONTACT_FRAME, "pre_frame": PRE_FRAME,
           "post_frame": POST_FRAME, "sensor_width_mm": SENSOR_WIDTH,
-          "samples_per_pixel": SAMPLES_PER_PIXEL, "contact_tolerance_frames": CONTACT_TOLERANCE}
+          "samples_per_pixel": SAMPLES_PER_PIXEL, "contact_tolerance_frames": CONTACT_TOLERANCE,
+          "camera_distance": CAMERA_DISTANCE, "aspect": ASPECT}
 
 SEG_ID = {"A": 1, "B": 2, "floor": 0}
+ASPECT = RESOLUTION[0] / RESOLUTION[1]
+DENOISE = True                  # off only for quick CPU correctness renders (configure(denoise=False))
 
 
 # --------------------------------------------------------------------------------------
@@ -320,7 +331,7 @@ SEG_ID = {"A": 1, "B": 2, "floor": 0}
 
 def half_extents():
   """Half width/height of the visible world region in the plane of the sphere centres."""
-  sensor_height = SENSOR_WIDTH / RESOLUTION[0] * RESOLUTION[1]
+  sensor_height = SENSOR_WIDTH / ASPECT
   half_w = 0.5 * CAMERA_DISTANCE * SENSOR_WIDTH / FOCAL_LENGTH
   half_h = 0.5 * CAMERA_DISTANCE * sensor_height / FOCAL_LENGTH
   return half_w, half_h
@@ -1070,7 +1081,7 @@ def build_and_simulate(p: dict, geo: dict, masses: dict, scratch_dir: str, rende
   renderer = None
   if render:
     from kubric.renderer import Blender
-    renderer = Blender(scene, scratch_dir, use_denoising=True,
+    renderer = Blender(scene, scratch_dir, use_denoising=DENOISE,
                        adaptive_sampling=True, samples_per_pixel=SAMPLES_PER_PIXEL)
     # Kubric defaults to the Filmic view transform, which desaturates and flattens
     # contrast. Standard keeps the material colours separable, which matters more here

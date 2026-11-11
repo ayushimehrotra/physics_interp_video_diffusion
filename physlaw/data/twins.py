@@ -35,6 +35,7 @@ pre-contact segment.
 from __future__ import annotations
 
 import importlib.util
+import math
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,6 +62,8 @@ PreState = CP.PreState
 
 F1_TWINS = ("conserve_e1", "conserve_e015", "mom_violate_e1", "mom_violate_e015", "energy_create")
 F2_LEVELS = tuple(round(0.1 * i, 1) for i in range(11))
+F3_RATIOS = (0.33, 0.5, 1.0, 2.0, 3.0)
+F4_BOOSTS = ("u0", "usmall", "ularge")
 
 
 @dataclass
@@ -72,6 +75,15 @@ class Twin:
     momentum_conserved: bool
     energy_physical: bool      # KE_post <= KE_pre
     record: dict[str, Any] = field(default_factory=dict)
+    masses: tuple | None = None    # (m_A, m_B) when the twin's masses differ from the simulation's (F3)
+    boost: np.ndarray | None = None  # common velocity added to the whole clip (F4)
+    pre_segment: str = "0"         # twins sharing it are identical before contact
+
+    def pre(self, pre: PreState) -> PreState:
+        """The pre-contact state this twin's clip shows (its masses, its boost)."""
+        m_a, m_b = self.masses or (pre.m_a, pre.m_b)
+        u = np.zeros(2) if self.boost is None else np.asarray(self.boost, float)[:2]
+        return PreState(m_a=m_a, m_b=m_b, v_a=pre.v_a + u, v_b=pre.v_b + u, n=pre.n)
 
 
 # --------------------------------------------------------------------------- #
@@ -217,3 +229,52 @@ def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS) -> d
             rec = {"kind": "restitution", **rec}
         out[name] = Twin(name, va, vb, float(e), True, True, rec)
     return out
+
+
+def f3_twins(pre: PreState, e: float, ratios=F3_RATIOS, m_total: float | None = None) -> dict[str, Twin]:
+    """F3: legal outcomes at restitution ``e`` for each mass ratio m_A/m_B (masses via density only).
+
+    The geometric mean of the two masses is held at that of the simulated pair, so the
+    ratio is the only thing that changes; pre-contact frames do not depend on mass.
+    """
+    pre.check()
+    gm = math.sqrt(pre.m_a * pre.m_b)
+    out = {}
+    for r in ratios:
+        m_a, m_b = gm * math.sqrt(r), gm / math.sqrt(r)
+        p2 = PreState(m_a=m_a, m_b=m_b, v_a=pre.v_a, v_b=pre.v_b, n=pre.n)
+        dv = CP.legal_outcome(p2, e)
+        name = f"ratio_{r:g}"
+        out[name] = Twin(name, pre.v_a + dv[:2], pre.v_b + dv[2:], float(e), True, True,
+                         {"kind": "mass_ratio", "mass_ratio": float(r), "m_A": m_a, "m_B": m_b}, masses=(m_a, m_b))
+    return out
+
+
+def f4_twins(pre: PreState, post_a, post_b, e_sim: float, boosts: dict, e_low: float = 0.15) -> dict[str, Twin]:
+    """F4: the F1 legal twins (e = 1 and e_low) under Galilean boosts ``{name: u (2-vector)}``.
+
+    A boost adds u to every velocity of the clip (positions gain u (t - t_contact)), so
+    restitution and the centre-of-mass-frame scattering angle are invariant exactly.
+    """
+    pre.check()
+    out = {}
+    for bname, u in boosts.items():
+        u = np.asarray(u, float)[:2]
+        for e, tag in ((1.0, "e1"), (e_low, "e015")):
+            if abs(e - e_sim) < 1e-12:
+                va, vb = CP._xy(post_a), CP._xy(post_b)
+            else:
+                va, vb, _ = _restitution(pre, post_a, post_b, e_sim, e)
+            name = f"{bname}_{tag}"
+            out[name] = Twin(name, va + u, vb + u, e, True, True,
+                             {"kind": "boost", "boost": u.tolist(), "boost_level": bname, "e": e},
+                             boost=u, pre_segment=bname)
+    return out
+
+
+def com_frame_angle(pre: PreState, v_a, v_b) -> float:
+    """Scattering angle in the centre-of-mass frame: angle between relative velocities before and after."""
+    r0 = pre.v_a - pre.v_b
+    r1 = np.asarray(v_a, float)[:2] - np.asarray(v_b, float)[:2]
+    c = float(np.dot(r0, r1) / (np.linalg.norm(r0) * np.linalg.norm(r1)))
+    return math.acos(max(-1.0, min(1.0, c)))

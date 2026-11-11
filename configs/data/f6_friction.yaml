@@ -1,3 +1,11 @@
-# f6_friction: NOT BUILT YET (spec milestone 8). Generator raises NotImplementedError.
+# F6. Friction geometry and mass-independent slides (spec §2.3; physlaw/data/families/f6_friction.py).
+# Seeds are assigned to sub-families in consecutive blocks of these sizes.
 defaults: _master.yaml
 family: f6
+seed_offset: 600000
+n_groups: 800
+subfamilies: {flat: 300, incline: 300, slides: 200}
+slide_look: distinct               # slides: heavier cube is metal (visible mass); 'identical' hides it
+nuisance_frac: 0.2
+acceptance:
+  physics_check_tol: 0.15          # m; Bullet box friction drifts ~3% with the cube's yaw (generate.physics_check)

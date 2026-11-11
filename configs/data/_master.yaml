@@ -36,5 +36,5 @@ acceptance:
   min_violation_residual: 0.05     # |dp|/|p_pre| floor for momentum-violating twins
 
 splits: {train: 0.70, val: 0.15}   # test = remainder, assigned by hash of twin group ID
-nuisance_frac: 0.0                 # spec says 0.2; nuisance.py is not built yet (see README)
+nuisance_frac: 0.0                 # F1 only: its 64 groups are rendered and frozen. Every other family sets 0.2 (spec §2.3)
 out_dir: data
