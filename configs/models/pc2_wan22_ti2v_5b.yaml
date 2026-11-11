@@ -15,6 +15,8 @@ lora:
 # at 24 fps, first frame pinned (clean, excluded from the loss), timesteps uniform over 1,000, fp32 MSE.
 # Their best LoRA checkpoint was step 1,000 (of 500..3,000 evaluated): keep the lora_step<N>/ snapshots.
 # Schedule shape after warmup is not stated; cosine over the horizon is assumed here.
+# Cost, measured on an RTX 6000 Ada (LoRA, bf16, gradient checkpointing, VAE encode included): 5.1 s and 18 GB peak per
+# micro-batch of 2 -> 64 micro-batches per step on one GPU; 1,000 steps ~ 91 GPU-h, 5,000 ~ 450 GPU-h (/~2.5 on H100).
 pc2_train:
   height: 352
   width: 640

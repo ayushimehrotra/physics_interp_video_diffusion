@@ -338,3 +338,137 @@ Estimate: an F1 group is ~950 frames, so ~3 min per group at saturation, and 400
 and `models/encoders.py:VJEPA2Adapter` -> `physlaw/models/vjepa2.py`, using
 `models/base.sample_frames` (no frame repetition) and `tokens/project.py` instead of the old
 fixed-frame-20 pooling.
+
+## WP pc (2026-11-10)
+
+Positive controls (spec §4.4, milestones 16 and 25). User decisions 2026-11-10: PC1 passes if L1 S_family ≥ 0.5 and
+L2 motion-adjusted win ≥ 0.7 on the F1 momentum contrasts; the PC2 base model is Wan2.2-TI2V-5B.
+
+**Built.**
+* `physlaw/models/positive_control.py`.
+  - PC1 is transformers' `VJEPA2Model` at ViT-S size: a 12×384 encoder (21.9M parameters) and a 12×384 predictor
+    (21.6M), the same predictor shape as V-JEPA 2 ViT-L's.
+  - Its input format, patch 16, tubelet 2 and RoPE positions are V-JEPA 2 ViT-L's. So `PC1Adapter` *is*
+    `VJEPA2Adapter`, loading `<local_path>/pc1.pt` (EMA target encoder + predictor), and
+    encode/forecast/surprise, token projection and stages 03-06 apply unchanged (kind `positive_control`).
+  - The module also holds the training-set loader for both PCs (`training_clips`, `ClipWindows`), the masks
+    (`sample_mask`), and the pass check (`pass_check`, `format_pass`).
+* `scripts/10_train_positive_control.py`: one resumable stage for both PCs; the config's `positive_control: pc1|pc2`
+  selects which. `--check RESULTS_DIR` prints PC1's pass/fail; 06 or 11 can call `pass_check` too.
+  - **PC1 objective.** Masked latent prediction, L1 against the EMA target encoder's final tokens (EMA 0.998 → 1).
+    - 75% of micro-batches use a **future-frame mask**: the context is token-frames [0, k), k ~ U[8, 24]; the target
+      is everything after.
+    - The rest use V-JEPA spatial tube multi-block masks.
+    - The context encoder sees only the context tokens, at their true RoPE positions. For a future mask that is
+      exactly what `forecast()` does at evaluation (tested equal in `tests/test_positive_control.py`).
+  - **PC1 data.** Windows are placed as at evaluation: 64 frames at 24 fps, centred on the event, ±24 master frames
+    of jitter, with a horizontal flip.
+  - **PC1 logging.** `curves.json`/`.png` record the training loss and, on the held-out `val` split, the predictor's
+    future-token error next to a copy-last-context-token baseline. They also record the target-token sd, a collapse
+    watch.
+  - **PC1 checkpoints.** `train_state.pt` + `pc1.pt` every `save_every` steps; the run resumes automatically.
+  - **PC2 (RigidBench recipe, arXiv 2608.15555).**
+    - Rank-32 / alpha-32 LoRA on q, k, v, o (self- and cross-attention) and ffn.0 / ffn.2 of every block. In
+      diffusers names: `to_q`, `to_k`, `to_v`, `to_out.0`, `ffn.net.0.proj`, `ffn.net.2`; 10 modules per block,
+      81M parameters.
+    - First-frame pinning: the first latent frame stays clean at timestep 0 and is excluded from the loss, as in
+      the TI2V pipeline's `expand_timesteps`.
+    - Flow matching with the timestep index uniform over 1,000, mapped through the official scheduler's
+      flow_shift 5.0; fp32 MSE on (noise − x0).
+    - 640×352 × 49 frames at 24 fps; lr 1e-4, warmup 250, 5,000-step horizon, effective batch 128, AdamW wd 0.01,
+      clip 1.0, bf16, gradient checkpointing.
+    - Output in PEFT format (`adapter_model.safetensors` + `adapter_config.json`) under `lora/`, with `lora_step<N>/`
+      snapshots for checkpoint selection (RigidBench's best LoRA checkpoint was step 1,000).
+    - Training uses the inherited `prompt` (the one the Wan adapter evaluates with), encoded once and cached.
+* Configs.
+  - `configs/models/positive_control.yaml`: architecture, data, mask, the full-run training schedule, and
+    `pass_criterion`.
+  - `configs/models/pc2_wan22_ti2v_5b.yaml`: inherits `wan22_ti2v_5b.yaml`, sets `lora: {path, scale}` (the models
+    agent's adapter merges it), `pc2_train` and `train`.
+  - Both read the data agent's PC set at `data/pc1/<family>/` (`configs/data/pc1_train.yaml`).
+* **Leakage guard.** `training_clips` keeps legal twins only (the group record's `legal` flag, else F1's
+  `conserve_*`). It **raises** if any group ID is under an evaluation family dir (`data.exclude_eval`:
+  data/f1 … f10).
+* **Pass check.** It reads L1's held-out-selected S_family (`selected.<option>.family.score`; P-pred-real frame pool
+  if present, else P-real-mm frame pool, both leak-free).
+  - L2 uses the pre-registered covariate set `speed+copy_last` and distance `l1_obj` on both momentum contrasts, so
+    nothing is selected over distances.
+  - The verdict is PASS / FAIL / MISSING, or INCONCLUSIVE when the legal-vs-legal control's CI excludes 0.5.
+  - On wp-levels' V-JEPA 2 ViT-L F1 results it prints FAIL: S_family −1.00; L2 adjusted 0.67 [0.56, 0.81] and
+    0.75 [0.66, 0.86]. So V-JEPA 2 nearly meets the L2 half by itself; the L1 half carries the criterion.
+* Stages 05 and 06 gained `--cache` (and 06 `--out`), so test caches and results can live outside the repo; the
+  defaults are unchanged.
+* Environment: `peft==0.21.2` and `matplotlib==3.11.2` are in `envs/requirements_physics_venv.txt`; a uv dry run
+  showed no torch/diffusers/transformers change.
+* Tests: `tests/test_positive_control.py` covers the future-mask prefix, the tube masks, legal-only filtering and the
+  eval-group refusal, all pass-check verdicts, and context encoding equal to encoding the prefix alone. One edit to
+  `tests/test_models.py`: PC2's LoRA is our own output, so it needs no sha256 pin.
+
+**Test runs** (RTX 6000 Ada; artifacts under `scratchpad/pc/`; all labelled code-path tests, not PC results).
+* **PC1 stand-in data.** The CPU check used `data/f1` train-split legal twins (106 clips; held-out: 10 val clips).
+  The data agent's 7 PC set clips (`data_pc1/{f1,f7,f8}`, 256×256 squashed) load and train on CPU with the default
+  `exclude_eval` (nothing refused); `exclude_eval=[data/f1]` on `data/f1` raises as designed.
+* **PC1 throughput** at the full-run batch (32 = 4 × 8): 6.7 s/step, of which 2.2 s is data wait on the 832×480
+  stand-ins (decoding 256² PC clips takes ~65 ms each, so it hides behind compute). Peak 5.4 GB.
+* **PC1 500 steps** at batch 8: 1.7 s/step.
+  - Run as 400 steps, then a **resume** from the checkpoint to 500, which continued the curves.
+  - Training loss 0.52 → 0.013.
+  - Held-out future-token L1, predictor vs copy-last: 0.030 vs 0.014 (step 100), 0.011 vs 0.008 (step 500). So
+    the predictor has not yet beaten copying at this scale.
+  - Target-token sd 0.056 at step 500 (0.14 at init). Watch this at scale: steady shrinkage means collapse.
+  - Curves: `scratchpad/pc/pc1/curves.{json,png}`.
+* **PC1 through stages 04, 05, 06.**
+  - Stage 04 on 2 F1 groups (10 clips, 0.4 min) wrote pooled activations [P, 7 layers, 384], `_forecast.npz` and
+    surprise.
+  - Surprise: l1_all 0.012, l1_obj 0.25 (the floor is predicted, the balls are not, as expected this early).
+  - Stage 05 wrote the pixel baselines (320 clips).
+  - Stage 06 L2 and L0 (probe protocol cut to 2 folds × 2 seeds × 20 permutations for 2 groups) ran end to end.
+  - Every L2 number is finite except Spearman p at n = 2. L0 R² sits at the −3 clip (2 groups cannot fit a probe).
+  - `--check` on these results prints MISSING (no L1), as designed.
+* **PC2** on the 7 PC set clips at the full RigidBench geometry (640×352 × 49 frames, micro-batch 2):
+  - 5 LoRA steps at 5.1 s/step, **peak 18.0 GB**; loss 0.21 → 0.05 (noisy at 2 clips per step).
+  - Saved in PEFT format (161 MB bf16). A resume to step 6 continued from `train_state.pt` (18.3 GB peak).
+  - The text embedding is cached, so the 11 GB UMT5 runs once.
+* **PC2 load and generate through the Wan adapter.** `load_adapter(pc2_wan22_ti2v_5b.yaml, lora.path=…)` loads in
+  25 s and merges the LoRA (every pair matched).
+  - `generate()` from F1 frame 0 at the official settings (1280×704, 121 frames, 50 UniPC steps, CFG 5) takes
+    640 s at 36.0 GB peak.
+  - The video is finite and coherent: two metal balls on the grey floor, moving together until they leave the
+    frame. After 6 steps on 7 clips it is expected to look like the base model.
+
+**Deviations, and open points for the user or mentor.**
+1. **PC2 trains at 640×352 × 49 frames** (RigidBench's recipe) and is evaluated at the official 1280×704 × 121, as
+   RigidBench did. The PC set is rendered at 256×256 (squashed), so PC2 upsamples ×2.5 horizontally. If PC2
+   matters, ask for a PC2 copy of the set rendered at 832×480 or 640×352 (low spp is fine).
+2. RigidBench does not state the schedule shape after warmup; cosine over 5,000 steps is assumed. Their best LoRA
+   checkpoint was step 1,000, so keep the `lora_step<N>/` snapshots and select one (spec §5 selection rule: on
+   held-out data).
+3. Full fine-tuning (RigidBench's alternative) is not implemented. The 5B model with AdamW states needs about
+   60 GB plus activations, so it needs FSDP on more than one GPU; rank-32 LoRA satisfies spec §4.4.
+4. PC1's architecture (ViT-S encoder; a 12 × 384 predictor as in ViT-L) and the 75/25 future/tube mask mix are
+   my defaults; spec §4.4 fixes neither. The L1 loss averages over all tokens, and the balls are about 3% of them.
+   If PC1 fails, try object-weighted loss or a higher `p_future` before concluding the test is broken.
+5. The pass check's L2 distance (`l1_obj`) and covariate set (`speed+copy_last`) are pre-registered here. wp-levels'
+   L2 summary instead selects the distance among those whose legal control is at chance. Confirm which one
+   counts.
+6. Stage 10 is single-GPU, with no DDP. RigidBench used 8×H100; add torchrun/DDP if PC2 must reach 5,000 steps quickly.
+7. PC1 at 30k × 32 is about 53 epochs over 18k clips. Watch the held-out error against copy-last and the
+   target-token sd in `curves.png`. Stop early if held-out error rises.
+
+**What the mentor runs** (physics venv, `HF_HUB_OFFLINE=1`; the PC set comes from `configs/data/pc1_train.yaml` →
+`data/pc1/`):
+```bash
+cd physlaw && export HF_HUB_OFFLINE=1 PY=/root/envs/physics_venv/bin/python
+# PC1 (~38 GPU-h on an RTX 6000 Ada; resumable: rerun the same command)
+$PY scripts/10_train_positive_control.py --config configs/models/positive_control.yaml   # -> $PHYSLAW_MODELS/pc1-vits/
+$PY scripts/04_cache_activations.py --model configs/models/positive_control.yaml --data data/f1
+$PY scripts/04_cache_activations.py --model configs/models/positive_control.yaml --data data/f1 --pred-real
+$PY scripts/05_surprise.py --model configs/models/positive_control.yaml --data data/f1
+for l in l0_states l1_forecast_laws l2_surprise; do   # then L2b, and F2/F3/F4/F7/F8 likewise
+  $PY scripts/06_eval.py --model configs/models/positive_control.yaml --level configs/eval/$l.yaml --data data/f1; done
+$PY scripts/10_train_positive_control.py --config configs/models/positive_control.yaml --check results/pc1-vits/f1
+# PC2: single-GPU stage (gradient accumulation to batch 128); ~36 H100-h to step 1,000, ~180 to 5,000 (not run multi-GPU)
+$PY scripts/10_train_positive_control.py --config configs/models/pc2_wan22_ti2v_5b.yaml  # -> $PHYSLAW_MODELS/pc2-wan2.2-ti2v-5b/lora
+# then stages 04 (--no-forecast, then without it) to 06 with --model configs/models/pc2_wan22_ti2v_5b.yaml,
+# after pointing lora.path at the selected lora_step<N>/
+```

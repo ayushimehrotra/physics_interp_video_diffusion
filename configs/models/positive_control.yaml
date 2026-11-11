@@ -41,7 +41,8 @@ mask:
   aspect: [0.75, 1.5]
 
 train:
-  # Full run (data: 6 families x >= 3,000 legal clips). See docs/STATUS.md (WP pc) for the GPU-hour estimate.
+  # Full run (6 families x >= 3,000 legal clips; ~53 epochs). Measured on an RTX 6000 Ada: ~4.6 s/step of compute at
+  # batch 32, 5.4 GB peak at micro_batch 8 -> 30k steps ~ 38 GPU-h (~15-20 h on one H100). micro_batch 32: ~20 GB (extrapolated).
   steps: 30000
   batch_size: 32
   micro_batch: 8             # gradient accumulation to batch_size
