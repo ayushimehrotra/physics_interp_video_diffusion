@@ -803,7 +803,7 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
                 renderer.blender_scene.cycles.denoising_use_gpu = True
             FP.minimal_passes(renderer)
             bs = renderer.blender_scene
-            # Measured on the H100 (docs/STATUS.md "Render cost"): persistent data keeps the BVH and
+            # Measured on the H100 (docs/RESUME.md "Render cost"): persistent data keeps the BVH and
             # scene data between frames, 0.87 -> 0.32 s/frame solo, output identical to Kubric's.
             bs.render.use_persistent_data = bool(m.get("persistent_data", True))
             if m.get("render_threads"):

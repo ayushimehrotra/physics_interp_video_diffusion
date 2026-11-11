@@ -1,0 +1,37 @@
+[04] model=vjepa2-vitg clips=40 groups=8 out=/root/smoke_cache/vjepa2-vitg/f1 hash=5e8e0e043417
+`torch_dtype` is deprecated! Use `dtype` instead!
+[04] 20/40  8.14 s/clip
+[04] 40/40  8.10 s/clip
+[04] finished 40 clips in 5.4 min
+[L0] 40 clips / 8 groups; acts (40, 12, 12, 1408); layers [-1, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39]; latent []
+[L0] 108 feature cells x their targets; 500 permutations; 64 workers
+[L0]   25/108 cells
+[L0]   50/108 cells
+[L0]   75/108 cells
+[L0]   100/108 cells
+[L0] one-twin refit: 20 fits
+n_groups = 8, 5-fold x 12 seeds (~2 test groups per fold), 500 permutations; variants searched per target: [36] (layers x pools). Held-out R²: cell selected on half the groups, scored on the other half (50 random splits x 2); in-sample max R² is the old protocol (its permutation p corrects for the search).
+
+| target | held-out R² (selected cell, picks) | in-sample best cell: R² (sd) | untrained held-out R² | one-twin refit R² (mask floor) | mask floor (same pool) | latent baseline | tracker | best observer | null q95 | p_corr | p_Holm |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A.pre.velocity | 0.296 (L20/roi_A.pre, 96/100) | L20/roi_A.pre: 0.433 (0.057) | 0.001 |  | -0.428 |  | -0.190 | 0.999 (obs_vel) | 0.276 | 0.00798 | 0.12 |
+| A.pre.speed | -0.017 (L28/frame.pre, 56/100) | L28/frame.pre: 0.381 (0.089) | -0.101 |  | 0.000 |  | -0.767 | 0.865 (obs_speed) | 0.500 | 0.0878 | 0.703 |
+| A.pre.direction | 0.126 (L36/frame.pre, 65/100) | L36/frame.pre: 0.367 (0.145) | -0.047 |  | 0.000 |  | -0.236 | 0.437 (obs_vel) | 0.335 | 0.016 | 0.192 |
+| A.pre.log_mass | -0.206 (L4/roi_A.pre, 50/100) | L16/roi_A.pre: 0.138 (0.158) | 0.699 |  | -0.409 |  | -3.275 | -0.857 (obs_vel) | 0.635 | 0.16 | 0.798 |
+| A.pre.radius | -0.536 (L12/roi_A.pre, 50/100) | L12/roi_A.pre: 0.007 (0.150) | 0.318 |  | -0.461 |  | 0.560 | -0.453 (obs_quad) | 0.312 | 0.0599 | 0.599 |
+| A.post.velocity | 0.214 (L20/roi_A.post, 51/100) | L20/roi_A.post: 0.393 (0.083) | 0.643 | -0.280 (-0.466) | -0.396 |  | -0.559 | 0.006 (obs_normal) | 0.172 | 0.00599 | 0.0958 |
+| A.post.speed | 0.763 (L20/roi_A.post, 46/100) | L20/roi_A.post: 0.838 (0.068) | -0.105 | -0.039 (-0.360) | -0.267 |  | -1.042 | -0.049 (obs_quad) | 0.372 | 0.002 | 0.0399 |
+| A.post.direction | 0.373 (L20/roi_A.post, 54/100) | L20/roi_A.post: 0.554 (0.052) | 0.211 | -0.277 (-0.467) | -0.404 |  | -0.422 | 0.363 (obs_normal) | 0.226 | 0.002 | 0.0399 |
+| A.post.log_mass | 0.052 (L20/roi_A.post, 59/100) | L20/roi_A.post: 0.226 (0.223) | 0.816 | -0.065 (-0.497) | -0.566 |  | -6.716 | -0.857 (obs_vel) | 0.561 | 0.232 | 0.862 |
+| A.post.radius | -0.984 (L4/roi_A.post, 74/100) | L4/roi_A.post: -0.012 (0.121) | 0.532 | -0.205 (-0.323) | -0.325 |  | 0.988 | -0.453 (obs_quad) | 0.253 | 0.435 | 0.87 |
+| B.pre.velocity | -0.027 (L28/roi_B.pre, 43/100) | L28/roi_B.pre: 0.277 (0.167) | -0.033 |  | -0.388 |  | -0.288 | 0.999 (obs_vel) | 0.212 | 0.0599 | 0.599 |
+| B.pre.speed | 0.037 (L4/frame.pre, 39/100) | L4/frame.pre: 0.594 (0.090) | -0.109 |  | 0.000 |  | -1.081 | 0.927 (obs_speed) | 0.636 | 0.0479 | 0.527 |
+| B.pre.direction | 0.205 (L28/roi_B.pre, 60/100) | L28/roi_B.pre: 0.400 (0.170) | -0.026 |  | -0.488 |  | -0.166 | 0.356 (obs_speed) | 0.283 | 0.0898 | 0.703 |
+| B.pre.log_mass | -0.018 (L36/roi_B.pre, 46/100) | L36/roi_B.pre: 0.394 (0.237) | 0.626 |  | 0.061 |  | 0.515 | -1.678 (obs_speed) | 0.641 | 0.13 | 0.778 |
+| B.pre.radius | -1.096 (L36/roi_B.pre, 30/100) | L36/roi_B.pre: -0.203 (0.207) | 0.483 |  | -0.668 |  | 0.436 | -0.875 (obs_normal) | 0.479 | 0.653 | 0.87 |
+| B.post.velocity | 0.691 (L16/roi_B.post, 89/100) | L16/roi_B.post: 0.729 (0.046) | 0.614 | 0.320 (-0.340) | -0.685 |  | 0.084 | -0.276 (obs_quad) | 0.218 | 0.002 | 0.0399 |
+| B.post.speed | 0.667 (L20/roi_B.post, 51/100) | L20/roi_B.post: 0.779 (0.028) | -0.052 | -0.183 (-0.542) | -0.205 |  | -0.774 | -0.198 (obs_vel) | 0.507 | 0.00998 | 0.14 |
+| B.post.direction | 0.527 (L16/roi_B.post, 98/100) | L16/roi_B.post: 0.599 (0.124) | 0.154 | 0.174 (-0.413) | -0.614 |  | -0.602 | 0.159 (obs_vel) | 0.316 | 0.002 | 0.0399 |
+| B.post.log_mass | 0.661 (L16/roi_B.post, 72/100) | L16/roi_B.post: 0.772 (0.031) | 0.781 | 0.619 (0.417) | 0.390 |  | 0.553 | -1.678 (obs_speed) | 0.640 | 0.014 | 0.182 |
+| B.post.radius | 0.049 (L12/roi_B.post, 56/100) | L12/roi_B.post: 0.315 (0.175) | 0.480 | -0.101 (-0.093) | -0.154 |  | 0.960 | -0.875 (obs_normal) | 0.537 | 0.216 | 0.862 |
+[06] l0 done in 0.4 min -> /workspace/meta/physlaw/results_smoke/vjepa2-vitg/f1

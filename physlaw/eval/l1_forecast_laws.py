@@ -70,7 +70,11 @@ from physlaw.probes.select import heldout_select
 LEGAL = ("conserve_e1", "conserve_e015")
 VIOLATING = ("mom_violate_e1", "mom_violate_e015", "energy_create")
 RES_LAWS = ("energy", "com", "angular_momentum")   # residual laws (the r_p momentum residual is dropped)
-POOLS = {"frame": {"A": "frame.post", "B": "frame.post"}, "roi": {"A": "roi_A.post", "B": "roi_B.post"}}
+# frame: leak-free, diffuse. roi: each ball at its TRUE post location (leaks it). contact: both balls' last
+# pre-contact ROIs, dilated, held fixed (tokens/pool.contact_mask): local AND leak-free.
+POOLS = {"frame": {"A": "frame.post", "B": "frame.post"}, "roi": {"A": "roi_A.post", "B": "roi_B.post"},
+         "contact": {"A": "contact.post", "B": "contact.post"}}
+LEAKY_POOLS = ("roi",)
 SPREAD_OK = (0.8, 1.2)
 WEAK_FLOOR = 0.8          # d_floor above this: S_family flagged as uninformative in the table
 WEAK_MOM_FLOOR = 0.8      # eta_floor above this x eta_blind: S_mom flagged ‡ (the real-frame probes already lose
@@ -105,7 +109,7 @@ def _load_spaces(cache_dir, recs, clips, model_cfg, mf):
     """{space: {"real"|"fc"|"pr": {pool: [n, D]}}}; "pr" only where every clip has a .pred_real.npz."""
     first = np.load(cache_dir / recs[0]["file"])
     pools = [str(p) for p in first["pools"]]
-    PP = ("roi_A.post", "roi_B.post", "frame.post")
+    PP = tuple(p for p in ("roi_A.post", "roi_B.post", "frame.post", "contact.post") if p in pools)
     zs = [np.load(cache_dir / r["file"]) for r in recs]
     spaces = {}
     if model_cfg.get("kind") == "diffusion" and "fc_pooled" not in first.files:
@@ -135,7 +139,7 @@ def _load_spaces(cache_dir, recs, clips, model_cfg, mf):
         for c in [c for c in clips if c.startswith(g + "/")]:
             i = row[c]
             post = phases[c][t0:] == "post"
-            for p in ("roi_A.post", "roi_B.post"):
+            for p in [q for q in PP if q != "frame.post"]:
                 w = mf[f"w.{p}"][i].reshape(len(phases[c]), *F.shape[1:3])[t0:] * post[:, None, None]
                 fc[p][i] = (w.reshape(-1) / w.sum()) @ F.reshape(-1, F.shape[-1])
             fc["frame.post"][i] = F[post].reshape(-1, F.shape[-1]).mean(0)
@@ -144,15 +148,31 @@ def _load_spaces(cache_dir, recs, clips, model_cfg, mf):
     if all(f.exists() for f in prf):
         zp = [np.load(f) for f in prf]
         pp = [str(p) for p in zp[0]["pools"]]
-        spaces["final"]["pr"] = {p: np.stack([z["pooled"][pp.index(p)] for z in zp]).astype(np.float64) for p in PP}
+        spaces["final"]["pr"] = {p: np.stack([z["pooled"][pp.index(p)] for z in zp]).astype(np.float64) for p in PP if p in pp}
     return spaces
 
 
 # --------------------------------------------------------------------------- decoding
 
-def _crossfit(X_train, Y, groups, X_apply, k, n_seeds, alphas, mm_src=None):
+def _calibration(Xtr, Ytr, gtr, a, seed) -> np.ndarray:
+    """Per-output affine map y ≈ c0 + c1·ŷ that undoes ridge shrinkage toward the training mean, fitted on
+    2-fold cross-predictions WITHIN the training groups (the test fold is never seen). [2, n_out]."""
+    ug = np.unique(gtr)
+    np.random.default_rng(1000 + seed).shuffle(ug)
+    h = np.isin(gtr, ug[: len(ug) // 2])
+    P = np.zeros_like(Ytr)
+    for fit, pred in ((h, ~h), (~h, h)):
+        P[pred] = _SVDRidge(Xtr[fit], Ytr[fit], True).predict(Xtr[pred], a)
+    C = np.zeros((2, Ytr.shape[1]))
+    for j in range(Ytr.shape[1]):
+        C[:, j] = np.linalg.lstsq(np.stack([np.ones(len(P)), P[:, j]], 1), Ytr[:, j], rcond=None)[0]
+    return C
+
+
+def _crossfit(X_train, Y, groups, X_apply, k, n_seeds, alphas, mm_src=None, calibrate=False):
     """Cross-fitted ridge: returns (oof decode of X_train, decode of X_apply, mean R² of the oof), both
-    averaged over seeds. ``mm_src``: moment-match X_apply to X_train with training-fold stats first."""
+    averaged over seeds. ``mm_src``: moment-match X_apply to X_train with training-fold stats first.
+    ``calibrate``: map both decodes through :func:`_calibration` (fold-proper de-shrinking)."""
     n = len(Y)
     oof_m, app_m, r2 = np.zeros_like(Y), np.zeros_like(Y), []
     for seed in range(n_seeds):
@@ -161,11 +181,12 @@ def _crossfit(X_train, Y, groups, X_apply, k, n_seeds, alphas, mm_src=None):
             tr = np.setdiff1d(np.arange(n), te)
             a = _inner_alpha(X_train[tr], Y[tr], groups[tr], alphas, k, seed, False, True)
             mdl = _SVDRidge(X_train[tr], Y[tr], True)
-            oof[te] = mdl.predict(X_train[te], a)
+            C = _calibration(X_train[tr], Y[tr], groups[tr], a, seed) if calibrate else np.array([[0.0], [1.0]])
+            oof[te] = C[0] + C[1] * mdl.predict(X_train[te], a)
             xa = X_apply[te]
             if mm_src is not None:
                 xa = (xa - mm_src[tr].mean(0)) / (mm_src[tr].std(0) + 1e-8) * (X_train[tr].std(0) + 1e-8) + X_train[tr].mean(0)
-            app_m[te] += mdl.predict(xa, a) / n_seeds
+            app_m[te] += (C[0] + C[1] * mdl.predict(xa, a)) / n_seeds
         oof_m += oof / n_seeds
         r2.append(1 - ((Y - oof) ** 2).sum() / ((Y - Y.mean(0)) ** 2).sum())
     return oof_m, app_m, float(np.mean(r2))
@@ -340,7 +361,8 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
     Y = {o: np.array([states[c][1]["v"][oi] for c in clips]) for oi, o in enumerate("AB")}
     Ypre = {o: np.array([states[c][0]["v"][oi] for c in clips]) for oi, o in enumerate("AB")}
     true_speed = np.linalg.norm(np.stack([Y["A"], Y["B"]], 1), axis=-1)
-    options = ["P-real-mm"] + (["P-pred-real"] if any("pr" in s for s in spaces.values()) else [])
+    base_opts = ["P-real-mm"] + (["P-pred-real"] if any("pr" in s for s in spaces.values()) else [])
+    options = base_opts + [f"{o}+cal" for o in base_opts]     # +cal: de-shrunk decodes (_calibration)
     out = {"n_groups": len(ugroups), "n_clips": len(clips), "options": options, "momentum_cfg": mcfg,
            "protocol": {"k_folds": k, "fold_seeds": n_seeds, "test_groups_per_fold": len(ugroups) / k,
                         "cross_fitting_note": "5-fold x 4 seeds cross-fitting (spec §5: allowed below 100 groups)",
@@ -350,22 +372,25 @@ def run(cache_dir: Path, data_dir: Path, cfg, model_cfg, log=print) -> dict:
     legal_rows = [[f"{g}/{t}" for t in LEGAL] for g in ugroups]
     for space, S_ in spaces.items():
         for pname, pmap in POOLS.items():
+            if pmap["A"] not in S_["real"] or pmap["A"] not in S_["fc"]:
+                continue          # pool not in this cache (caches made before the contact pool)
             # P-forecast ceiling (information in the forecast; not a law score)
             rows1 = np.array([row[f"{g}/{LEGAL[0]}"] for g in ugroups])
             ceil = {f"post_{o}": _ceiling(S_["fc"][pmap[o]][rows1], Y[o][rows1], groups[rows1], k, alphas) for o in "AB"}
             ceil.update({f"pre_{o}": _ceiling(S_["fc"][pmap[o]][rows1], Ypre[o][rows1], groups[rows1], k, alphas) for o in "AB"})
-            if pname == "roi":   # how much a forecast-trained ROI probe gets from the ROI's placement alone
+            if pname in ("roi", "contact"):   # how much a forecast-trained probe gets from the pool's placement alone
                 ceil.update({f"mask_floor_post_{o}": _ceiling(mf[f"w.{pmap[o]}"][rows1].astype(np.float64), Y[o][rows1],
                                                               groups[rows1], k, alphas) for o in "AB"})
             out["ceiling"][f"{space}|{pname}"] = ceil
             for opt in options:
-                src = "real" if opt == "P-real-mm" else "pr"
-                if src not in S_:
+                bopt, cal = opt.split("+")[0], opt.endswith("+cal")
+                src = "real" if bopt == "P-real-mm" else "pr"
+                if src not in S_ or pmap["A"] not in S_[src]:
                     continue
                 v_fc, v_fl, r2 = np.zeros((len(clips), 2, 2)), np.zeros((len(clips), 2, 2)), []
                 for oi, o in enumerate("AB"):
                     oof, app, r = _crossfit(S_[src][pmap[o]], Y[o], groups, S_["fc"][pmap[o]], k, n_seeds, alphas,
-                                            mm_src=S_["fc"][pmap[o]] if opt == "P-real-mm" else None)
+                                            mm_src=S_["fc"][pmap[o]] if bopt == "P-real-mm" else None, calibrate=cal)
                     v_fl[:, oi], v_fc[:, oi] = oof, app
                     r2.append(r)
                 per = _per_clip(v_fc, v_fl, states, clips, row, ugroups, res_laws)

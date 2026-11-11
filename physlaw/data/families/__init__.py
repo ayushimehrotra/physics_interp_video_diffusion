@@ -22,7 +22,7 @@ Units: metres, seconds, kilograms; ``G = 9.81``. World axes: z up. Side-view sce
 move in the x-z plane (camera looking along +y); top-down scenes in x-y.
 
 Why the gravity families are closed form end to end (deviation from "simulated
-pre-event state", recorded in docs/STATUS.md): Bullet's semi-implicit Euler at
+pre-event state", recorded in docs/RESUME.md): Bullet's semi-implicit Euler at
 240 Hz offsets a ballistic trajectory by g*dt*t/2 (0.05 m after 2.5 s) and its
 box-on-box contacts jitter, so a simulated pre-event segment would fail the
 1e-6 law tests for reasons unrelated to the twins. The same initial condition is
@@ -40,7 +40,7 @@ import numpy as np
 
 G = 9.81
 # F9 (pendulum) is not built: Kubric's PyBullet view creates every body with useMaximalCoordinates=True,
-# and pybullet then refuses every constraint (point2point, revolute, fixed); see docs/STATUS.md.
+# and pybullet then refuses every constraint (point2point, revolute, fixed); see docs/RESUME.md.
 FAMILY_MODULES = {"f6": "f6_friction", "f7": "f7_freefall", "f8": "f8_ramp", "f10": "f10_rolling"}
 
 

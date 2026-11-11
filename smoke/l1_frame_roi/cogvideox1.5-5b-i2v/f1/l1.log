@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/workspace/meta/physlaw/scripts/06_eval.py", line 106, in <module>
+    main()
+  File "/workspace/meta/physlaw/scripts/06_eval.py", line 93, in main
+    res = l1_forecast_laws.run(cache, data, cfg, mcfg)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physlaw/physlaw/eval/l1_forecast_laws.py", line 331, in run
+    spaces = _load_spaces(cache_dir, recs, clips, model_cfg, mf)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/meta/physlaw/physlaw/eval/l1_forecast_laws.py", line 120, in _load_spaces
+    li = [int(l) for l in first["layers"]].index(-1)
+          ^^^^^^
+ValueError: invalid literal for int() with base 10: np.str_('snr+0/L0')

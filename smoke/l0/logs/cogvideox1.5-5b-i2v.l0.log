@@ -1,0 +1,120 @@
+[L0] 320 clips / 64 groups; acts (320, 12, 44, 3072); layers ['snr+0/L0', 'snr+0/L12', 'snr+0/L16', 'snr+0/L20', 'snr+0/L24', 'snr+0/L28', 'snr+0/L32', 'snr+0/L36', 'snr+0/L4', 'snr+0/L41', 'snr+0/L8', 'snr+8/L0', 'snr+8/L12', 'snr+8/L16', 'snr+8/L20', 'snr+8/L24', 'snr+8/L28', 'snr+8/L32', 'snr+8/L36', 'snr+8/L4', 'snr+8/L41', 'snr+8/L8', 'snr-20/L0', 'snr-20/L12', 'snr-20/L16', 'snr-20/L20', 'snr-20/L24', 'snr-20/L28', 'snr-20/L32', 'snr-20/L36', 'snr-20/L4', 'snr-20/L41', 'snr-20/L8', 'snr-8/L0', 'snr-8/L12', 'snr-8/L16', 'snr-8/L20', 'snr-8/L24', 'snr-8/L28', 'snr-8/L32', 'snr-8/L36', 'snr-8/L4', 'snr-8/L41', 'snr-8/L8']; latent []
+[L0] 364 feature cells x their targets; 500 permutations; 32 workers
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+[L0]   25/364 cells
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+[L0]   50/364 cells
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+[L0]   75/364 cells
+[L0]   100/364 cells
+[L0]   125/364 cells
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+/root/envs/physics_venv/lib/python3.12/site-packages/numpy/_core/_methods.py:191: RuntimeWarning: invalid value encountered in subtract
+  x = asanyarray(arr - arrmean)
+/root/wt/smoke/physlaw/probes/grid.py:45: RuntimeWarning: invalid value encountered in subtract
+  self.Xs = (X[tr] - mx) / sx
+/root/wt/smoke/physlaw/probes/grid.py:50: RuntimeWarning: invalid value encountered in subtract
+  return (((X[rows] - self.mx) / self.sx) @ self.Xs.T) @ self.U          # [n_te, n_tr]
+[L0]   150/364 cells
+[L0]   175/364 cells
+[L0]   200/364 cells
+[L0]   225/364 cells
+[L0]   250/364 cells
+[L0]   275/364 cells
+[L0]   300/364 cells
+[L0]   325/364 cells
+[L0]   350/364 cells
+[L0] one-twin refit: 20 fits
+n_groups = 64, 5-fold x 12 seeds (~13 test groups per fold), 500 permutations; variants searched per target: [132] (layers x pools). Held-out R²: cell selected on half the groups, scored on the other half (50 random splits x 2); in-sample max R² is the old protocol (its permutation p corrects for the search).
+
+| target | held-out R² (selected cell, picks) | in-sample best cell: R² (sd) | untrained held-out R² | one-twin refit R² (mask floor) | mask floor (same pool) | latent baseline | tracker | best observer | null q95 | p_corr | p_Holm |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A.pre.velocity | 0.983 (snr+0/L8/roi_A.pre, 83/100) | snr+0/L8/roi_A.pre: 0.984 (0.004) | 0.001 |  | 0.474 |  | 1.000 | 1.000 (obs_vel) | 0.026 | 0.002 | 0.0399 |
+| A.pre.speed | 0.973 (snr+8/L8/roi_A.pre, 36/100) | snr+8/L8/roi_A.pre: 0.977 (0.008) | -0.101 |  | 0.199 |  | -0.100 | 1.000 (obs_speed) | 0.183 | 0.002 | 0.0399 |
+| A.pre.direction | 0.989 (snr+8/L8/roi_A.pre, 53/100) | snr+8/L8/roi_A.pre: 0.990 (0.001) | -0.047 |  | 0.481 |  | 0.771 | 0.933 (obs_quad) | 0.034 | 0.002 | 0.0399 |
+| A.pre.log_mass | 0.979 (snr+8/L8/roi_A.pre, 76/100) | snr+8/L8/roi_A.pre: 0.981 (0.003) | 0.699 |  | -0.088 |  | 0.223 | -0.026 (obs_speed) | 0.152 | 0.002 | 0.0399 |
+| A.pre.radius | 0.937 (snr+8/L8/roi_A.pre, 95/100) | snr+8/L8/roi_A.pre: 0.942 (0.009) | 0.318 |  | -0.070 |  | 1.000 | -0.037 (obs_vel) | 0.157 | 0.002 | 0.0399 |
+| A.post.velocity | 0.982 (snr+8/L8/roi_A.post, 88/100) | snr+8/L8/roi_A.post: 0.982 (0.006) | 0.643 | 0.962 (0.347) | 0.467 |  | 1.000 | 0.335 (obs_vel) | 0.025 | 0.002 | 0.0399 |
+| A.post.speed | 0.985 (snr+8/L4/roi_A.post, 73/100) | snr+8/L4/roi_A.post: 0.990 (0.002) | -0.105 | 0.974 (0.127) | 0.295 |  | -0.046 | 0.234 (obs_speed) | 0.106 | 0.002 | 0.0399 |
+| A.post.direction | 0.990 (snr+8/L4/roi_A.post, 85/100) | snr+8/L4/roi_A.post: 0.991 (0.001) | 0.211 | 0.974 (0.418) | 0.512 |  | 0.629 | 0.340 (obs_vel) | 0.036 | 0.002 | 0.0399 |
+| A.post.log_mass | 0.971 (snr+8/L4/roi_A.post, 47/100) | snr+8/L4/roi_A.post: 0.976 (0.002) | 0.816 | 0.964 (-0.056) | -0.041 |  | 0.213 | -0.026 (obs_speed) | 0.136 | 0.002 | 0.0399 |
+| A.post.radius | 0.928 (snr+8/L12/roi_A.post, 63/100) | snr+8/L12/roi_A.post: 0.937 (0.005) | 0.532 | 0.767 (-0.045) | -0.048 |  | 0.999 | -0.037 (obs_vel) | 0.129 | 0.002 | 0.0399 |
+| B.pre.velocity | 0.967 (snr+0/L8/roi_B.pre, 67/100) | snr+0/L8/roi_B.pre: 0.968 (0.006) | -0.033 |  | 0.288 |  | 0.981 | 1.000 (obs_vel) | 0.053 | 0.002 | 0.0399 |
+| B.pre.speed | 0.980 (snr+8/L4/roi_B.pre, 55/100) | snr+8/L4/roi_B.pre: 0.984 (0.002) | -0.109 |  | 0.242 |  | -0.086 | 1.000 (obs_speed) | 0.179 | 0.002 | 0.0399 |
+| B.pre.direction | 0.986 (snr+8/L8/roi_B.pre, 61/100) | snr+8/L8/roi_B.pre: 0.988 (0.002) | -0.026 |  | 0.310 |  | 0.653 | 0.890 (obs_quad) | 0.058 | 0.002 | 0.0399 |
+| B.pre.log_mass | 0.967 (snr+8/L4/roi_B.pre, 84/100) | snr+8/L4/roi_B.pre: 0.971 (0.006) | 0.626 |  | -0.051 |  | -0.110 | -0.041 (obs_speed) | 0.158 | 0.002 | 0.0399 |
+| B.pre.radius | 0.925 (snr-8/L8/roi_B.pre, 71/100) | snr-8/L8/roi_B.pre: 0.933 (0.006) | 0.483 |  | -0.117 |  | 0.877 | -0.058 (obs_normal) | 0.147 | 0.002 | 0.0399 |
+| B.post.velocity | 0.981 (snr+0/L8/roi_B.post, 75/100) | snr+0/L8/roi_B.post: 0.982 (0.002) | 0.614 | 0.963 (0.331) | 0.387 |  | 0.972 | 0.270 (obs_vel) | 0.037 | 0.002 | 0.0399 |
+| B.post.speed | 0.984 (snr+8/L4/roi_B.post, 61/100) | snr+8/L4/roi_B.post: 0.988 (0.002) | -0.052 | 0.969 (0.159) | 0.281 |  | -0.204 | 0.164 (obs_normal) | 0.139 | 0.002 | 0.0399 |
+| B.post.direction | 0.985 (snr+8/L4/roi_B.post, 100/100) | snr+8/L4/roi_B.post: 0.985 (0.001) | 0.154 | 0.968 (0.398) | 0.491 |  | 0.660 | 0.352 (obs_vel) | 0.032 | 0.002 | 0.0399 |
+| B.post.log_mass | 0.980 (snr+8/L16/roi_B.post, 79/100) | snr+8/L16/roi_B.post: 0.981 (0.002) | 0.781 | 0.960 (-0.082) | -0.075 |  | 0.227 | -0.041 (obs_speed) | 0.128 | 0.002 | 0.0399 |
+| B.post.radius | 0.942 (snr+8/L16/roi_B.post, 51/100) | snr+8/L16/roi_B.post: 0.946 (0.003) | 0.480 | 0.905 (-0.057) | -0.059 |  | 0.703 | -0.058 (obs_normal) | 0.134 | 0.002 | 0.0399 |
+[06] l0 done in 11.5 min -> /workspace/meta/physlaw/results_smoke/cogvideox1.5-5b-i2v/f1

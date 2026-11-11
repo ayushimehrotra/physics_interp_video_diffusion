@@ -1,2 +1,0 @@
-- [PhysLaw successor project](physlaw-successor-project.md) — new benchmark repo at /workspace/meta/physlaw; old results outdated (wrong diffusion configs)
-- [PhysLaw env traps](physlaw-env-traps.md) — geesefs limits, venvs in /root/envs, rebuild with scripts/00_setup_envs.sh

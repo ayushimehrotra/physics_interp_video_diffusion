@@ -21,7 +21,7 @@ master:
   contact_tolerance_frames: 1.0
   samples_per_pixel: 64     # 32 is +36% throughput but moves some pixels by up to 104/255 (kept at 64)
   crf: 17
-  # Throughput settings, measured on one H100 (docs/STATUS.md). With these the GPU is 99-100% busy
+  # Throughput settings, measured on one H100 (docs/RESUME.md). With these the GPU is 99-100% busy
   # at 4+ workers (~5.4 frames/s aggregate) instead of ~25% (1.4 frames/s).
   persistent_data: true      # keep BVH/scene data between frames: 0.87 -> 0.32 s/frame solo
   render_threads: 8          # cap Blender CPU threads; uncapped (578 threads/process) thrashes at 8 workers

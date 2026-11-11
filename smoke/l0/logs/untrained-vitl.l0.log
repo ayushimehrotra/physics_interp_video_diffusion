@@ -1,0 +1,32 @@
+[L0] 320 clips / 64 groups; acts (320, 12, 13, 1024); layers [-1, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23]; latent []
+[L0] 116 feature cells x their targets; 500 permutations; 32 workers
+[L0]   25/116 cells
+[L0]   50/116 cells
+[L0]   75/116 cells
+[L0]   100/116 cells
+[L0] one-twin refit: 19 fits
+n_groups = 64, 5-fold x 12 seeds (~13 test groups per fold), 500 permutations; variants searched per target: [39] (layers x pools). Held-out R²: cell selected on half the groups, scored on the other half (50 random splits x 2); in-sample max R² is the old protocol (its permutation p corrects for the search).
+
+| target | held-out R² (selected cell, picks) | in-sample best cell: R² (sd) | untrained held-out R² | one-twin refit R² (mask floor) | mask floor (same pool) | latent baseline | tracker | best observer | null q95 | p_corr | p_Holm |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A.pre.velocity | 0.001 (L18/roi_A.pre, 25/100) | L20/roi_A.pre: 0.043 (0.050) |  |  | 0.397 |  | 1.000 | 1.000 (obs_vel) | 0.021 | 0.012 | 0.0958 |
+| A.pre.speed | -0.101 (L18/roi_pair.pre, 24/100) | L18/roi_pair.pre: -0.036 (0.072) |  |  | -0.080 |  | 0.058 | 1.000 (obs_speed) | 0.068 | 0.0858 | 0.429 |
+| A.pre.direction | -0.047 (L18/roi_A.pre, 39/100) | L18/roi_A.pre: -0.013 (0.021) |  |  | 0.351 |  | 0.795 | 0.933 (obs_quad) | 0.021 | 0.0499 | 0.299 |
+| A.pre.log_mass | 0.699 (L-1/roi_A.pre, 35/100) | L18/roi_A.pre: 0.715 (0.027) |  |  | -0.067 |  | 0.235 | -0.026 (obs_speed) | 0.080 | 0.002 | 0.0399 |
+| A.pre.radius | 0.318 (L0/frame.pre, 31/100) | L2/frame.pre: 0.407 (0.032) |  |  | 0.000 |  | 1.000 | -0.037 (obs_vel) | 0.093 | 0.002 | 0.0399 |
+| A.post.velocity | 0.643 (L-1/roi_A.post, 53/100) | L-1/roi_A.post: 0.666 (0.036) |  | -0.021 (0.158) | 0.353 |  | 1.000 | 0.335 (obs_vel) | -0.001 | 0.002 | 0.0399 |
+| A.post.speed | -0.105 (L20/roi_A.post, 18/100) | L-1/roi_A.post: -0.053 (0.035) |  | -0.125 (-0.077) | -0.068 |  | 0.038 | 0.234 (obs_speed) | 0.028 | 0.0898 | 0.429 |
+| A.post.direction | 0.211 (L0/roi_A.post, 80/100) | L0/roi_A.post: 0.233 (0.049) |  | -0.059 (0.186) | 0.257 |  | 0.666 | 0.340 (obs_vel) | 0.008 | 0.002 | 0.0399 |
+| A.post.log_mass | 0.816 (L14/roi_A.post, 58/100) | L14/roi_A.post: 0.832 (0.023) |  | 0.633 (-0.062) | -0.042 |  | 0.264 | -0.026 (obs_speed) | 0.048 | 0.002 | 0.0399 |
+| A.post.radius | 0.532 (L14/roi_A.post, 43/100) | L14/roi_A.post: 0.572 (0.066) |  | 0.074 (-0.045) | -0.052 |  | 1.000 | -0.037 (obs_vel) | 0.038 | 0.002 | 0.0399 |
+| B.pre.velocity | -0.033 (L-1/frame.pre, 19/100) | L-1/frame.pre: -0.008 (0.013) |  |  | 0.000 |  | 1.000 | 1.000 (obs_vel) | 0.011 | 0.186 | 0.557 |
+| B.pre.speed | -0.109 (L8/roi_B.pre, 34/100) | L8/roi_B.pre: -0.069 (0.041) |  |  | -0.109 |  | -0.104 | 1.000 (obs_speed) | 0.032 | 0.752 | 0.752 |
+| B.pre.direction | -0.026 (L12/frame.pre, 34/100) | L12/frame.pre: 0.003 (0.015) |  |  | 0.000 |  | 0.782 | 0.890 (obs_quad) | 0.013 | 0.299 | 0.599 |
+| B.pre.log_mass | 0.626 (L-1/roi_B.pre, 48/100) | L-1/roi_B.pre: 0.662 (0.041) |  |  | -0.090 |  | 0.262 | -0.041 (obs_speed) | 0.074 | 0.002 | 0.0399 |
+| B.pre.radius | 0.483 (L4/frame.pre, 61/100) | L4/frame.pre: 0.513 (0.032) |  |  | 0.000 |  | 1.000 | -0.058 (obs_normal) | 0.064 | 0.002 | 0.0399 |
+| B.post.velocity | 0.614 (L0/roi_B.post, 54/100) | L0/roi_B.post: 0.633 (0.018) |  | -0.019 (0.149) | 0.219 |  | 1.000 | 0.270 (obs_vel) | 0.005 | 0.002 | 0.0399 |
+| B.post.speed | -0.052 (L10/roi_pair.post, 36/100) | L10/roi_pair.post: -0.009 (0.053) |  | -0.112 (-0.099) | -0.073 |  | 0.105 | 0.164 (obs_normal) | 0.037 | 0.0259 | 0.182 |
+| B.post.direction | 0.154 (L12/roi_B.post, 53/100) | L12/roi_B.post: 0.201 (0.047) |  | -0.040 (0.174) | 0.298 |  | 0.711 | 0.352 (obs_vel) | 0.008 | 0.002 | 0.0399 |
+| B.post.log_mass | 0.781 (L0/roi_B.post, 32/100) | L4/roi_B.post: 0.803 (0.024) |  | 0.518 (-0.061) | -0.051 |  | 0.359 | -0.041 (obs_speed) | 0.055 | 0.002 | 0.0399 |
+| B.post.radius | 0.480 (L2/frame.post, 42/100) | L2/frame.post: 0.560 (0.023) |  | 0.542 | 0.000 |  | 1.000 | -0.058 (obs_normal) | 0.015 | 0.002 | 0.0399 |
+[06] l0 done in 3.1 min -> /workspace/meta/physlaw/results_smoke/untrained-vitl/f1

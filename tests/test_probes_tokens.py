@@ -177,3 +177,23 @@ def test_vjepa_visible_encoder_matches_prefix_encoding():
         ref = m.model(pixel_values_videos=x[:, :4], skip_predictor=True).last_hidden_state
         got = m._encode_visible(x, torch.arange(18))
     assert torch.allclose(ref, got, atol=1e-5)
+
+
+def test_contact_pool_uses_pre_event_information_only():
+    """contact.* weights depend only on the last pre-contact ROIs: moving the balls after contact changes
+    roi_*.post but leaves contact.post untouched (no location leak), and the pool covers the contact region."""
+    from types import SimpleNamespace
+    from physlaw.tokens.pool import pool_weights
+    T, gh, gw = 6, 16, 16
+    phases = ["pre", "pre", "pre", "post", "post", "post"]
+    def objs(shift):
+        a = np.zeros((T, gh, gw), bool); b = np.zeros((T, gh, gw), bool)
+        for t in range(T):
+            d = 0 if t < 3 else shift * (t - 2)
+            a[t, 8, max(0, 6 - d)] = True; b[t, 8, min(gw - 1, 9 + d)] = True
+        return {"A": SimpleNamespace(roi=a), "B": SimpleNamespace(roi=b)}
+    w1, w2 = pool_weights(objs(1), phases), pool_weights(objs(3), phases)
+    assert not np.allclose(w1["roi_A.post"], w2["roi_A.post"])          # roi follows the true outcome
+    assert np.allclose(w1["contact.post"], w2["contact.post"])          # contact does not
+    assert w1["contact.post"].sum() == pytest.approx(1.0)
+    assert (w1["contact.post"][3:, 8, 6] > 0).all() and (w1["contact.post"][:3] == 0).all()

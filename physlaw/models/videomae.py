@@ -7,4 +7,4 @@ Port from _legacy/physics_interp/models/encoders.py:VideoMAEv2Adapter and _legac
 
 
 def run(*args, **kwargs):
-    raise NotImplementedError("physlaw/models/videomae.py: spec milestone 6 not built yet (see docs/STATUS.md)")
+    raise NotImplementedError("physlaw/models/videomae.py: spec milestone 6 not built yet (see docs/RESUME.md)")

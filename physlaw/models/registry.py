@@ -40,7 +40,7 @@ def adapter_class(cfg):
     ref = cfg.get("adapter") or ADAPTERS_BY_KIND.get(cfg.get("kind")) or ADAPTERS_BY_HF_ID.get(cfg.get("hf_id"))
     if ref is None:
         raise NotImplementedError(f"no adapter for {cfg['name']} (kind={cfg.get('kind')}, hf_id={cfg.get('hf_id')}); "
-                                  "see docs/STATUS.md")
+                                  "see docs/RESUME.md")
     mod, cls = ref.split(":")
     return getattr(importlib.import_module(f"physlaw.models.{mod}"), cls)
 

@@ -130,7 +130,7 @@ def _mask_feat_one(args):
         out[f"geom.{w}"] = np.concatenate(cols)
     W = pool_weights(obj, phases)     # mask floor: the pooling weights of each ROI pool, flattened
     for name, wt in W.items():
-        if name.startswith("roi_") and not name.endswith(".all"):
+        if name.startswith(("roi_", "contact")) and not name.endswith(".all"):
             out[f"w.{name}"] = wt.reshape(-1).astype(np.float32)
     return out
 
@@ -142,7 +142,7 @@ def mask_features(cache_dir: Path, data_dir: Path, recs: list[dict], labels: lis
     clips = [r["clip"] for r in recs]
     if f.exists():
         z = np.load(f)
-        if list(z["clips"]) == clips:
+        if list(z["clips"]) == clips and "w.contact.post" in z.files:   # rebuild caches made before the contact pool
             return {k: z[k] for k in z.files if k != "clips"}
     jobs = [(str(data_dir / r["clip"]), np.load(cache_dir / r["file"])["frames"], spec,
              l["physlaw"]["first_post_contact_frame"]) for r, l in zip(recs, labels)]

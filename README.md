@@ -2,10 +2,9 @@
 
 Do video models obey physical laws **inside** their representations, and does that match
 whether their **generated outputs** obey them? Full specification: [`docs/SPEC.md`](docs/SPEC.md).
-What is built and what deviates from the spec: [`docs/STATUS.md`](docs/STATUS.md).
+State, results and plan: [`docs/RESUME.md`](docs/RESUME.md).
 
-Successor to `../physics_interp_video_diffusion`. Reusable code was copied in (see
-STATUS); its results are **not** carried over — see [`docs/prior_work/README.md`](docs/prior_work/README.md).
+Successor to `../physics_interp_video_diffusion`; its results are **not** carried over (old docs are in git history).
 
 ## Layout (spec §1)
 

@@ -1,24 +1,19 @@
 # physlaw — notes for Claude
 
-Benchmark: physical laws inside video models. Spec: `docs/SPEC.md`. State: `docs/STATUS.md`.
-Successor of `../physics_interp_video_diffusion`. Its CLAUDE.md is copied to
-`docs/prior_work/` for METHODOLOGY only. Its numbers are not PhysLaw results (diffusion models were
-run off their official configs; see `docs/prior_work/README.md`).
+Benchmark: physical laws inside video models. Spec: `docs/SPEC.md`. State, results, plan: `docs/RESUME.md`
+(the only status doc; update it instead of adding new docs). Smoke-test outputs go in `smoke/`.
+One branch: `physlaw-v2-merged`.
 
-## Environment (current machine, since 2026-11-09)
+## Environment
 
-* Everything is on local disk under `/root`: repo `/root/meta/physlaw`, weights `/root/models`,
-  Kubric source `/root/kubric` (pinned commit 61f2422), venvs `/root/envs`. No `/workspace`.
-* GPU: one RTX 6000 Ada (48 GB, sm_89). Host: 8 CPUs, **15 GB RAM**. Load large models straight
-  to the GPU (or with offload); a full CPU-side load of a 5B+ pipeline can run out of host RAM.
+* Repo, data, cache, results and weights live on `/workspace` (geesefs: no symlinks/chmod/`sed -i`/rsync; keep uv
+  caches off it). `/root` is not persistent and has 50 GB.
 * Two venvs: `/root/envs/kubric_venv` (py3.11, bpy, pybullet, NO torch) runs `physlaw/data/*`;
   `/root/envs/physics_venv` (py3.12, uv-managed, torch) runs models/eval. Keep `physlaw/__init__.py`,
-  `physlaw/config.py` and `physlaw/data/*` torch-free. Rebuild both with `scripts/00_setup_envs.sh`.
-* Model weights: plain files in `/root/models` (configs: `${env:PHYSLAW_MODELS,/root/models}`).
-  Run models with `HF_HUB_OFFLINE=1`.
-* F1 stays at the 64-group subset in `data/f1` (decision 2026-11-09: the other 336 groups are not rendered).
-* Earlier pods used a geesefs `/workspace` (no symlinks/chmod/`sed -i`/rsync, torch import hangs);
-  `docs/RESUME.md` and `docs/claude_memory/` describe that setup.
+  `physlaw/config.py` and `physlaw/data/*` torch-free. Rebuild both with
+  `KUBRIC_SRC=/workspace/kubric bash scripts/00_setup_envs.sh`.
+* Model weights: `/workspace/models`. Run models with `PHYSLAW_MODELS=/workspace/models HF_HUB_OFFLINE=1`.
+* F1 stays at the 64-group subset in `data/f1`.
 * Rendering needs `KUBRIC_USE_GPU=1`; check `render_device` in labels (should be `OPTIX: ...`).
 * Never `pkill -f` a pattern that also appears in your own shell command line: it kills that shell.
 * Diffusion models: use ONLY the settings pinned in `configs/models/*.yaml` (the model cards'

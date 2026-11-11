@@ -1,0 +1,45 @@
+=== unit tests 08:36:18
+...................................................................................................................................................................................................................... [ 26%]
+...................................................................................................................................................................................................................... [ 52%]
+...................................................................................................................................................................................................................... [ 78%]
+............................................................................................................................................................................                                           [100%]
+814 passed in 73.31s (0:01:13)
+=== cogvideox1.5-5b-i2v exit=1 1 min
+    li = [int(l) for l in first["layers"]].index(-1)
+          ^^^^^^
+ValueError: invalid literal for int() with base 10: np.str_('snr+0/L0')
+=== videomaev2-giant exit=0 2 min
+[L1] final|P-real-mm|frame: floor R² 0.025, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.804/0.726/0.469, 54 groups), S_family(legal) +nan
+[L1] final|P-pred-real|frame: floor R² 0.258, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.630/0.579/0.469, 54 groups), S_family(legal) +nan
+[L1] final|P-real-mm|roi: floor R² 0.681, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.737/0.462/0.469, 54 groups), S_family(legal) -1.00
+[L1] final|P-pred-real|roi: floor R² 0.838, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.814/0.362/0.469, 54 groups), S_family(legal) -1.00
+| final|frame | 0.05, 0.01 | -0.02, -0.07 |  |
+| final|roi | 0.51, 0.36 | 0.01, -0.06 | 0.08, 0.03 |
+[06] l1 done in 2.9 min -> results_smoke/videomaev2-giant/f1
+=== untrained-vitl exit=0 2 min
+[L1] final|P-real-mm|frame: floor R² -0.018, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.821/0.807/0.469, 54 groups), S_family(legal) +nan
+[L1] final|P-real-mm|roi: floor R² 0.581, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.825/0.516/0.469, 54 groups), S_family(legal) +nan
+| final|frame | 0.03, -0.03 | -0.03, -0.04 |  |
+| final|roi | 0.19, 0.33 | -0.09, -0.04 | 0.24, 0.12 |
+[06] l1 done in 2.9 min -> results_smoke/untrained-vitl/f1
+=== vjepa2-vitl exit=0 3 min
+[L1] final|P-real-mm|frame: floor R² 0.481, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.714/0.467/0.469, 54 groups), S_family(legal) -1.00
+[L1] final|P-pred-real|frame: floor R² 0.456, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.704/0.494/0.469, 54 groups), S_family(legal) -1.00
+[L1] final|P-real-mm|roi: floor R² 0.895, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.706/0.297/0.469, 54 groups), S_family(legal) -0.34
+[L1] final|P-pred-real|roi: floor R² 0.871, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.684/0.334/0.469, 54 groups), S_family(legal) -0.58
+| final|frame | 0.22, 0.23 | 0.51, 0.12 |  |
+| final|roi | 0.74, 0.74 | 0.53, 0.05 | 0.24, 0.12 |
+[06] l1 done in 3.7 min -> results_smoke/vjepa2-vitl/f1
+=== cogvideox-2b exit=0 11 min
+[L1] snr+0/L15|P-real-mm|frame: floor R² 0.369, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.806/0.444/0.469, 54 groups), S_family(legal) -1.00
+[L1] snr+0/L15|P-real-mm|roi: floor R² 0.971, interaction rate 1.00, S_mom(legal) -0.94 (eta fc/floor/blind 0.787/0.132/0.469, 54 groups), S_family(legal) -0.65
+[L1] snr+0/L24|P-real-mm|frame: floor R² 0.320, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.773/0.505/0.469, 54 groups), S_family(legal) +nan
+[L1] snr+0/L24|P-real-mm|roi: floor R² 0.940, interaction rate 1.00, S_mom(legal) -1.00 (eta fc/floor/blind 0.815/0.164/0.469, 54 groups), S_family(legal) -0.76
+[L1] snr+0/L6|P-real-mm|frame: floor R² 0.412, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.794/0.481/0.469, 54 groups), S_family(legal) -1.00
+[L1] snr+0/L6|P-real-mm|roi: floor R² 0.961, interaction rate 1.00, S_mom(legal) -0.86 (eta fc/floor/blind 0.724/0.173/0.469, 54 groups), S_family(legal) -0.47
+[L1] snr+8/L15|P-real-mm|frame: floor R² 0.371, interaction rate 1.00, S_mom(legal) +nan (eta fc/floor/blind 0.805/0.471/0.469, 54 groups), S_family(legal) +nan
+[L1] snr+8/L15|P-real-mm|roi: floor R² 0.974, interaction rate 1.00, S_mom(legal) -0.99 (eta fc/floor/blind 0.804/0.129/0.469, 54 groups), S_family(legal) -0.69
+| snr-8/L6|frame | 0.22, 0.09 | 0.23, 0.07 |  |
+| snr-8/L6|roi | 0.63, 0.70 | -0.01, -0.04 | 0.42, 0.39 |
+[06] l1 done in 11.4 min -> results_smoke/cogvideox-2b/f1
+=== ALL DONE 08:49:09

@@ -117,7 +117,7 @@ def main():
         (out_dir / "l4.json").write_text(json.dumps(res, indent=1, default=float))
         md = l4_causal.table(res)
     else:
-        sys.exit(f"06_eval.py: level {level} not built yet (see docs/STATUS.md)")
+        sys.exit(f"06_eval.py: level {level} not built yet (see docs/RESUME.md)")
 
     (out_dir / f"{level}.md").write_text(f"# {level.upper()} — {mcfg.name} on {data.name}\n\n{md}\n")
     print(md)

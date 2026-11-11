@@ -1,0 +1,32 @@
+[L0] 320 clips / 64 groups; acts (320, 12, 12, 1408); layers [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39, 40]; latent []
+[L0] 108 feature cells x their targets; 500 permutations; 32 workers
+[L0]   25/108 cells
+[L0]   50/108 cells
+[L0]   75/108 cells
+[L0]   100/108 cells
+[L0] one-twin refit: 20 fits
+n_groups = 64, 5-fold x 12 seeds (~13 test groups per fold), 500 permutations; variants searched per target: [36] (layers x pools). Held-out R²: cell selected on half the groups, scored on the other half (50 random splits x 2); in-sample max R² is the old protocol (its permutation p corrects for the search).
+
+| target | held-out R² (selected cell, picks) | in-sample best cell: R² (sd) | untrained held-out R² | one-twin refit R² (mask floor) | mask floor (same pool) | latent baseline | tracker | best observer | null q95 | p_corr | p_Holm |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A.pre.velocity | 0.923 (L20/roi_A.pre, 47/100) | L20/roi_A.pre: 0.929 (0.009) | 0.001 |  | 0.296 |  | 1.000 | 1.000 (obs_vel) | 0.031 | 0.002 | 0.0399 |
+| A.pre.speed | 0.797 (L8/roi_A.pre, 62/100) | L8/roi_A.pre: 0.821 (0.041) | -0.101 |  | 0.030 |  | -0.100 | 1.000 (obs_speed) | 0.134 | 0.002 | 0.0399 |
+| A.pre.direction | 0.946 (L8/roi_A.pre, 100/100) | L8/roi_A.pre: 0.946 (0.004) | -0.047 |  | 0.269 |  | 0.799 | 0.933 (obs_quad) | 0.032 | 0.002 | 0.0399 |
+| A.pre.log_mass | 0.911 (L20/roi_A.pre, 98/100) | L20/roi_A.pre: 0.914 (0.009) | 0.699 |  | -0.080 |  | 0.233 | -0.026 (obs_speed) | 0.106 | 0.002 | 0.0399 |
+| A.pre.radius | 0.774 (L16/roi_A.pre, 49/100) | L16/roi_A.pre: 0.795 (0.025) | 0.318 |  | -0.083 |  | 1.000 | -0.037 (obs_vel) | 0.133 | 0.002 | 0.0399 |
+| A.post.velocity | 0.927 (L12/roi_A.post, 50/100) | L12/roi_A.post: 0.933 (0.007) | 0.643 | 0.853 (0.068) | 0.098 |  | 1.000 | 0.335 (obs_vel) | -0.027 | 0.002 | 0.0399 |
+| A.post.speed | 0.906 (L8/roi_A.post, 53/100) | L8/roi_A.post: 0.913 (0.007) | -0.105 | 0.808 (-0.060) | -0.053 |  | -0.064 | 0.234 (obs_speed) | 0.079 | 0.002 | 0.0399 |
+| A.post.direction | 0.906 (L8/roi_A.post, 100/100) | L8/roi_A.post: 0.907 (0.006) | 0.211 | 0.852 (0.112) | 0.132 |  | 0.669 | 0.340 (obs_vel) | 0.007 | 0.002 | 0.0399 |
+| A.post.log_mass | 0.916 (L20/roi_A.post, 34/100) | L20/roi_A.post: 0.925 (0.008) | 0.816 | 0.899 (-0.066) | -0.048 |  | 0.254 | -0.026 (obs_speed) | 0.099 | 0.002 | 0.0399 |
+| A.post.radius | 0.828 (L20/roi_A.post, 46/100) | L20/roi_A.post: 0.848 (0.017) | 0.532 | 0.787 (-0.050) | -0.077 |  | 1.000 | -0.037 (obs_vel) | 0.094 | 0.002 | 0.0399 |
+| B.pre.velocity | 0.854 (L16/roi_B.pre, 45/100) | L16/roi_B.pre: 0.868 (0.009) | -0.033 |  | 0.073 |  | 1.000 | 1.000 (obs_vel) | 0.055 | 0.002 | 0.0399 |
+| B.pre.speed | 0.834 (L28/roi_B.pre, 91/100) | L28/roi_B.pre: 0.843 (0.012) | -0.109 |  | -0.102 |  | -0.080 | 1.000 (obs_speed) | 0.131 | 0.002 | 0.0399 |
+| B.pre.direction | 0.888 (L8/roi_B.pre, 99/100) | L8/roi_B.pre: 0.891 (0.004) | -0.026 |  | 0.084 |  | 0.780 | 0.890 (obs_quad) | 0.060 | 0.002 | 0.0399 |
+| B.pre.log_mass | 0.890 (L24/roi_B.pre, 52/100) | L24/roi_B.pre: 0.904 (0.012) | 0.626 |  | -0.062 |  | 0.288 | -0.041 (obs_speed) | 0.138 | 0.002 | 0.0399 |
+| B.pre.radius | 0.779 (L24/roi_B.pre, 67/100) | L24/roi_B.pre: 0.798 (0.022) | 0.483 |  | -0.106 |  | 1.000 | -0.058 (obs_normal) | 0.118 | 0.002 | 0.0399 |
+| B.post.velocity | 0.929 (L28/roi_B.post, 63/100) | L28/roi_B.post: 0.936 (0.003) | 0.614 | 0.854 (0.066) | 0.086 |  | 1.000 | 0.270 (obs_vel) | 0.015 | 0.002 | 0.0399 |
+| B.post.speed | 0.923 (L12/roi_B.post, 100/100) | L12/roi_B.post: 0.924 (0.008) | -0.052 | 0.712 (-0.053) | 0.035 |  | -0.044 | 0.164 (obs_normal) | 0.122 | 0.002 | 0.0399 |
+| B.post.direction | 0.876 (L8/roi_B.post, 98/100) | L8/roi_B.post: 0.879 (0.005) | 0.154 | 0.834 (0.101) | 0.146 |  | 0.711 | 0.352 (obs_vel) | 0.011 | 0.002 | 0.0399 |
+| B.post.log_mass | 0.898 (L16/roi_B.post, 32/100) | L16/roi_B.post: 0.912 (0.008) | 0.781 | 0.873 (-0.069) | -0.062 |  | 0.354 | -0.041 (obs_speed) | 0.121 | 0.002 | 0.0399 |
+| B.post.radius | 0.796 (L24/roi_B.post, 49/100) | L24/roi_B.post: 0.827 (0.014) | 0.480 | 0.768 (-0.107) | -0.096 |  | 1.000 | -0.058 (obs_normal) | 0.108 | 0.002 | 0.0399 |
+[06] l0 done in 2.0 min -> /workspace/meta/physlaw/results_smoke/videomaev2-giant/f1

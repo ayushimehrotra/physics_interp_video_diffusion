@@ -3,7 +3,7 @@
 Geometry: the official clip (height x width, num_frames at fps; every master/fps-th master frame) and a causal VAE:
 token-frame 0 = input frame 0, token-frame j >= 1 = the next ``vae_temporal x patch_t`` frames (base.token_spec).
 
-Rules carried over from CogVideoX-2b (docs/STATUS.md, milestone 7) and applied to every DiT:
+Rules carried over from CogVideoX-2b (docs/RESUME.md, milestone 7) and applied to every DiT:
   * context latents come from VAE-encoding the context frames ALONE (``context_latents``): twins share them exactly.
   * encode(noise_level=dB): forward-noise the clean latents to the timestep whose SNR is closest to dB (one fixed
     noise draw, identical for every clip), one conditional pass; block outputs at ``cfg.layers``, keys "snr{dB}/L{l}".

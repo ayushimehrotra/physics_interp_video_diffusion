@@ -15,7 +15,7 @@ Twins (one ramp geometry per ``pre_segment``):
   path_dependent  ramp B, speed x sqrt(sin th2 / sin th1)   (speed depends on the path)
   legal_kink      two slopes (steep then shallow), same h   same bottom speed
 
-Deviation from the spec (recorded in docs/STATUS.md): the spec asks for a shared flat
+Deviation from the spec (recorded in docs/RESUME.md): the spec asks for a shared flat
 ledge identical across ALL twins before the branch. A block at rest on a flat
 frictionless ledge never starts to slide, and the three ramp geometries are visible
 from frame 0 whatever the ledge does, so twins are byte-identical before the release
