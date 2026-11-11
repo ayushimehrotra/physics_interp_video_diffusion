@@ -172,9 +172,10 @@ def train_pc1(cfg, out: Path, a):
             s = ad.surprise(x, k)
             tgt = ad.encode(x)[-1].float()
             s["copy_last"] = float((tgt[k // tub:] - tgt[k // tub - 1]).abs().mean())
+            s["target_std"] = float(tgt.reshape(-1, tgt.shape[-1]).std(0).mean())   # collapse watch: -> 0 if collapsed
             rows.append(s)
         model.train()
-        return {k: float(np.mean([r[k] for r in rows])) for k in ("l1_all", "mse_all", "cos_all", "copy_last")}
+        return {k: float(np.mean([r[k] for r in rows])) for k in ("l1_all", "mse_all", "cos_all", "copy_last", "target_std")}
 
     def save():
         atomic_save({"model": model.state_dict(), "ema_encoder": ema.encoder.state_dict(), "opt": opt.state_dict(),
@@ -228,7 +229,8 @@ def train_pc1(cfg, out: Path, a):
         if step % tr["eval_every"] == 0 or step == steps:
             h = heldout()
             curves["holdout"].append({"step": step, **h})
-            print(f"[10] held-out ({len(hold_ds)} clips): L1 {h['l1_all']:.4f} vs copy-last {h['copy_last']:.4f}", flush=True)
+            print(f"[10] held-out ({len(hold_ds)} clips): L1 {h['l1_all']:.4f} vs copy-last {h['copy_last']:.4f}, "
+                  f"target sd {h['target_std']:.4f}", flush=True)
         if step % tr["save_every"] == 0 or step == steps:
             save()
     print(f"[10] PC1 done at step {step} -> {out}", flush=True)
