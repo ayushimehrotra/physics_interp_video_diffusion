@@ -410,6 +410,16 @@ CogVideoX-2b snr-20/L6 ROI +0.60). What changes is what is reported:
   decode); scorable only for some CogVideoX ROI spaces (snr-20/L6: S_energy +0.81).
 * P-forecast ceiling (unchanged): V-JEPA 2 ROI post-velocity R² 0.74 (mask floor 0.12-0.24), frame 0.22.
 
+*L1 with P-pred-real* (cached after PID 45089 exited, GPU-locked: V-JEPA 2 18 min at 3.4 s/clip, VideoMAE-v2 7.5 min
+at 1.4 s/clip; 4 masks per clip; sidecars `cache/<model>/f1/<group>/<twin>.pred_real.npz`):
+* V-JEPA 2: no gain over moment matching. Frame pool: S_outcome -0.28 [-1.00, +0.17] on both legal twins (+0.28 on
+  e = 1), S_family -1.00 (d_floor 0.92); ROI: S_outcome +0.09 (+0.32 on e = 1), S_family -0.58. The decoded forecast
+  spread rises to 0.64-0.66 of the real decode (P-real-mm 0.45-0.57), energy stays not scorable. So the weak L1 is
+  not a probe-transfer artefact: probes trained in the predictor's own space read the forecast no better.
+* VideoMAE-v2: the pred-real probes fit better (floor R² ROI 0.84 vs 0.68, frame 0.26 vs 0.03) but do not transfer to
+  the context-only forecast (corr(decoded forecast, true post v) ~0, ROI S_outcome -0.74): with 75% of the future
+  visible the decoder sits in a different regime from the fully masked forecast.
+
 *L2 (motion-adjusted, speed + copy-last covariates, held-out distance).*
 * V-JEPA 2: momentum violations MORE surprising than their legal twins after adjustment: held-out adjusted win
   0.66 (e = 1) and 0.70 (e = 0.15), Holm-significant; on the energy-physical stratum 0.69, on the 21
