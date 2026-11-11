@@ -59,10 +59,10 @@ def test_training_clips_legal_only_and_refuses_eval_groups(tmp_path):
         PC.training_clips(dc, ["train"])
 
 
-def _results(d, s_family, wins, control_ci=(0.4, 0.6)):
+def _results(d, s_family, wins, control_ci=(0.4, 0.6), option="P-real-mm|frame"):
     d.mkdir(parents=True, exist_ok=True)
-    tw = {t: {"S": {"family": v, "outcome": 0.1}, "S_ci95": {"family": [0, 1]}} for t, v in s_family.items()}
-    (d / "l1.json").write_text(json.dumps({"variants": {CRIT["l1_variant"]: {"twins": tw}, "roi": {"twins": {}}}}))
+    (d / "l1.json").write_text(json.dumps({"selected": {option: {"family": {"score": s_family, "n_variants": 1}},
+                                                        "P-real-mm|roi": {"family": {"score": 0.9}}}}))
     con = {c: {CRIT["l2_distance"]: {"adj_win_rate": w, "adj_win_rate_ci95": [w - 0.1, w + 0.1]}}
            for c, w in zip(CRIT["l2_contrasts"], wins)}
     con[CRIT["l2_control"]] = {CRIT["l2_distance"]: {"adj_win_rate": 0.5, "adj_win_rate_ci95": list(control_ci)}}
@@ -70,15 +70,14 @@ def _results(d, s_family, wins, control_ci=(0.4, 0.6)):
 
 
 def test_pass_check_verdicts(tmp_path):
-    good = {"conserve_e1": 0.6, "conserve_e015": 0.55}
-    _results(tmp_path / "a", good, [0.8, 0.75])
+    _results(tmp_path / "a", 0.6, [0.8, 0.75], option="P-pred-real|frame")
     r = PC.pass_check(tmp_path / "a", CRIT)
-    assert r["verdict"] == "PASS" and r["l1"] == good and "PASS" in PC.format_pass(r)
-    _results(tmp_path / "b", {"conserve_e1": 0.6, "conserve_e015": 0.3}, [0.8, 0.75])
+    assert r["verdict"] == "PASS" and r["l1"]["option"] == "P-pred-real|frame" and "PASS" in PC.format_pass(r)
+    _results(tmp_path / "b", 0.3, [0.8, 0.75])                  # ROI pool's 0.9 is never used
     assert PC.pass_check(tmp_path / "b", CRIT)["verdict"] == "FAIL"
-    _results(tmp_path / "c", good, [0.8, 0.65])
+    _results(tmp_path / "c", 0.6, [0.8, 0.65])
     assert PC.pass_check(tmp_path / "c", CRIT)["verdict"] == "FAIL"
-    _results(tmp_path / "d", good, [0.8, 0.75], control_ci=(0.6, 0.8))
+    _results(tmp_path / "d", 0.6, [0.8, 0.75], control_ci=(0.6, 0.8))
     assert PC.pass_check(tmp_path / "d", CRIT)["verdict"] == "INCONCLUSIVE"
     (tmp_path / "d" / "l1.json").unlink()
     assert PC.pass_check(tmp_path / "d", CRIT)["verdict"] == "MISSING"

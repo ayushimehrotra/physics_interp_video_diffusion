@@ -61,8 +61,7 @@ train:
 
 pass_criterion:              # spec §4.4, accepted by the user 2026-11-10
   l1_s_family_min: 0.5
-  l1_variant: frame_mm       # leak-free frame pool (spec §5.2 primary); switch to the P-pred-real frame variant once built
-  l1_twins: [conserve_e1, conserve_e015]
+  l1_options: ["P-pred-real|frame", "P-real-mm|frame"]   # leak-free frame pool (spec §5.2); first one present
   l2_adj_win_min: 0.7
   l2_covariates: speed+copy_last   # brings the legal control to chance on V-JEPA 2 (STATUS milestone 3)
   l2_distance: l1_obj              # pre-registered: object-region L1 (no selection over distances)

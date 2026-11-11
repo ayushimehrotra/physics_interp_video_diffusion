@@ -210,20 +210,12 @@ class ClipWindows:
 
 # ---------------------------------------------------------------------------------------------- pass check
 
-def _find(d, keys: tuple[str, ...], path=()):
-    """(path, value) for every number in nested dict ``d`` whose key path ends with ``keys``."""
-    if isinstance(d, dict):
-        for k, v in d.items():
-            yield from _find(v, keys, path + (k,))
-    elif isinstance(d, (int, float)) and path[-len(keys):] == keys:
-        yield path, float(d)
-
-
 def pass_check(results_dir, crit) -> dict:
     """PC1 pass criterion (spec §4.4; values accepted by the user 2026-11-10) on results/<model>/f1/.
 
-    L1: S_family >= ``l1_s_family_min`` for every legal twin in the primary L1 variant ``l1_variant``
-        (read from ``variants.<variant>.twins.<twin>.S.family`` or any ``S_family`` key under that variant).
+    L1: the held-out-selected S_family (``selected.<option>.family.score`` in l1.json; legal twins, spec §5
+        selection rule) >= ``l1_s_family_min``, for the first of ``l1_options`` that L1 reports (P-pred-real
+        frame pool preferred, else P-real-mm frame pool; both leak-free).
     L2: motion-adjusted win rate >= ``l2_adj_win_min`` for every momentum contrast, under the pre-registered
         covariate set and distance (``motion_adjusted.contrasts.<cov>.<contrast>.<distance>.adj_win_rate``).
         The legal-vs-legal control is reported; if its CI excludes 0.5 the adjustment is insufficient
@@ -234,16 +226,16 @@ def pass_check(results_dir, crit) -> dict:
     ok, missing = True, False
     f1, f2 = rd / "l1.json", rd / "l2.json"
     if f1.exists():
-        var = json.loads(f1.read_text()).get("variants", {}).get(crit["l1_variant"], {})
-        vals = [(p, v) for p, v in list(_find(var, ("S", "family"))) + list(_find(var, ("S_family",)))
-                if any(t in p for t in crit["l1_twins"])]
-        for p, v in vals:
-            t = next(t for t in crit["l1_twins"] if t in p)
-            res["l1"][t] = v
-            ok &= bool(np.isfinite(v) and v >= crit["l1_s_family_min"])
-        if not vals:
+        sel = json.loads(f1.read_text()).get("selected", {})
+        opt = next((o for o in crit["l1_options"] if "score" in sel.get(o, {}).get("family", {})), None)
+        if opt is None:
             missing = True
-            res["notes"].append(f"no S_family for {crit['l1_twins']} in l1.json variant '{crit['l1_variant']}'")
+            res["notes"].append(f"l1.json has no selected S_family for any of {list(crit['l1_options'])}")
+        else:
+            f = sel[opt]["family"]
+            res["l1"] = {"option": opt, "S_family": f["score"], "q95": [f.get("score_q025"), f.get("score_q975")],
+                         "n_variants": f.get("n_variants")}
+            ok &= bool(np.isfinite(f["score"]) and f["score"] >= crit["l1_s_family_min"])
     else:
         missing = True
         res["notes"].append(f"{f1} missing")
@@ -272,9 +264,10 @@ def pass_check(results_dir, crit) -> dict:
 
 def format_pass(res: dict) -> str:
     c = res["criterion"]
-    lines = [f"PC1 pass check: {res['verdict']}  (L1 S_family >= {c['l1_s_family_min']} [{c['l1_variant']}], "
+    lines = [f"PC1 pass check: {res['verdict']}  (L1 S_family >= {c['l1_s_family_min']}, "
              f"L2 adjusted win >= {c['l2_adj_win_min']} [{c['l2_covariates']}, {c['l2_distance']}])"]
-    lines += [f"  L1 S_family {t}: {v:+.3f}" for t, v in res["l1"].items()]
+    if res["l1"]:
+        lines.append(f"  L1 S_family ({res['l1']['option']}, held-out selected): {res['l1']['S_family']:+.3f}")
     for k, r in res["l2"].items():
         ci = r["ci95"] or [float("nan")] * 2
         lines.append(f"  L2 {k}: {r['adj_win_rate']:.2f} [{ci[0]:.2f}, {ci[1]:.2f}]")
