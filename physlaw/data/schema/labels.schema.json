@@ -47,6 +47,8 @@
         },
         "pre_state": {"$ref": "#/$defs/state", "$comment": "state at event_frame (last shared frame)"},
         "post_state": {"$ref": "#/$defs/state", "$comment": "state at first_post_contact_frame"},
+        "event_state": {"type": "object", "required": ["pre", "post"], "$comment": "exact states at event_time_s, just before (pre) and just after (post); what io.law_inputs hands to physlaw.eval.laws"},
+        "ref_event_state": {"type": "object", "$comment": "f4: event_state of the unboosted twin with the same restitution (Galilean reference)"},
         "contact_frame": {"type": "integer"},
         "contact_normal": {"$ref": "#/$defs/vec2"},
         "camera": {
@@ -77,7 +79,7 @@
         {"if": {"properties": {"schema_version": {"const": "physlaw-labels-2"}}},
          "then": {"required": ["subfamily", "base_group_id", "nuisance", "event_kind", "event_time_s", "event_frame",
                                "pre_segment", "legal", "violated_law", "violation_magnitude", "flags", "constants",
-                               "pre_state", "post_state", "render_device"],
+                               "pre_state", "post_state", "event_state", "render_device"],
                   "properties": {"constants": {"required": ["g", "fps", "masses", "sizes"]}}}},
         {"if": {"properties": {"family": {"enum": ["f1", "f2", "f3", "f4"]}}},
          "then": {"required": ["contact_frame", "contact_frame_actual", "contact_normal", "momentum_conserved", "summary"]}}

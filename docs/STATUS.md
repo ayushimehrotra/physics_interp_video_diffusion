@@ -353,7 +353,14 @@ fixed-frame-20 pooling.
   non-square pixels for the squashed 256x256 PC1 set; PyBullet cross-check of every closed-form group.
 * `nuisance.py` (camera orbit/roll/distance, sun, ambient, floor colour + checker, body colours; bodies
   that look identical stay identical; in-frame re-checked under the new camera).
-* `io.law_inputs(labels) -> (pre, post, ctx)`: the input of `physlaw.eval.laws.*` for labels-1 and -2.
+* `io.law_inputs(labels, dt=None) -> (pre, post, ctx)`: the input of `physlaw.eval.laws.*` for labels-1
+  and -2, in the eval laws' vocabulary (`g` vector, `g_mag`, `dt`, `m`, `r`, `k`, `n`, `theta`, `h`,
+  `e_ref`, F4 `ref`). `pre`/`post` are the exact states at the event instant (labels `event_state`);
+  `dt=0.25` gives post 0.25 s later, `dt="bottom"` the F8 block at the foot of the ramp. Checked
+  against the eval worktree's laws (2026-11-10, imported read-only): legal twins score 0 (momentum,
+  energy, gravity, axis independence, mass independence, bounce, ramp energy, rolling, Galilean to
+  1e-16) and the violations score their factor (gravity 0.5, vx 0.4, mass 0.3, ramp x1.25 0.25,
+  path dependence 0.15, rolling 1-2).
 * Schema `physlaw-labels-2` (superset of labels-1 for F1-F4; labels-1 still validates; field reference
   in the schema's `$comment`s): `event_kind/event_time_s/event_frame`, `pre_segment`, `legal`,
   `violated_law`, `violation_magnitude`, `flags`, `constants` (g, fps, masses, sizes + family

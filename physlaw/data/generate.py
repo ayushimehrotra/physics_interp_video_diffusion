@@ -269,7 +269,8 @@ def collision_scene(cfg, p, geo, masses, animation, spheres, contact: float, tw:
                                flags={"energy_physical": bool(twin.energy_physical),
                                       "momentum_conserved": bool(twin.momentum_conserved)},
                                constants={"e": float(twin.e_target),
-                                          "boost_u": (_vec3(twin.boost) if twin.boost is not None else np.zeros(3)).tolist()},
+                                          "boost_u": (_vec3(twin.boost) if twin.boost is not None else np.zeros(3)).tolist(),
+                                          **({"ref_twin": "u0_" + name.split("_")[-1]} if family == "f4" else {})},
                                record=twin.record,
                                masses=({"A": twin.masses[0], "B": twin.masses[1]} if twin.masses else None))
     sc = FAM.Scene(family, "", bodies, [], cam, 0.0, contact / fps, "contact", twins, fps,
@@ -554,6 +555,27 @@ def state_at(sc: FAM.Scene, tw: FAM.Twin, f: int) -> dict:
             "w": [tw.tracks[n].w[f].tolist() for n in names]}
 
 
+def event_limits(sc: FAM.Scene, tw: FAM.Twin) -> dict:
+    """States at the event instant, just before and just after (left / right limits).
+
+    Each side is extrapolated from its two nearest frames with that side's finite-difference
+    acceleration, which is exact here: every family's acceleration is piecewise constant across
+    the frames around its event (free flight, sliding, rolling, rest, friction band)."""
+    k, fps, te = sc.first_post, sc.fps, sc.t_event
+    names = [b.name for b in sc.bodies]
+    out = {}
+    for side, f0, f1, tau in (("pre", k - 1, k - 2, te - (k - 1) / fps), ("post", k, k + 1, te - k / fps)):
+        p, v, w = [], [], []
+        for n in names:
+            tr = tw.tracks[n]
+            a = (tr.v[f0] - tr.v[f1]) * fps * (1 if side == "pre" else -1)
+            p.append((tr.p[f0] + tr.v[f0] * tau + 0.5 * a * tau * tau).tolist())
+            v.append((tr.v[f0] + a * tau).tolist())
+            w.append(tr.w[f0].tolist())
+        out[side] = {"t_s": te, "objects": names, "p": p, "v": v, "w": w}
+    return out
+
+
 def law_fields(sc: FAM.Scene, tw: FAM.Twin, cam: FAM.Camera) -> dict:
     """The labels-2 fields every family carries (documented in schema/labels.schema.json)."""
     k = sc.first_post
@@ -567,6 +589,10 @@ def law_fields(sc: FAM.Scene, tw: FAM.Twin, cam: FAM.Camera) -> dict:
         "legal": bool(tw.legal), "violated_law": tw.violated_law, "violation_magnitude": float(tw.violation_magnitude),
         "flags": tw.flags, "energy_physical": bool(tw.flags.get("energy_physical", True)),
         "constants": consts, "pre_state": state_at(sc, tw, k - 1), "post_state": state_at(sc, tw, k),
+        "event_state": event_limits(sc, tw),
+        # F4: the unboosted twin with the same e, the reference of the Galilean invariants
+        **({"ref_event_state": event_limits(sc, sc.twins[tw.constants["ref_twin"]])}
+           if tw.constants.get("ref_twin") in sc.twins else {}),
         "pre_velocity": {n: tw.tracks[n].v[k - 1].tolist() for n in tw.tracks},
         "post_velocity": {n: tw.tracks[n].v[k].tolist() for n in tw.tracks},
         "camera": cam.block(),

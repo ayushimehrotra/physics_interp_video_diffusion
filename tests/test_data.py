@@ -189,14 +189,22 @@ def test_family_laws(group):
 
 
 def test_law_inputs(group):
-    """io.law_inputs gives (pre, post, ctx) around the event for every twin (the eval laws' input)."""
+    """io.law_inputs gives (pre, post, ctx) at the event for every twin (the eval laws' input):
+    positions continuous through the event, legal collisions / bounces exact at the event instant."""
     from physlaw.data.io import law_inputs
     for t in twins(group):
-        pre, post, ctx = law_inputs(labels(t))
-        n = len(labels(t)["physlaw"]["objects"])
-        assert pre["v"].shape == post["v"].shape == (n, 3)
-        assert pre["t_s"] <= ctx["event_time_s"] + 1e-9 <= post["t_s"] + 1e-9
-        assert {"g", "fps", "masses", "legal", "violated_law"} <= set(ctx)
+        L = labels(t)
+        pre, post, ctx = law_inputs(L)
+        n = len(L["physlaw"]["objects"])
+        assert pre["v"].shape == post["v"].shape == (n, 3) and ctx["m"].shape == (n,)
+        assert pre["t_s"] == pytest.approx(ctx["event_time_s"]) == pytest.approx(post["t_s"])
+        assert np.allclose(pre["p"], post["p"], atol=1e-9), t.name
+        if ctx.get("subfamily") == "bounce":
+            e = -post["v"][0, 2] / pre["v"][0, 2]
+            want = math.sqrt(ctx["violation_magnitude"]) if not ctx["legal"] else ctx["e_floor"]
+            assert e == pytest.approx(want, rel=1e-6), t.name
+        _, post2, ctx2 = law_inputs(L, dt=0.25)
+        assert ctx2["dt"] == pytest.approx(0.25, abs=0.6 / ctx["fps"])
 
 
 def test_f8_slope_twins_share_h(group):
