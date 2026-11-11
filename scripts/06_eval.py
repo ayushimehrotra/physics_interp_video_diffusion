@@ -8,8 +8,15 @@
     ... --level configs/eval/l1_forecast_laws.yaml     (P-pred-real used if stage 4 --pred-real ran)
     ... --level configs/eval/l2b_detection.yaml        (after L2: reads l2.json for the encoded-but-unused index)
 
+    /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
+        --level configs/eval/l3_invariance.yaml --data data/f4
+    HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
+        --level configs/eval/l4_causal.yaml --data data/f3
+
 Inputs: cache/<model>/<family>/ from stage 4 (+ _pixel_baselines.jsonl from stage 5 for L2).
-Order per model: L0 (builds _maskfeat_v2.npz, used by L1/L2b), L2, L2b, L1. --out writes elsewhere (test runs).
+Order per model: L0 (builds _maskfeat_v2.npz, used by L1/L2b/L3/L4), L2, L2b, L1. --out writes elsewhere (test runs).
+L3 runs the analyses configured for the family (CPU). L4 loads the model (GPU): it reruns forecast() (and, for
+generators, generate()) under activation interventions, cached in --work, then scores them.
 L0 also folds in the untrained control's result if results/<untrained>/<family>/l0.json exists
 (pass --untrained configs/models/untrained_vitl.yaml to name it).
 """
@@ -39,12 +46,15 @@ def main():
     ap.add_argument("--untrained", default="configs/models/untrained_vitl.yaml")
     ap.add_argument("--workers", type=int, default=64)
     ap.add_argument("--out", default=None, help="default results/<model>/<family> (use a scratch dir for test runs)")
+    ap.add_argument("--cache", default=None, help="stage 4 cache (default cache/<model>/<family>)")
     ap.add_argument("--set", nargs="*", default=[])
+    ap.add_argument("--work", default=None, help="L4: intervention cache (default cache/<model>/<family>/_l4)")
+    ap.add_argument("--force", action="store_true", help="L4: recompute cached interventions")
     a = ap.parse_args()
     mcfg = load_config(a.model)
     cfg = load_config(a.level, a.set)
     data = resolve_path(a.data)
-    cache = REPO / "cache" / mcfg.name / data.name
+    cache = Path(a.cache) if a.cache else REPO / "cache" / mcfg.name / data.name
     out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
     level = cfg["level"]
@@ -94,6 +104,18 @@ def main():
         res.update(meta)
         (out_dir / "l1.json").write_text(json.dumps(res, indent=1))
         md = l1_forecast_laws.table(res)
+    elif level == "l3":
+        from physlaw.eval import l3_invariance
+        res = l3_invariance.run(cache, data, cfg, mcfg)
+        res.update(meta)
+        (out_dir / "l3.json").write_text(json.dumps(res, indent=1, default=float))
+        md = l3_invariance.table(res)
+    elif level == "l4":
+        from physlaw.eval import l4_causal
+        res = l4_causal.run(cache, data, cfg, mcfg, work=Path(a.work) if a.work else cache / "_l4", force=a.force)
+        res.update(meta)
+        (out_dir / "l4.json").write_text(json.dumps(res, indent=1, default=float))
+        md = l4_causal.table(res)
     else:
         sys.exit(f"06_eval.py: level {level} not built yet (see docs/STATUS.md)")
 

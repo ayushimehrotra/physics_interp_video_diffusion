@@ -1,0 +1,11 @@
+# V-JEPA 2 ViT-g encoder + predictor (spec §4.2 group 1, P1): same input and code as vjepa2_vitl.yaml (VJEPA2Adapter).
+# Checkpoint facebook/vjepa2-vitg-fpc64-256: 40 blocks, 1408-d, patch 16, tubelet 2, 256 px, 64 frames (config.json).
+defaults: vjepa2_vitl.yaml
+name: vjepa2-vitg
+hf_id: facebook/vjepa2-vitg-fpc64-256
+revision: 875c192b7b704b87d1e1d99345769632dd5f739a
+local_path: ${env:PHYSLAW_MODELS,/root/models}/vjepa2-vitg-fpc64-256
+layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39]
+# Weight pins (spec §4.3): facebook/vjepa2-vitg-fpc64-256@875c192b7b704b87d1e1d99345769632dd5f739a; verified by physlaw.models.registry.
+sha256:
+  model.safetensors: f205e77aa2ade168db6b09d4bc420d156141f64ab964278a9c181a2bdf2a232b

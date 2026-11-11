@@ -1,0 +1,165 @@
+{
+ "columns": [
+  "l0",
+  "l1",
+  "l2",
+  "l2b",
+  "encoded_unused",
+  "l3",
+  "l4",
+  "outputs_trackA",
+  "outputs_trackB"
+ ],
+ "rows": [
+  {
+   "model": "cogvideox-2b",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.9663886636739567,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_family.P-real-mm": -1.0,
+    "S_outcome.P-real-mm": -0.8836538282699803
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.5396875,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.5647186147186148,
+    "mom_violate_e1 vs conserve_e1 [not energy_physical]": 0.532,
+    "mom_violate_e015 vs conserve_e015": 0.63,
+    "energy_create vs conserve_e015": 0.549375,
+    "conserve_e1 vs conserve_e015": 0.5721875,
+    "_covariates": "speed+copy_last"
+   },
+   "l2b": {
+    "mom_violate_e1 vs conserve_e1": 0.552451171875,
+    "mom_violate_e015 vs conserve_e015": 0.57251220703125,
+    "energy_create vs conserve_e015": 0.93463623046875,
+    "conserve_e1 vs conserve_e015": 0.88545166015625
+   },
+   "outputs_trackA": {
+    "measurable.conserve_e1": "1/64",
+    "S_outcome.conserve_e1": -0.6060643696679278,
+    "measurable.conserve_e015": "1/64",
+    "S_outcome.conserve_e015": -1.0,
+    "gate_passed": false
+   },
+   "encoded_unused": {
+    "mom_violate_e1 vs conserve_e1": 0.012763671875000049,
+    "mom_violate_e015 vs conserve_e015": -0.05748779296874995,
+    "energy_create vs conserve_e015": 0.38526123046875005,
+    "conserve_e1 vs conserve_e015": 0.31326416015625
+   }
+  },
+  {
+   "model": "untrained-vitl",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.3326701426260922,
+    "n_targets": 20
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.435,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.4206709956709957,
+    "mom_violate_e1 vs conserve_e1 [not energy_physical]": 0.38736363636363635,
+    "mom_violate_e015 vs conserve_e015": 0.4465625,
+    "energy_create vs conserve_e015": 0.5053125,
+    "conserve_e1 vs conserve_e015": 0.4596875,
+    "_covariates": "speed+copy_last"
+   },
+   "l2b": {
+    "mom_violate_e1 vs conserve_e1": 0.54702880859375,
+    "mom_violate_e015 vs conserve_e015": 0.62726318359375,
+    "energy_create vs conserve_e015": 0.74427978515625,
+    "conserve_e1 vs conserve_e015": 0.7274267578125
+   },
+   "encoded_unused": {
+    "mom_violate_e1 vs conserve_e1": 0.11202880859375003,
+    "mom_violate_e015 vs conserve_e015": 0.18070068359375002,
+    "energy_create vs conserve_e015": 0.23896728515625,
+    "conserve_e1 vs conserve_e015": 0.26773925781249996
+   }
+  },
+  {
+   "model": "videomaev2-giant",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.8856159275288237,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_outcome.P-real-mm": -1.0,
+    "S_outcome.P-pred-real": -1.0
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.5046875,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.5074891774891774,
+    "mom_violate_e1 vs conserve_e1 [not energy_physical]": 0.4224545454545454,
+    "mom_violate_e015 vs conserve_e015": 0.5084375,
+    "energy_create vs conserve_e015": 0.4709375,
+    "conserve_e1 vs conserve_e015": 0.525625,
+    "_covariates": "speed+copy_last"
+   },
+   "l2b": {
+    "mom_violate_e1 vs conserve_e1": 0.57428466796875,
+    "mom_violate_e015 vs conserve_e015": 0.577890625,
+    "energy_create vs conserve_e015": 0.94754150390625,
+    "conserve_e1 vs conserve_e015": 0.90139892578125
+   },
+   "encoded_unused": {
+    "mom_violate_e1 vs conserve_e1": 0.06959716796875004,
+    "mom_violate_e015 vs conserve_e015": 0.069453125,
+    "energy_create vs conserve_e015": 0.47660400390625,
+    "conserve_e1 vs conserve_e015": 0.37577392578125
+   }
+  },
+  {
+   "model": "vjepa2-vitl",
+   "family": "f1",
+   "l0": {
+    "mean_r2": 0.9115340476454037,
+    "n_targets": 20
+   },
+   "l1": {
+    "S_family.P-real-mm": -0.9994870090834936,
+    "S_outcome.P-real-mm": -0.3481916590122949,
+    "S_family.P-pred-real": -0.998524972766797,
+    "S_outcome.P-pred-real": -0.3134468730208988
+   },
+   "l2": {
+    "mom_violate_e1 vs conserve_e1": 0.6578125,
+    "mom_violate_e1 vs conserve_e1 [energy_physical]": 0.6888311688311688,
+    "mom_violate_e1 vs conserve_e1 [not energy_physical]": 0.4264545454545454,
+    "mom_violate_e015 vs conserve_e015": 0.7040625,
+    "energy_create vs conserve_e015": 0.5890625,
+    "conserve_e1 vs conserve_e015": 0.5659375,
+    "_covariates": "speed+copy_last"
+   },
+   "l2b": {
+    "mom_violate_e1 vs conserve_e1": 0.57386474609375,
+    "mom_violate_e015 vs conserve_e015": 0.58415283203125,
+    "energy_create vs conserve_e015": 0.970556640625,
+    "conserve_e1 vs conserve_e015": 0.9396728515625
+   },
+   "encoded_unused": {
+    "mom_violate_e1 vs conserve_e1": -0.08394775390624998,
+    "mom_violate_e015 vs conserve_e015": -0.11990966796875002,
+    "energy_create vs conserve_e015": 0.381494140625,
+    "conserve_e1 vs conserve_e015": 0.37373535156250004
+   }
+  },
+  {
+   "model": "wan2.2-i2v-a14b",
+   "family": "f1",
+   "outputs_trackB": {
+    "measurable.strict": "0/22",
+    "measurable.loose": "8/22",
+    "res_momentum.loose": 0.9979379419914324,
+    "res_energy.loose": 0.0,
+    "res_com.loose": 0.7229671942106927,
+    "res_angular_momentum.loose": 0.31999552200266757,
+    "no_violation.loose": "0/22"
+   }
+  }
+ ]
+}

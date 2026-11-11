@@ -22,8 +22,11 @@ Readout (``readout``):
   * quality flags: no_collision, lost, contact_at_edge, bad_fit (rms > ``max_rms`` world units)
 Scores: the L1 residuals (r_p, r_E, outcome E) with TRUE masses and pre velocities
 (physlaw.eval.l1_forecast_laws.residuals), floor = the same readout on the real clip.
-Feasibility gate (configs/eval/outputs.yaml): measurable fraction of seed-0 generations of the first
-``n_clips`` groups must reach ``min_pass_rate`` before the full 4-seed evaluation is run.
+Feasibility gate (configs/eval/outputs.yaml track_a.gate): measurable fraction of seed-0 generations of the first
+``n_clips`` groups must reach ``min_pass_rate`` before the other seeds are generated.
+Stage drivers: track A (§6.2) ``gate`` / ``track_a_rows`` (stage 8) / ``track_a_summary`` (stage 9); track B (§6.3)
+``READOUT_SELF`` per family (stage 8) / ``track_b_summary`` (stage 9). Law residuals: ``law_residuals`` via
+physlaw.eval.laws (true pre state for track A, the clip's own measured pre state for track B).
 """
 from __future__ import annotations
 
@@ -222,13 +225,13 @@ def readout(pix: np.ndarray, labels: dict, frames_idx: list[int], fps: float, H:
     if len(win) < min_post:
         return {**res, "measurable": False, "reason": "contact_at_edge"}
     tt = np.array(win, float) / fps
-    v, rms = np.zeros((2, 2)), 0.0
+    v, x, rms = np.zeros((2, 2)), np.zeros((2, 2)), 0.0
     for i in range(2):
         A = np.stack([tt, np.ones_like(tt)], 1)
         coef, *_ = np.linalg.lstsq(A, world[win, i], rcond=None)
-        v[i] = coef[0]
+        v[i], x[i] = coef[0], coef[0] * c / fps + coef[1]          # x: position at the contact frame
         rms = max(rms, float(np.sqrt(((A @ coef - world[win, i]) ** 2).mean())))
-    res.update(v_post=v.tolist(), fit_rms=rms)
+    res.update(v_post=v.tolist(), x_post=x.tolist(), fit_rms=rms)
     if rms > max_rms:
         return {**res, "measurable": False, "reason": "bad_fit"}
     return {**res, "measurable": True}
@@ -308,15 +311,28 @@ def measure_clip(gen_frames, clip, model_frames, k, fps, H, W, fit="squash", che
     return out
 
 
+def _track_a_measure(group_dir, adapter_geom):
+    """(legal clips, legal twin names, measure(video or None for the real clip, clip) -> readout) for one group:
+    F1's collision readout, or READOUT_SELF's trajectory readout on the model's frames for F7 / F8."""
+    from physlaw.data.io import load_clip
+    legal = legal_twins(group_dir)
+    clips = {t: load_clip(group_dir / t) for t in legal}
+    fr, k = adapter_geom(clips[legal[0]].labels)
+    fam = clips[legal[0]].pl["family"]
+    if READOUT_SELF.get(fam) is readout_self:              # two-ball collision families
+        return clips, legal, lambda v, c: measure_clip(v, c, fr, k, *adapter_geom.fps_hw)
+    fps, H, W = adapter_geom.fps_hw
+    return clips, legal, lambda v, c: READOUT_SELF[fam](fit_frames(c.frames[fr], (H, W)) if v is None else v, c, fps,
+                                                        frames_idx=fr)
+
+
 def gate(cache_dir, data_dir, adapter_geom, n_clips: int, min_pass_rate: float, log=print) -> dict:
     """Unsteered feasibility gate on the seed-0 generations of the first n_clips groups."""
-    from physlaw.data.io import load_clip
     gens = sorted(cache_dir.glob("*/gen_seed0.mp4"))[:n_clips]
     rows = []
     for g in gens:
-        c = load_clip(data_dir / g.parent.name / "conserve_e1")
-        fr, k = adapter_geom(c.labels)
-        r = measure_clip(_read_mp4(g), c, fr, k, *adapter_geom.fps_hw)
+        clips, legal, measure = _track_a_measure(data_dir / g.parent.name, adapter_geom)
+        r = measure(_read_mp4(g), clips[legal[0]])
         rows.append({"group": g.parent.name, **{kk: v for kk, v in r.items() if kk != "post_frames"}})
     rate = float(np.mean([r["measurable"] for r in rows])) if rows else 0.0
     from collections import Counter
@@ -326,54 +342,99 @@ def gate(cache_dir, data_dir, adapter_geom, n_clips: int, min_pass_rate: float, 
     return out
 
 
-def evaluate(cache_dir, data_dir, adapter_geom, n_boot: int = 2000, log=print) -> dict:
-    """All generated seeds x legal twins: residuals, drop rate, floor from the real clips, outcome S."""
-    from collections import Counter
-    from physlaw.data.io import load_clip
-    from physlaw.eval.l1_forecast_laws import _score
-    groups = sorted({p.parent.name for p in cache_dir.glob("*/gen_seed*.mp4")})
+def _row(r: dict) -> dict:
+    return {k: v for k, v in r.items() if k not in ("post_frames", "_pix")}
+
+
+def track_a_rows(gen_dir, data_dir, adapter_geom, log=print) -> tuple[list[dict], list[dict]]:
+    """Track A readouts: every generated video (one per group and seed; scored later against each legal twin)
+    and the real legal twins (the tracker floor). Rows carry the readout, not the law scores (stage 09)."""
     gen_rows, real_rows = [], []
-    for g in groups:
-        clips = {t: load_clip(data_dir / g / t) for t in LEGAL}
-        fr, k = adapter_geom(clips[LEGAL[0]].labels)
+    for g in sorted({p.parent.name for p in gen_dir.glob("*/gen_seed*.mp4")}):
+        clips, legal, measure = _track_a_measure(data_dir / g, adapter_geom)
         for t, c in clips.items():
-            r = measure_clip(None, c, fr, k, *adapter_geom.fps_hw)
-            if r["measurable"]:
-                r.update(score(r["v_post"], c.labels))
-            real_rows.append({"group": g, "twin": t, **{kk: v for kk, v in r.items() if kk != "post_frames"}})
-        for mp4 in sorted((cache_dir / g).glob("gen_seed*.mp4")):
-            frames = _read_mp4(mp4)
-            r = measure_clip(frames, clips[LEGAL[0]], fr, k, *adapter_geom.fps_hw)
-            for t, c in clips.items():            # one generated outcome, scored against each legal truth
-                row = {"group": g, "twin": t, "seed": int(mp4.stem.split("seed")[1]),
-                       **{kk: v for kk, v in r.items() if kk != "post_frames"}}
-                if r["measurable"]:
-                    row.update(score(r["v_post"], c.labels))
-                gen_rows.append(row)
-    out = {"n_groups": len(groups), "twins": {}}
-    rng = np.random.default_rng(0)
-    for t in LEGAL:
-        G = [r for r in gen_rows if r["twin"] == t]
-        R = [r for r in real_rows if r["twin"] == t]
+            real_rows.append({"group": g, "twin": t, **_row(measure(None, c))})
+        for mp4 in sorted((gen_dir / g).glob("gen_seed*.mp4")):
+            r = measure(_read_mp4(mp4), clips[legal[0]])
+            gen_rows.append({"group": g, "seed": int(mp4.stem.split("seed")[1]), **_row(r)})
+        log(f"[trackA] {g}: {sum(r['group'] == g and r['measurable'] for r in gen_rows)} measurable generated")
+    return gen_rows, real_rows
+
+
+def legal_twins(group_dir) -> list[str]:
+    """A group's legal twins: F1's names, else every twin whose labels say ``legal``."""
+    import json
+    from pathlib import Path
+    twins = json.loads((Path(group_dir) / "_GROUP_COMPLETE").read_text())["twins"]
+    if all(t in twins for t in LEGAL):
+        return list(LEGAL)
+    return [t for t in twins if json.loads((Path(group_dir) / t / "labels.json").read_text())["physlaw"].get("legal")]
+
+
+def law_residuals(labels: dict, laws, post_v, post_p=None, pre_v=None, pre_p=None, n=None) -> dict:
+    """``physlaw.eval.laws`` residuals of a measured outcome. Defaults: the true pre state, contact normal and
+    masses from the labels; track B passes its own measured pre state and contact normal."""
+    if not laws:
+        return {}
+    from physlaw.eval.laws import LAWS, from_labels
+    pre, post, ctx = from_labels(labels)
+    if pre_v is not None:
+        pre = {"v": np.asarray(pre_v, float), "p": np.asarray(pre_p, float) if pre_p is not None else pre["p"]}
+    post = {"v": np.asarray(post_v, float), "p": np.asarray(post_p, float) if post_p is not None else pre["p"]}
+    if n is not None:
+        ctx = {**ctx, "n": np.asarray(n, float) / np.linalg.norm(n)}
+    return {f"res_{law}": float(LAWS[law].residual(pre, post, ctx)) for law in laws}
+
+
+def _boot_ci(vals_by_group: dict, stat, n_boot: int, seed: int = 0):
+    gs = sorted(vals_by_group)
+    if not gs:
+        return None
+    rng = np.random.default_rng(seed)
+    bo = [stat([v for g in rng.choice(gs, len(gs)) for v in vals_by_group[g]]) for _ in range(n_boot)]
+    return [float(np.nanquantile(bo, 0.025)), float(np.nanquantile(bo, 0.975))]
+
+
+def track_a_summary(gen_rows, real_rows, data_dir, laws, n_boot: int = 2000) -> dict:
+    """Per legal twin: drop rates (generated, real), mean residuals of the generated outcome vs the real-clip
+    floor (L1's r_p / r_E / E_out plus every law in ``laws``), S_outcome with a group-bootstrap CI."""
+    import json
+    from collections import Counter
+    from physlaw.eval.l1_forecast_laws import _S
+    _score = lambda fc, fl, ref: float(_S(fc, fl, ref))
+    lab = {}
+    def labels(g, t):
+        if (g, t) not in lab:
+            lab[g, t] = json.loads((data_dir / g / t / "labels.json").read_text())
+        return lab[g, t]
+    def scored(r, t):
+        L = labels(r["group"], t)
+        if "state_pre" in r:                        # F7 / F8 (readout_traj): measured states, laws per sub-family
+            return self_residuals(r, L, laws)
+        return {**score(r["v_post"], L), **law_residuals(L, laws_for(laws, r), r["v_post"], r.get("x_post"))}
+    all_laws = sorted({l for v in laws.values() for l in v}) if isinstance(laws, dict) else list(laws)
+    out = {"n_groups": len({r["group"] for r in gen_rows}), "laws": all_laws, "twins": {}}
+    keys = ("r_p", "r_E", "E_out", *TRAJ_KEYS, *(f"res_{l}" for l in all_laws))
+    for t in sorted({r["twin"] for r in real_rows}, key=lambda x: (LEGAL.index(x) if x in LEGAL else len(LEGAL), x)):
+        G = [{**r, **scored(r, t)} if r["measurable"] else r for r in gen_rows]
+        R = [{**r, **scored(r, t)} if r["measurable"] else r for r in real_rows if r["twin"] == t]
         Gm, Rm = [r for r in G if r["measurable"]], [r for r in R if r["measurable"]]
         d = {"n_generated": len(G), "measurable_generated": len(Gm), "drop_rate_generated": 1 - len(Gm) / max(len(G), 1),
              "drop_reasons_generated": dict(Counter(r.get("reason", "ok") for r in G if not r["measurable"])),
              "n_real": len(R), "measurable_real": len(Rm), "drop_rate_real": 1 - len(Rm) / max(len(R), 1)}
         if Gm and Rm:
-            mean = lambda rows, kk: float(np.mean([r[kk] for r in rows]))
-            for kk in ("r_p", "r_E", "E_out"):
-                d[f"{kk}_generated"], d[f"{kk}_floor"] = mean(Gm, kk), mean(Rm, kk)
+            for kk in keys:
+                g_, r_ = [r[kk] for r in Gm if np.isfinite(r.get(kk, np.nan))], [r[kk] for r in Rm if np.isfinite(r.get(kk, np.nan))]
+                if g_ and r_:
+                    d[f"{kk}_generated"], d[f"{kk}_floor"] = float(np.mean(g_)), float(np.mean(r_))
+        if "E_out_generated" in d:
             d["S_outcome"] = _score(d["E_out_generated"], d["E_out_floor"], 1.0)
-            gs = sorted({r["group"] for r in Gm})
-            bo = []
-            for _ in range(n_boot):
-                pick = rng.choice(gs, len(gs))
-                gm = [r for gg in pick for r in Gm if r["group"] == gg]
-                rm = [r for gg in pick for r in Rm if r["group"] == gg] or Rm
-                bo.append(_score(mean(gm, "E_out"), mean(rm, "E_out"), 1.0))
-            d["S_outcome_ci95"] = [float(np.nanquantile(bo, 0.025)), float(np.nanquantile(bo, 0.975))]
+            fl = d["E_out_floor"]
+            by_g = {}
+            for r in Gm:
+                by_g.setdefault(r["group"], []).append(r["E_out"])
+            d["S_outcome_ci95"] = _boot_ci(by_g, lambda v: _score(float(np.mean(v)), fl, 1.0), n_boot)
         out["twins"][t] = d
-        log(f"[outputs] {t}: generated measurable {len(Gm)}/{len(G)}, real {len(Rm)}/{len(R)}")
     out["rows_generated"], out["rows_real"] = gen_rows, real_rows
     return out
 
@@ -429,6 +490,13 @@ TB_MAX_SELF_ACCEL = 0.25          # "self_acceleration": a window where the stra
                                   # quadratic fits, and the velocity changes by > this x the scene's top speed
 TB_LOOSE_MIN_E = -0.25            # "still_approaching" below this; real e = 0.15 twins whose balls stay in shadow-merge
                                   # distance measure down to -0.17 (6/318 real clips), so -0.05 would flag real physics
+
+
+def _line_at(arr: np.ndarray, win: list[int], frame: float, fps: float) -> np.ndarray:
+    """Straight-line least-squares fit of arr[win] over time, evaluated at ``frame``."""
+    t = np.array(win, float) / fps
+    coef, *_ = np.linalg.lstsq(np.stack([t, np.ones_like(t)], 1), arr[win], rcond=None)
+    return coef[0] * frame / fps + coef[1]
 
 
 def _lateral_rms(pts: np.ndarray) -> float:
@@ -547,6 +615,11 @@ def readout_self(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
         resid_px = max(fit(pix[:, k], w)[1] for k in (0, 1) for w in (prew, postw))
     lat = [_lateral_rms(pix[[i for i in range(1, c0 - 1) if full[i]], k]) for k in (0, 1)] + \
           [_lateral_rms(pix[[i for i in range(c1 + 1, T) if full[i]], k]) for k in (0, 1)]
+    # positions at the contact frame from straight-line fits of each window (F1 add-on laws: r x v is constant
+    # along a straight path, so angular momentum does not depend on this choice of time)
+    x0 = np.stack([_line_at(world[:, k], prew, c0, fps) for k in (0, 1)])
+    x1 = np.stack([_line_at(world[:, k], postw, c0, fps) for k in (0, 1)])
+    res.update(position_pre=x0.tolist(), position_post=x1.tolist(), mass=m.tolist())
     dA, dB = v1[0] - v0[0], v1[1] - v0[1]
     rel0 = v0[0] - v0[1]
     p0, p1 = m @ v0, m @ v1
@@ -585,3 +658,278 @@ def readout_self(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, 
                              ("curved_path", not np.isfinite(res["path_lateral_max_px"])
                               or res["path_lateral_max_px"] <= TB_MAX_LATERAL_PX)] if not good]
     return {**res, "measurable": not bad, "reason": ",".join(bad) or None}
+
+
+# --------------------------------------------------------------------------- #
+# Output track B stage drivers (scripts/08, scripts/09)
+# --------------------------------------------------------------------------- #
+
+READOUT_SELF = {f: readout_self for f in ("f1", "f2", "f3", "f4")}   # family -> track B readout; F7 / F8 below
+TRAJ_KEYS = ("g_ratio", "g_post_over_true", "vx_ratio", "accel_ratio_heavy_light", "bounce_height_ratio",
+             "bottom_speed_ratio")
+GATES = ("strict", "loose")
+
+
+def readout_file(gate: str, real: bool = False) -> str:
+    """Readout file names in a track B directory (the 2026-11-06 names, so old readouts load unchanged)."""
+    return "_readout" + ("_real" if real else "") + ("" if gate == "strict" else f"_{gate}") + ".jsonl"
+
+
+def real_video(clip, fps: float, hw: tuple[int, int] | None = None) -> np.ndarray:
+    """A real master clip resampled to ``fps`` (exact stride) and, if given, squashed to ``hw``: the §6.1
+    readout validation input (frame 0 = master frame 0, as in a frame-0 generation)."""
+    sc = clip.labels["scene_constants"]
+    step = int(sc["frame_rate"]) // int(fps)
+    if step * int(fps) != int(sc["frame_rate"]):
+        raise ValueError(f"fps {fps} does not divide the master rate {sc['frame_rate']}")
+    v = clip.frames[::step]
+    return v if hw is None or tuple(v.shape[1:3]) == tuple(hw) else fit_frames(v, hw, "squash")
+
+
+def laws_for(laws, row: dict) -> list:
+    """``laws`` from the config: a list, or {subfamily: list} (F7: each sub-family tests its own laws)."""
+    return list(laws.get(row.get("subfamily"), [])) if isinstance(laws, dict) else list(laws or [])
+
+
+def self_residuals(r: dict, labels: dict, laws) -> dict:
+    """Law residuals of a measurable track B readout, given the clip's OWN pre-event state (true masses)."""
+    laws = laws_for(laws, r)
+    if not r.get("measurable") or not laws:
+        return {}
+    if "state_pre" in r:                                     # F7 / F8: states and ctx measured by readout_traj
+        from physlaw.eval.laws import LAWS
+        pre, post = ({k: np.asarray(v, float) for k, v in r[s].items()} for s in ("state_pre", "state_post"))
+        return {f"res_{law}": float(LAWS[law].residual(pre, post, r["ctx"])) for law in laws}
+    if "position_pre" not in r:
+        return {}
+    return law_residuals(labels, laws, r["velocity_post"], r["position_post"], r["velocity_pre"], r["position_pre"],
+                         n=r.get("contact_normal"))
+
+
+def _stats(rows: list[dict], keys) -> dict:
+    from collections import Counter
+    m = [r for r in rows if r["measurable"]]
+    d = {"n": len(rows), "measurable": len(m),
+         "drop_reasons": dict(Counter(str(r.get("reason")) for r in rows if not r["measurable"]))}
+    for k in keys:
+        vals = [r[k] for r in m if isinstance(r.get(k), (int, float)) and np.isfinite(r[k])]
+        if vals:
+            d[f"median_{k}"] = float(np.median(vals))
+    viol = Counter(v for r in m for v in r.get("violations") or [])
+    if viol:
+        d["violations"] = dict(viol)
+        d["measurable_without_violation"] = sum(not r.get("violations") for r in m)
+    return d
+
+
+def track_b_summary(rows: dict, real_rows: dict, data_dir, laws) -> dict:
+    """rows / real_rows: {gate: [readout rows]}. Generated clips: counts, drop reasons, medians of e, momentum
+    residual, KE ratio and every law residual (own pre state), loose-gate violations. Real clips (§6.1 validation,
+    if given): the same per twin."""
+    import json
+    lab = {}
+    def labels(g, t="conserve_e1"):
+        if (g, t) not in lab:
+            lab[g, t] = json.loads((data_dir / g / t / "labels.json").read_text())
+        return lab[g, t]
+    all_laws = sorted({l for v in laws.values() for l in v}) if isinstance(laws, dict) else list(laws)
+    keys = ("e", "r_momentum", "ke_ratio", *TRAJ_KEYS, *(f"res_{l}" for l in all_laws))
+    out = {"laws": all_laws, "gates": {}}
+    for gate in [g for g in GATES if g in rows or g in real_rows]:
+        G = [{**r, **self_residuals(r, labels(r["group"]), laws)} for r in rows.get(gate, [])]
+        d = {"generated": _stats(G, keys),
+             "measurable_clips": [f"{r['group']}/seed{r['seed']}" for r in G if r["measurable"]], "rows": G}
+        R = [{**r, **self_residuals(r, labels(r["group"], r["twin"]), laws)} for r in real_rows.get(gate, [])]
+        if R:
+            d["real"] = {t: _stats([r for r in R if r["twin"] == t], keys) for t in sorted({r["twin"] for r in R})}
+            d["real"]["all"] = _stats(R, ())
+        out["gates"][gate] = d
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# F7 / F8 readout: one or two objects moving in a vertical plane, side camera (spec §6.1 per-family readouts)
+# --------------------------------------------------------------------------- #
+# Pixels -> world by back-projecting through the labelled pinhole camera onto the plane at the object's mean camera
+# depth (exact for motion in a plane parallel to the image, as in the side views of F7 / F8). Per-object tracking:
+# foreground = colour distance to the clip's per-pixel median (static camera) > TR_FG; each object takes the blob of
+# ball size nearest in colour + position to its last position. Then per sub-family:
+#   projectile / drop  parabola z(t) and line x(t) on a window before and after the branch -> g_pre, g_post (g ratio),
+#                      vx ratio (axis independence); drop: acceleration ratio heavier / lighter (mass independence)
+#   bounce             parabolas on the fall before and the rise after the first floor contact -> velocities at contact
+#                      and the rebound height ratio (apex above the contact height / release height above it)
+#   ramp (F8)          bottom speed: slope at the floor of a quadratic fit to the path length s(t) over the last
+#                      TR_WINDOW_S before the path reaches the floor height, over sqrt(2 g h) with h the tracked drop
+#                      from release to the floor
+TR_FG = 30.0
+TR_WINDOW_S = 0.5
+TR_MIN_FRAMES = 5
+TR_MAX_RESID_PX = 1.5            # strict gate: rms px residual of every fit
+
+
+def master_fps(labels) -> int:
+    sc = labels.get("scene_constants") or {}
+    return int(sc.get("frame_rate") or labels["physlaw"]["constants"]["fps"])
+
+
+def backproject(pix_rc: np.ndarray, labels: dict, H: int, W: int, depth: float) -> np.ndarray:
+    """Model-pixel (row, col) [..., 2] -> world xyz [..., 3] on the plane at camera depth ``depth``."""
+    cam = labels["physlaw"]["camera"]
+    K, E = np.asarray(cam["K"], float), np.asarray(cam["world_to_camera"], float)
+    W0, H0 = cam["resolution"]
+    uv1 = np.stack([pix_rc[..., 1] * W0 / W, pix_rc[..., 0] * H0 / H, np.ones(pix_rc.shape[:-1])], -1)
+    xc = depth * (uv1 @ np.linalg.inv(K).T)
+    return (xc - E[:3, 3]) @ E[:3, :3]                                     # R^T (x_cam - t), row-wise
+
+
+def _object_depth(labels, o) -> float:
+    E = np.asarray(labels["physlaw"]["camera"]["world_to_camera"], float)
+    P = np.array([f[o]["position"] for f in labels["per_frame"]], float)
+    return float(np.median(P @ E[2, :3] + E[2, 3]))
+
+
+def track_objects(frames: np.ndarray, labels: dict, objs: list, frames_idx: list, ref_frames: np.ndarray,
+                  ref_masks: np.ndarray) -> np.ndarray:
+    """Pixel centres [T, n_obj, 2 (row, col)] (NaN = not found). Signatures (colour, radius) from the REAL reference
+    frames / instance masks (first frame where each object is visible); start = its labelled pixel there."""
+    import cv2
+    T, H, W = frames.shape[:3]
+    sid = {o: labels["physlaw"]["objects"][o]["segmentation_id"] for o in objs}
+    W0, H0 = labels["physlaw"]["camera"]["resolution"]
+    sig, prev = {}, {}
+    for o in objs:
+        vis = [t for t in range(len(ref_masks)) if (ref_masks[t] == sid[o]).any()]
+        t0 = vis[0] if vis else 0
+        m = ref_masks[t0] == sid[o]
+        sig[o] = (ref_frames[t0][m].reshape(-1, 3).astype(float).mean(0) if m.any() else np.full(3, np.nan),
+                  float(np.sqrt(max(m.sum(), 1) / np.pi)))
+        px = labels["per_frame"][frames_idx[t0]][o]["pixel"]
+        prev[o] = np.array([px[1] * H / H0, px[0] * W / W0])
+    # background: per-pixel median of the REAL reference frames with the objects masked out (a ball that comes to
+    # rest would otherwise become background); pixels the objects always cover fall back to the clip median
+    sub = slice(None, None, max(1, len(ref_frames) // 24))                 # ~24 frames are enough (memory)
+    ref = np.where((ref_masks[sub] > 0)[..., None], np.nan, ref_frames[sub].astype(np.float32))
+    with np.errstate(all="ignore"):
+        bg = np.nanmedian(ref, 0) if ref_frames.shape[1:3] == frames.shape[1:3] else np.full(frames.shape[1:], np.nan)
+    bg = np.where(np.isfinite(bg), bg, np.median(frames[sub], 0)).astype(np.float32)
+    pos = np.full((T, len(objs), 2), np.nan)
+    for t in range(T):
+        img = frames[t].astype(np.float32)
+        fg = (np.linalg.norm(img - bg, axis=2) > TR_FG).astype(np.uint8)
+        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        n, lab, stats, cents = cv2.connectedComponentsWithStats(fg, connectivity=8)
+        blobs = [(cents[i][::-1], img[lab == i].mean(0), stats[i, cv2.CC_STAT_AREA]) for i in range(1, n)]
+        taken = set()
+        for k, o in enumerate(objs):
+            rgb, r = sig[o]
+            area = np.pi * r * r
+            cand = [(np.linalg.norm(c - prev[o]) / r + np.linalg.norm(col - rgb) / 30.0, i)
+                    for i, (c, col, a) in enumerate(blobs) if 0.3 * area <= a <= 3.0 * area and i not in taken]
+            if cand:
+                cost, i = min(cand)
+                if cost < 6.0:
+                    taken.add(i)
+                    pos[t, k] = prev[o] = blobs[i][0]
+    return pos
+
+
+def _fit(t, y, deg):
+    """Polynomial fit; returns (coef highest first, rms residual)."""
+    c = np.polyfit(t, y, deg)
+    return c, float(np.sqrt(((np.polyval(c, t) - y) ** 2).mean()))
+
+
+def readout_traj(gen_frames: np.ndarray, clip, fps: float, checks: bool = True, gate: str = "strict",
+                 frames_idx: list | None = None) -> dict:
+    """F7 / F8 readout of a video whose frame i shows master frame frames_idx[i] (default: stride from frame 0)."""
+    labels, pl = clip.labels, clip.labels["physlaw"]
+    sub = pl.get("subfamily")
+    H, W = gen_frames.shape[1:3]
+    step = master_fps(labels) // int(fps)
+    frames_idx = frames_idx or list(range(0, step * len(gen_frames), step))[: len(gen_frames)]
+    objs = sorted(pl["objects"])
+    ref = fit_frames(clip.frames[frames_idx], (H, W), "squash")
+    rmask = fit_frames(np.repeat(clip.masks[frames_idx][..., None], 3, -1), (H, W), "squash")[..., 0]
+    pix = track_objects(gen_frames, labels, objs, frames_idx, ref, rmask)
+    world = np.stack([backproject(pix[:, k], labels, H, W, _object_depth(labels, o)) for k, o in enumerate(objs)], 1)
+    g_true = float(pl["constants"].get("g", 9.81))
+    ke = int(np.searchsorted(frames_idx, pl["first_post_contact_frame"]))
+    t = np.arange(len(gen_frames)) / fps
+    te = (pl["first_post_contact_frame"] - 0.5) / master_fps(labels) - frames_idx[0] / master_fps(labels)
+    Wn = max(TR_MIN_FRAMES, int(round(TR_WINDOW_S * fps)))
+    ok = np.isfinite(pix).all(-1)                                           # [T, n_obj]
+    res = {"subfamily": sub, "frames_tracked": ok.sum(0).tolist(), "event_index": ke}
+    horiz = int(np.argmax(np.ptp(np.nan_to_num(world[..., :2]), axis=0).max(0)))   # world x or y: the moving one
+    if sub in ("projectile", "drop", "bounce"):
+        fits, resid = {}, 0.0
+        for k in range(len(objs)):
+            gap = 1 if sub == "bounce" else 0                             # skip the frames touching the floor
+            pre = [i for i in range(max(0, ke - gap - Wn), ke - gap) if ok[i, k]]
+            post = [i for i in range(ke + gap, min(len(t), ke + gap + Wn)) if ok[i, k]]
+            if sub == "bounce" and len(post) > 2:                           # rise only: stop at the next floor contact
+                zc = world[post[0], k, 2]
+                back = [j for j, i in enumerate(post[2:], 2) if world[i, k, 2] <= zc]
+                post = post[: back[0]] if back else post
+            if len(pre) < TR_MIN_FRAMES or len(post) < TR_MIN_FRAMES:
+                return {**res, "measurable": False, "reason": "short_window"}
+            cz0, _ = _fit(t[pre], world[pre, k, 2], 2)
+            cz1, _ = _fit(t[post], world[post, k, 2], 2)
+            cx0, _ = _fit(t[pre], world[pre, k, horiz], 1)
+            cx1, _ = _fit(t[post], world[post, k, horiz], 1)
+            dt = float(t[post[-1]] - te)
+            fits[k] = {"g_pre": -2 * cz0[0], "g_post": -2 * cz1[0], "vx_pre": cx0[0], "vx_post": cx1[0],
+                       "v_pre": [cx0[0], np.polyval(np.polyder(cz0), te)], "p_pre": [np.polyval(cx0, te), np.polyval(cz0, te)],
+                       "v_post": [cx1[0], np.polyval(np.polyder(cz1), te + (0 if sub == "bounce" else dt))],
+                       "p_post": [np.polyval(cx1, te + dt), np.polyval(cz1, te + dt)], "dt": dt,
+                       "z_contact": float(np.polyval(cz0, te)), "z_top_pre": float(np.nanmax(world[: ke, k, 2])),
+                       "apex_post": float(cz1[2] - cz1[1] ** 2 / (4 * cz1[0])) if cz1[0] < 0 else float("nan")}
+            resid = max([resid] + [_fit(t[w], pix[w, k, a], 2)[1] for w in (pre, post) for a in (0, 1)])   # px
+        res["fits"] = {objs[k]: {kk: (np.asarray(v).tolist() if isinstance(v, (list, np.ndarray)) else float(v))
+                                 for kk, v in f.items()} for k, f in fits.items()}
+        f0 = fits[0]
+        moving = abs(f0["vx_pre"]) > 0.1 * float(np.linalg.norm(f0["v_pre"]))     # a horizontal motion to compare
+        res.update(g_ratio=f0["g_post"] / f0["g_pre"], g_post_over_true=f0["g_post"] / g_true,
+                   vx_ratio=f0["vx_post"] / f0["vx_pre"] if moving else float("nan"))
+        if sub == "drop" and len(objs) == 2:
+            m = [pl["objects"][o]["mass"] for o in objs]
+            hv, lt = (1, 0) if m[1] > m[0] else (0, 1)
+            res["accel_ratio_heavy_light"] = fits[hv]["g_post"] / fits[lt]["g_post"]
+        if sub == "bounce":
+            h0 = f0["z_top_pre"] - f0["z_contact"]
+            res["bounce_height_ratio"] = (f0["apex_post"] - f0["z_contact"]) / h0 if h0 > 0 else float("nan")
+        res["state_pre"] = {"v": [fits[k]["v_pre"] for k in fits], "p": [fits[k]["p_pre"] for k in fits]}
+        res["state_post"] = {"v": [fits[k]["v_post"] for k in fits], "p": [fits[k]["p_post"] for k in fits]}
+        res["ctx"] = {"g": [0.0, -g_true], "dt": f0["dt"], "g_mag": g_true}
+    else:                                                                   # F8 ramp: bottom speed
+        k = 0
+        z = world[:, k, 2]
+        fin = np.where(ok[:, k])[0]
+        z_rel = float(np.median(z[[i for i in fin if i < ke]])) if any(i < ke for i in fin) else float("nan")
+        z_bot = float(pl["constants"].get("z_floor", np.nanmin(z)))
+        after = [i for i in fin if i >= ke]
+        hit = next((i for i in after if z[i] <= z_bot + 0.02 * max(z_rel - z_bot, 1e-9)), None)
+        if hit is None:
+            return {**res, "measurable": False, "reason": "no_bottom"}
+        win = [i for i in after if hit - Wn < i <= hit]
+        if len(win) < TR_MIN_FRAMES:
+            return {**res, "measurable": False, "reason": "short_window"}
+        # path length s(t) bends smoothly through the ramp's fillets, where x(t) and z(t) do not: fit s(t)
+        P = world[win][:, k][:, [horiz, 2]]
+        sl = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
+        cs, rs = _fit(t[win], sl, 2)
+        speed = float(np.polyval(np.polyder(cs), t[hit]))
+        d = P[-1] - P[-2]
+        v_b = speed * d / max(np.linalg.norm(d), 1e-12)                       # along the final direction of travel
+        h = z_rel - z_bot
+        res.update(bottom_speed=speed, h=h, bottom_speed_ratio=speed / np.sqrt(2 * g_true * h) if h > 0 else float("nan"))
+        res["state_pre"], res["state_post"] = {"v": [[0.0, 0.0]]}, {"v": [v_b.tolist()]}
+        res["ctx"] = {"g_mag": g_true, "h": h}
+        px_per_m = np.median(np.linalg.norm(np.diff(pix[win, k], axis=0), axis=1) / np.maximum(np.diff(sl), 1e-9))
+        resid = rs * float(px_per_m)
+    res["fit_resid"] = float(resid)
+    if gate == "strict" and checks and resid > TR_MAX_RESID_PX:
+        return {**res, "measurable": False, "reason": "fit_residual"}
+    return {**res, "measurable": True, "reason": None}
+
+
+READOUT_SELF.update(f7=readout_traj, f8=readout_traj)

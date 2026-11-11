@@ -1,0 +1,42 @@
+# CogVideoX-5B T2V (spec §4.2 group 3 base) at its OFFICIAL settings: model card (720 x 480, 49 frames at 8 fps,
+# 50 steps, guidance 6, bf16) and the official CogVideo repo inference/cli_demo.py, which VideoREPA's
+# inference/generate.py copies: CogVideoXDPMScheduler (timestep_spacing trailing), use_dynamic_cfg=True,
+# vae.enable_tiling(). 3-D rotary embeddings (transformer config). Pair partner of videorepa_5b.yaml.
+name: cogvideox-5b
+kind: diffusion
+hf_id: zai-org/CogVideoX-5b
+revision: 8fc5b281006c82b82d34fd2543d2f0ebb4e7e321
+local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-5b   # downloaded without text_encoder/
+dtype: bfloat16
+# T5-v1.1-XXL: the repo ships it in bf16; CogVideoX-2b's fp16 copy cast to bf16 is bit-identical (every tensor
+# compared, 2026-11-10), so that copy is used.
+text_encoder:
+  path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX-2b
+  sha256:
+    text_encoder/model-00001-of-00002.safetensors: 4f2751ceeb2a96edd693e539dc5d6bba0b8d3814f49a9b3798403a0cec4b2e3d
+    text_encoder/model-00002-of-00002.safetensors: f63154532130422309532ff56f11945fbea8266c958e3133e8e5aef85c6293c7
+vae_tiling: true
+official:
+  width: 720
+  height: 480
+  num_frames: 49
+  fps: 8
+  num_inference_steps: 50
+  guidance_scale: 6.0
+  scheduler: CogVideoXDPMScheduler
+  use_dynamic_cfg: true
+input:
+  center_on_contact: false            # 6.0 s master == 6.0 s native clip
+token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # 13 x 30 x 45 tokens, 3072-d
+layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 41]
+encode_snr_db: [-20, -8, 0, 8]
+# --- adapter settings (physlaw/models/cogvideox.py) ---
+prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
+forecast_layers: [10, 21, 32]
+surprise: {n_draws: 2}
+noise_seed: 0
+# Weight pins (spec §4.3): zai-org/CogVideoX-5b@8fc5b281006c82b82d34fd2543d2f0ebb4e7e321; verified by physlaw.models.registry.
+sha256:
+  transformer/diffusion_pytorch_model-00001-of-00002.safetensors: b7101be7e75631130cdf4a63ad798452bdce29716aaa47829e882dd384c398bf
+  transformer/diffusion_pytorch_model-00002-of-00002.safetensors: ebe6c0e34a52c89f8ea8032a3a8a278a9ff1880dc70e1e6f3b840bcfd0396647
+  vae/diffusion_pytorch_model.safetensors: a410e48d988c8224cef392b68db0654485cfd41f345f4a3a81d3e6b765bb995e

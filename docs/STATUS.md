@@ -474,3 +474,87 @@ $PY scripts/06_eval.py --model configs/models/wan22_ti2v_5b.yaml --level configs
 ```
 With >= 100 groups set `fold_seeds_l1: 12` and `l2b.fold_seeds: 12` (spec §5). F7/F8 need their contrasts in
 `l2_surprise.yaml` and a `laws.from_labels` branch once their label schema exists.
+
+## WP levels (2026-11-10)
+
+**Built** (branch `wp-levels`; spec §5.5, §5.6, §6, §8):
+
+* **L3** `eval/l3_invariance.py`, config `configs/eval/l3_invariance.yaml` (`analyses` per family), stage 6
+  `--level configs/eval/l3_invariance.yaml`. Probes select (pool, layer) and penalty by inner grouped CV on the
+  training groups only (`crossfit`, `fit_select`), so every reported score is held out; cells searched are reported.
+  * Galilean (F4): restitution and CoM-frame scattering-angle probes trained on `u0` twins; per boost level the
+    invariance error |decoded(boosted) - decoded(u0 partner, same group and e)| / sd vs the within-condition error,
+    transfer error and R²; L2 (raw + motion-adjusted, calibration `<level>_e1` vs `<level>_e015`) per boost level.
+  * Mass independence (F7 drop, F6 slides): per-object probes on real post-event FINAL frames (own ROI), applied to
+    forecast() pooled the same way (and moment-matched); within-group slope of the decoded target (fall
+    acceleration / deceleration) against log mass, relative to the mean target: forecast vs probe floor (real legal
+    clips) vs the violating twin's real clips; group-bootstrap CIs.
+  * Transfer (F6 flat <-> incline: mu, acceleration, size as control; F1/F7 clean -> nuisance): R² of a probe
+    trained on one condition on the other, vs that condition's own cross-fitted R².
+  * Fewer than 4 groups: the analysis is skipped and says so.
+* **L4** `eval/l4_causal.py`, config `configs/eval/l4_causal.yaml`, stage 6 `--level configs/eval/l4_causal.yaml`
+  (loads the model). Mass-ratio direction = ridge weights from A's pre-event ROI pool to log(m_A/m_B), fitted on
+  `direction_data` (F1 by default: F3 hides mass before the event; cross-fitted when it is the evaluated family);
+  injection layer `auto` = best CV R². A torch forward hook (`steer`, on `blocks(m)`: `m.tr.transformer_blocks` /
+  `m.tr.blocks` for DiTs, `m.model.encoder.layer` for V-JEPA 2; no adapter edits) adds alpha * sd * u, alpha in
+  {-2..2}, to A's ROI tokens in the pre-event token-frames; forecast() reruns (DiTs: every sampling step, both CFG
+  branches, and the same run returns the steered video). Post velocities decoded with real-frame probes (frame /
+  roi, plain / moment-matched; `probe_data` can name another family). Metric: r between the momentum-predicted
+  change of v_B'.n (from the implied mass ratio and the twin's e) and the observed change, gain, r for A,
+  specificity (tangential / normal change). Controls on the same predictions: `random_dir` (norm-matched),
+  `random_subspace` (rank-matched, own sd), `pc_matched` (variance-matched PC). Steering (DiTs): every steered video
+  read out with the track B readout; per (group, condition, alpha) the generated d(v_B.n), its change from alpha 0
+  and whether its sign agrees with momentum. Interventions cached per group in `--work` (resumable).
+* **Outputs** (§6), config `configs/eval/outputs.yaml`:
+  * Stage 7 `--track a`: seed 0 for the gate groups if missing (generators without a stage-4 pass), the feasibility
+    gate (20 clips, **min pass rate 0.5** per spec v2; was 0.3), then seeds 0-3 via the adapter's `generate()`.
+    `--track b`: frame 0 + the model config's `prompt_template` through the adapter's `generate()` (models with
+    `output_track: B`, i.e. the models agent's `WanI2VAdapter`). `scripts/experiments/track_b_generate_wan.py` and
+    `track_b_score.py` are folded in and deleted.
+  * Stage 8 (was a stub): tracks and reads out every generated video (`_readout_trackA[_real].jsonl`; track B
+    `_readout[_loose].jsonl`, the 2026-11-06 names), `--real` = the §6.1 readout validation on the real clips at the
+    model's fps / size, `--review` = the per-clip review sheets. Stage 9 scores the readouts with `physlaw.eval.laws`
+    (laws per family, per sub-family for F7) -> `results/<model>/<family>/outputs_track{A,B}.{json,md}`.
+  * Readouts (`eval/outputs.py`): F1 readouts now record contact positions, so CoM velocity and angular momentum are
+    scored. New `readout_traj` for F7 / F8 (side camera): back-projection through the labelled camera onto the
+    object's plane, colour + position tracking against a background from the real frames with the objects masked
+    out; projectile / drop: parabola and line fits before and after the branch (g ratio, g / g_true, vx ratio,
+    heavy / light acceleration ratio); bounce: fall and rise fits around the floor contact (rebound height ratio);
+    ramp: path-length fit at the floor (bottom speed / sqrt(2gh)). Track A and B use them per family.
+  * `physlaw/track/` (stub) deleted: tracking is `eval/outputs.py`'s colour tracker.
+* **Aggregation** `analysis/aggregate.py`, `analysis/figures.py`, stage 11: `results/leaderboard.{json,md}` (one table
+  per family; L0, L1 S_family / S_outcome of the held-out space, L2 held-out adjusted win, L2b held-out AUC,
+  encoded-but-unused, L3, L4, tracks A and B; blank = not run; older result formats read as fallback) and
+  `results/figures/fig1..8` (each only when its inputs exist; PNGs are gitignored).
+* Tests: `tests/test_levels.py` (L3 invariants and held-out cross-fitting, L4 momentum prediction, direction,
+  controls and the forward hook, readout helpers, F7 readout on a synthetic side-view parabola, aggregation).
+
+**Test runs** (artifacts in the session scratchpad `levels/`):
+
+* **F1 readout validation unchanged** (stage 8 `--real`, 16 fps): **312/320 strict, 318/320 loose**. New add-on laws
+  on the real clips (median residual, loose): CoM 0.023 / 0.037, angular momentum 0.021 / 0.024 on conserve_e1 /
+  e015; 0.49 / 0.29 and 0.27 / 0.14 on mom_violate_e1 / e015; energy_create 0.024 / 0.027 (not a CoM or L break).
+* **Wan2.2-I2V-A14B track B re-scored** through stages 8/9: verdicts identical to the 2026-11-06 readouts on all 20
+  (strict) / 22 (loose) shared clips (strict 0/22, loose 8/22, all 8 with violations); 2 clips (f1_100007/8 seed 1)
+  were missing from the old strict file (short_window). Results: `results/wan2.2-i2v-a14b/f1/outputs_trackB.{json,md}`
+  (loose medians: momentum residual 1.00, CoM 0.72, angular momentum 0.32). A new Wan clip was not generated:
+  the two 14B experts in bf16 (2 x 28 GB) do not fit the 48 GB GPU, and CPU offload needs more than 15 GB of RAM.
+* **CogVideoX-2b track A** through stages 7 (gate path, cached clips: 0/20, as before), 8, 9:
+  `results/cogvideox-2b/f1/outputs_trackA.{json,md}` replaces the pre-readout-fix `outputs.{json,md}` (same 1/64
+  measurable, real floor 60/64 and 55/64, same residuals; the drop reasons shift between lost_after_context and
+  contact_at_edge because the old file predates the 2026-11-06 readout fix).
+* **F7 / F8 readout validation** on the data agent's test renders (320 x 184, 16 fps, upscaled to Wan's 480 x 832):
+  F7 11/11 measurable (projectile g_post/g_true 0.995 legal, 1.50 gravity_x15; vx ratio 0.97 legal, 0.586 vx_x06;
+  bounce height ratio 0.648 legal e 0.8, 0.192 legal e 0.4 (true 0.16: a 4-frame rise), 1.302 energy_x13);
+  F8 5/5 (bottom speed / sqrt(2gh) 0.989 / 1.003 / 1.023 on the legal slope A / B / kink, 1.269 energy_x125, 0.838
+  path_dependent, closed form 0.847). Laws: gravity residual 0.055 legal vs 0.52 gravity_x15; axis independence
+  0.029 vs 0.414 vx_x06; ramp_energy 0.003-0.023 legal vs 0.27 / 0.16. F3 (collision readout, identical-looking
+  balls, true masses per twin): 10/10 measurable, momentum residual 0.011-0.043, e 0.99-1.01, CoM <= 0.021, L <= 0.018.
+  F2 (11 restitutions): 44/44 loose (43/44 strict), measured e -0.03 / 0.16 / 0.45 / 0.77 / 0.97 at true 0 / 0.2 / 0.5 /
+  0.8 / 1, momentum residual 0.04-0.08. F4 (not an output family): 11/18 loose, mostly short windows (wider view,
+  faster balls), so the F1 readout is not validated for boosted clips.
+* **L3 stand-in on F1** (V-JEPA 2 ViT-L cache, CPU; no F4/F6/F7 caches yet): every analysis runs end to end. Labelled
+  stand-in in its output. Mass independence with target |dv| (momentum makes the lighter ball change more): the
+  probe floor recovers the slope (-0.62 vs true -0.82), the decoded forecast does not (+0.07 / -0.04 mm).
+* **L4 stand-in on F1** (CPU, 2 groups, alpha {-2, 0, 2}, one draw per control): direction CV R² 0.81 at layer 14;
+  the decoded forecast barely moves (mean |d v_B'.n| 0.0007 vs 0.63 predicted). Numbers on 2 groups mean nothing.

@@ -16,3 +16,6 @@ input:
 token_grid: {patch: 16, tubelet: 2}
 layers: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23]
 surprise_distances: [l1, mse, cosine]
+# Weight pins (spec §4.3): facebook/vjepa2-vitl-fpc64-256@b3c1679b7c34d3255ef3547f27c7b226aefab26f; verified by physlaw.models.registry.
+sha256:
+  model.safetensors: 25466aef85727d16546c6cf8c99f12fcfad9cbca8225d45f23685e2e025b786b

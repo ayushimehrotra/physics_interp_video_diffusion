@@ -73,6 +73,8 @@ def _deep_update(dst: dict, src: dict) -> None:
 
 
 LOCATION_KEYS = ("local_path", "path")   # where weights live on disk: not part of a model's identity
+PIN_KEYS = ("sha256",)                    # top-level per-file weight hashes: they verify the pinned revision, so
+                                          # adding them (2026-11-10) leaves existing caches' hashes unchanged
 
 
 def _strip_locations(d):
@@ -86,7 +88,7 @@ def config_hash(cfg: dict) -> str:
     the weights are identified by pinned revisions / sha256, so moving them (e.g. to another pod's disk)
     does not change the hash. (Before 2026-11-05 locations were included; videomaev2-giant's caches carry
     the old hash 2c78b257e18c; the same config and weights (sha256 5773c881...) now hash to 4531024ff411)"""
-    clean = {k: v for k, v in cfg.items() if not k.startswith("_")}
+    clean = {k: v for k, v in cfg.items() if not k.startswith("_") and k not in PIN_KEYS}
     return hashlib.sha256(json.dumps(_strip_locations(clean), sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 

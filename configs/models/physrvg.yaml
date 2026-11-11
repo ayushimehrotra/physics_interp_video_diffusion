@@ -1,0 +1,34 @@
+# PhysRVG (spec §4.2 group 3, P0; HappyP4nda/PhysRVG, ECCV 2026): Wan2.2-TI2V-5B with PhysRVG's RL-tuned DiT weights
+# (dit/) AND its LoRA (lora/, PEFT, lora_alpha 64 / r 32 -> x2), both loaded on top of the base exactly as the official
+# github.com/ant-research/PhysRVG inference.py does (defaults --dit_checkpoint ./models/dit/..., --lora_checkpoint
+# ./models/lora/checkpoint; lora/ and lora/checkpoint/ are byte-identical). Its transformer code equals diffusers'
+# WanTransformer3DModel; the LoRA is merged into the weights here (PEFT runs it unmerged: same function).
+# OFFICIAL inference settings (inference.py + fastvideo/models/wan_v2v/pipeline_wan_v2v.py, repo HEAD 2026-11-10):
+# 480 x 832, 49 frames, 16 steps, no CFG (do_cfg=False), the base's UniPC (flow_shift 5.0), prompt "The video shows
+# rigid body motion.", the first 2 latent frames (5 frames) held clean at timestep 0. Deviation: its clips play at
+# 15 fps; 15 does not divide the 48 fps master, so 16 fps (every 3rd master frame) is used.
+# Pair partner with IDENTICAL settings (spec §4.2 group 3): wan22_ti2v_5b_physrvg.yaml (base weights).
+defaults: wan22_ti2v_5b.yaml
+name: physrvg
+dit_weights:
+  hf_id: HappyP4nda/PhysRVG
+  revision: d8caf2dd7db30d7470d474875c84e6a4eb21b9c6
+  path: ${env:PHYSLAW_MODELS,/root/models}/PhysRVG/dit/diffusion_pytorch_model.safetensors
+  sha256: 70c14c374fc9f33a29ed713f68cf7e5db4952ea62ecd1787e63a390ef94918d3
+lora:
+  hf_id: HappyP4nda/PhysRVG
+  revision: d8caf2dd7db30d7470d474875c84e6a4eb21b9c6
+  path: ${env:PHYSLAW_MODELS,/root/models}/PhysRVG/lora/adapter_model.safetensors   # + adapter_config.json beside it
+  scale: 1.0              # x lora_alpha / r from adapter_config.json (PEFT default scaling)
+  sha256: 3d6507c54984608b944be7ba765d038fff4a92593cb017bb2784235fc95eabee
+official:
+  height: 480
+  width: 832
+  num_frames: 49
+  fps: 16
+  num_inference_steps: 16
+  guidance_scale: null    # do_cfg=False: one conditional pass per step
+  negative_prompt: ""
+input:
+  center_on_contact: true             # 3.0 s around contact: ~6 context latent frames, ~6 after
+prompt: "The video shows rigid body motion."

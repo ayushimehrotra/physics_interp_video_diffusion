@@ -1,0 +1,2501 @@
+{
+ "laws": [
+  "momentum",
+  "energy",
+  "com",
+  "angular_momentum"
+ ],
+ "gates": {
+  "strict": {
+   "generated": {
+    "n": 22,
+    "measurable": 0,
+    "drop_reasons": {
+     "extra_objects": 2,
+     "short_window": 5,
+     "size_change": 2,
+     "no_collision": 1,
+     "fit_residual,impulse_not_opposite,still_approaching,curved_path": 5,
+     "fit_residual,impulse_not_opposite,curved_path": 3,
+     "fit_residual,curved_path": 2,
+     "fit_residual,still_approaching,curved_path": 2
+    }
+   },
+   "measurable_clips": [],
+   "rows": [
+    {
+     "group": "f1_100000",
+     "seed": 0,
+     "frames_both_tracked": 32,
+     "size_ratio": 1.0858412441930922,
+     "extra_object_frames": 3,
+     "measurable": false,
+     "reason": "extra_objects"
+    },
+    {
+     "group": "f1_100000",
+     "seed": 1,
+     "frames_both_tracked": 39,
+     "size_ratio": 1.1512068621583882,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.2120638004896838,
+     "contact_frame": 2,
+     "separate_frame": 4,
+     "merged_frames": 2,
+     "n_pre": 0,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100001",
+     "seed": 0,
+     "frames_both_tracked": 57,
+     "size_ratio": 2.6312346688470973,
+     "extra_object_frames": 8,
+     "measurable": false,
+     "reason": "size_change"
+    },
+    {
+     "group": "f1_100001",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 0.9919710959454034,
+     "extra_object_frames": 0,
+     "collided": false,
+     "min_dist_over_rsum": 6.539767062288295,
+     "measurable": false,
+     "reason": "no_collision"
+    },
+    {
+     "group": "f1_100002",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 0.9898458748866727,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9390535207597679,
+     "contact_frame": 36,
+     "separate_frame": 36,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -0.5971275779018532,
+       -0.19312086136417705
+      ],
+      [
+       -0.8172100635426882,
+       0.9387817399799807
+      ]
+     ],
+     "position_post": [
+      [
+       -0.31681482038665165,
+       -0.039814040187542976
+      ],
+      [
+       -0.11323004966868044,
+       0.7551007973286168
+      ]
+     ],
+     "mass": [
+      0.7937795376695433,
+      0.733452880080267
+     ],
+     "velocity_pre": [
+      [
+       0.43621582406540216,
+       -0.4499479529126212
+      ],
+      [
+       1.3013850854829279,
+       0.2414585820492922
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.6610550917480777,
+       -0.1855998643851971
+      ],
+      [
+       1.9451464256785063,
+       1.0106242967363257
+      ]
+     ],
+     "fit_resid_px": 5.507370393366326,
+     "path_lateral_px": {
+      "A_pre": 4.073324670761092,
+      "B_pre": 11.225019539033875,
+      "A_post": 6.9116302785962125,
+      "B_post": 4.105112249616938
+     },
+     "path_lateral_max_px": 11.225019539033875,
+     "r_momentum": 0.6630478372540864,
+     "ke_ratio": 2.44157389081945,
+     "contact_normal": [
+      0.9604411983399087,
+      0.27848286218616775
+     ],
+     "impulse_cos": 0.44436556190595033,
+     "approach_speed": -1.0234890729931165,
+     "e": -2.7711397332494245,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100002",
+     "seed": 1,
+     "frames_both_tracked": 63,
+     "size_ratio": 0.9938439254028608,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0544030602773309,
+     "contact_frame": 11,
+     "separate_frame": 11,
+     "merged_frames": 0,
+     "n_pre": 7,
+     "n_post": 12,
+     "position_pre": [
+      [
+       0.09821077150983659,
+       -0.10675071248028623
+      ],
+      [
+       -0.42516475231659356,
+       -0.21464027948745024
+      ]
+     ],
+     "position_post": [
+      [
+       0.38303568455586134,
+       -0.24574668439058983
+      ],
+      [
+       -0.35174627630998256,
+       -0.05197148828837356
+      ]
+     ],
+     "mass": [
+      0.7937795376695433,
+      0.733452880080267
+     ],
+     "velocity_pre": [
+      [
+       -1.9270525215184735,
+       1.1034433049941101
+      ],
+      [
+       2.1076590110722355,
+       -0.6514538695581191
+      ]
+     ],
+     "velocity_post": [
+      [
+       2.6705824757551686,
+       0.11597643763291274
+      ],
+      [
+       0.31385012193796724,
+       0.5393889826368771
+      ]
+     ],
+     "fit_resid_px": 2.52406393518024,
+     "path_lateral_px": {
+      "A_pre": 0.5139132660455002,
+      "B_pre": 1.4066006211720465,
+      "A_post": 1.2648608540085096,
+      "B_post": 2.5056393138516158
+     },
+     "path_lateral_max_px": 2.5056393138516158,
+     "r_momentum": 5.8621850427980435,
+     "ke_ratio": 0.7960759047415512,
+     "contact_normal": [
+      -0.9465369433063173,
+      0.3225954354238964
+     ],
+     "impulse_cos": 0.9306921902081683,
+     "approach_speed": 4.385125339329999,
+     "e": 0.5398534841091754,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,curved_path"
+    },
+    {
+     "group": "f1_100003",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0667338709677419,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9961812069333055,
+     "contact_frame": 34,
+     "separate_frame": 34,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -0.09733754578947629,
+       -0.540922528840728
+      ],
+      [
+       -1.0407360139004052,
+       0.34023441776566127
+      ]
+     ],
+     "position_post": [
+      [
+       -0.07495078419400625,
+       -0.2951278414082626
+      ],
+      [
+       0.11396316343722823,
+       0.4664848975022451
+      ]
+     ],
+     "mass": [
+      3.5541261153311208,
+      2.7497954181482145
+     ],
+     "velocity_pre": [
+      [
+       -0.6374467488338632,
+       0.46994955814248546
+      ],
+      [
+       -0.4136083793422391,
+       0.23789125874725273
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.5941375464947264,
+       -0.026530350833924046
+      ],
+      [
+       1.1156292366466862,
+       1.1149466845170979
+      ]
+     ],
+     "fit_resid_px": 2.6330759989020707,
+     "path_lateral_px": {
+      "A_pre": 4.160271864452073,
+      "B_pre": 4.498923896632333,
+      "A_post": 6.020218059946095,
+      "B_post": 3.428469784596643
+     },
+     "path_lateral_max_px": 6.020218059946095,
+     "r_momentum": 1.0693509996057067,
+     "ke_ratio": 2.8362363580605687,
+     "contact_normal": [
+      0.7343330431098627,
+      0.678789350091034
+     ],
+     "impulse_cos": 0.42024246687882794,
+     "approach_speed": -0.006853208803813571,
+     "e": -296.2642402946092,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100003",
+     "seed": 1,
+     "frames_both_tracked": 63,
+     "size_ratio": 0.99039780521262,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.942793845056879,
+     "contact_frame": 14,
+     "separate_frame": 14,
+     "merged_frames": 0,
+     "n_pre": 10,
+     "n_post": 12,
+     "position_pre": [
+      [
+       0.02360534252379387,
+       -0.007183220256600897
+      ],
+      [
+       0.14193492626890458,
+       0.8072700564196713
+      ]
+     ],
+     "position_post": [
+      [
+       0.06697923806632966,
+       0.03960592192050963
+      ],
+      [
+       0.08952022116164149,
+       1.160512132294996
+      ]
+     ],
+     "mass": [
+      3.5541261153311208,
+      2.7497954181482145
+     ],
+     "velocity_pre": [
+      [
+       -1.8314780536455977,
+       3.685496258522588
+      ],
+      [
+       0.6472945426633989,
+       -1.949085222860209
+      ]
+     ],
+     "velocity_post": [
+      [
+       2.878956725404853,
+       -0.17158089855108727
+      ],
+      [
+       -0.15403609619277425,
+       -0.7541037104171705
+      ]
+     ],
+     "fit_resid_px": 3.332303674767188,
+     "path_lateral_px": {
+      "A_pre": 0.533828972568543,
+      "B_pre": 0.44939733397098025,
+      "A_post": 2.571757244802074,
+      "B_post": 1.3453168256389014
+     },
+     "path_lateral_max_px": 2.571757244802074,
+     "r_momentum": 1.9722689904388384,
+     "ke_ratio": 0.43445153474375914,
+     "contact_normal": [
+      -0.7371803192680912,
+      0.6756960684241067
+     ],
+     "impulse_cos": 0.957101757951415,
+     "approach_speed": 5.634566928125697,
+     "e": 0.32695578317155854,
+     "impulse_check": false,
+     "measurable": false,
+     "reason": "fit_residual,curved_path"
+    },
+    {
+     "group": "f1_100004",
+     "seed": 0,
+     "frames_both_tracked": 79,
+     "size_ratio": 1.1974870254028953,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9168486336885433,
+     "contact_frame": 33,
+     "separate_frame": 35,
+     "merged_frames": 2,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -1.0727413917729054,
+       0.2805117422882814
+      ],
+      [
+       0.26476532013063414,
+       0.19764012049179697
+      ]
+     ],
+     "position_post": [
+      [
+       -0.5832813395607104,
+       0.4927658800742649
+      ],
+      [
+       1.1599008875306156,
+       0.09905475435671374
+      ]
+     ],
+     "mass": [
+      0.7437902940972906,
+      0.8658363074374661
+     ],
+     "velocity_pre": [
+      [
+       0.5309089284806698,
+       0.023432433400282598
+      ],
+      [
+       0.9146405988445019,
+       -0.09781905631122557
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.38507364285579143,
+       -0.5765004938643993
+      ],
+      [
+       3.1490777174882227,
+       -0.35140346078476775
+      ]
+     ],
+     "fit_resid_px": 2.220839299713671,
+     "path_lateral_px": {
+      "A_pre": 2.260505479363061,
+      "B_pre": 1.432477492389501,
+      "A_post": 0.8271124491519943,
+      "B_post": 1.0375781832003057
+     },
+     "path_lateral_max_px": 2.260505479363061,
+     "r_momentum": 1.1939051795657483,
+     "ke_ratio": 9.60105232433063,
+     "contact_normal": [
+      0.9940111315920054,
+      0.10927886470485011
+     ],
+     "impulse_cos": 0.7694220161512254,
+     "approach_speed": -0.3681833267465977,
+     "e": -9.608213854754739,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100004",
+     "seed": 1,
+     "frames_both_tracked": 30,
+     "size_ratio": 1.2488352973417374,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9705936480834405,
+     "contact_frame": 4,
+     "separate_frame": 5,
+     "merged_frames": 1,
+     "n_pre": 2,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100005",
+     "seed": 0,
+     "frames_both_tracked": 80,
+     "size_ratio": 1.482358195623046,
+     "extra_object_frames": 7,
+     "measurable": false,
+     "reason": "extra_objects"
+    },
+    {
+     "group": "f1_100005",
+     "seed": 1,
+     "frames_both_tracked": 74,
+     "size_ratio": 1.0469723953695458,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.2803778312077956,
+     "contact_frame": 17,
+     "separate_frame": 24,
+     "merged_frames": 7,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       2.2812606752905267,
+       0.07730387536845565
+      ],
+      [
+       1.2493557093827206,
+       -0.18382835702582545
+      ]
+     ],
+     "position_post": [
+      [
+       2.1829761339524496,
+       0.01030630368001145
+      ],
+      [
+       2.3527625298359753,
+       -0.1790044096003221
+      ]
+     ],
+     "mass": [
+      1.0197950981788957,
+      0.18630772081773214
+     ],
+     "velocity_pre": [
+      [
+       0.05370641702184187,
+       -0.016323964399452138
+      ],
+      [
+       3.9414011351767635,
+       -1.8766708479443106
+      ]
+     ],
+     "velocity_post": [
+      [
+       -7.715867726063452e-05,
+       -0.022561146175548455
+      ],
+      [
+       2.301260545916623,
+       -0.008815034148365283
+      ]
+     ],
+     "fit_resid_px": 2.443858622122889,
+     "path_lateral_px": {
+      "A_pre": 0.5294440476788337,
+      "B_pre": 2.1764174628659725,
+      "A_post": 0.4001544752016786,
+      "B_post": 3.0492270257913527
+     },
+     "path_lateral_max_px": 3.0492270257913527,
+     "r_momentum": 0.5708417476651803,
+     "ke_ratio": 0.27779827008395863,
+     "contact_normal": [
+      -0.6460813173796839,
+      0.7632685840075775
+     ],
+     "impulse_cos": -0.5688636407682381,
+     "approach_speed": 3.9317112566417642,
+     "e": -0.375500443467961,
+     "impulse_check": false,
+     "measurable": false,
+     "reason": "fit_residual,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100006",
+     "seed": 0,
+     "frames_both_tracked": 71,
+     "size_ratio": 1.0132450331125828,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0327407655288179,
+     "contact_frame": 14,
+     "separate_frame": 20,
+     "merged_frames": 6,
+     "n_pre": 12,
+     "n_post": 10,
+     "position_pre": [
+      [
+       -0.27545717666815506,
+       -0.7286189987547941
+      ],
+      [
+       -0.07899565482115195,
+       -0.15153019657621258
+      ]
+     ],
+     "position_post": [
+      [
+       -0.005258198027061289,
+       -0.9614682715620293
+      ],
+      [
+       -0.1761054424572681,
+       -0.5451895923978662
+      ]
+     ],
+     "mass": [
+      2.7533203776005886,
+      0.29744812920483904
+     ],
+     "velocity_pre": [
+      [
+       0.11409429638763414,
+       0.49517132821208915
+      ],
+      [
+       -0.3737954694666049,
+       -1.5113263073793946
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.17251052236705927,
+       0.12283944821704064
+      ],
+      [
+       -0.020874703652525684,
+       -0.08891749634475975
+      ]
+     ],
+     "fit_resid_px": 1.8729037609472226,
+     "path_lateral_px": {
+      "A_pre": 0.20748586045882114,
+      "B_pre": 0.12095566463990319,
+      "A_post": 3.4834560234751932,
+      "B_post": 4.267906685937882
+     },
+     "path_lateral_max_px": 4.267906685937882,
+     "r_momentum": 0.9735469809699124,
+     "ke_ratio": 0.08797103771554579,
+     "contact_normal": [
+      0.3356598524109247,
+      0.9419832607214824
+     ],
+     "impulse_cos": 0.9159922597661677,
+     "approach_speed": 2.0538521922038453,
+     "e": -0.07233891569840235,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100006",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1202285120747857,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.8858004715783312,
+     "contact_frame": 5,
+     "separate_frame": 5,
+     "merged_frames": 0,
+     "n_pre": 1,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100007",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1850961538461537,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9836918602820064,
+     "contact_frame": 10,
+     "separate_frame": 10,
+     "merged_frames": 0,
+     "n_pre": 6,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -1.4980882421556039,
+       -0.3491135921716968
+      ],
+      [
+       -1.313384537624835,
+       0.282084389534059
+      ]
+     ],
+     "position_post": [
+      [
+       -1.6844077702842692,
+       -0.46914108722139847
+      ],
+      [
+       -1.0215593793111135,
+       0.8019814239426678
+      ]
+     ],
+     "mass": [
+      2.5294477454815056,
+      2.8174482807854515
+     ],
+     "velocity_pre": [
+      [
+       1.8134822214243622,
+       1.9293765445866509
+      ],
+      [
+       -0.7499470104807954,
+       -1.920155855591293
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.780382356124267,
+       0.24913780397542767
+      ],
+      [
+       -0.2669109354100206,
+       -0.13998316682229545
+      ]
+     ],
+     "fit_resid_px": 2.6407958351955605,
+     "path_lateral_px": {
+      "A_pre": 1.0325215453311272,
+      "B_pre": 0.2665106058633966,
+      "A_post": 9.092327357530339,
+      "B_post": 9.241251345863777
+     },
+     "path_lateral_max_px": 9.241251345863777,
+     "r_momentum": 0.5800527299999365,
+     "ke_ratio": 0.06575400022454066,
+     "contact_normal": [
+      0.4013088650846935,
+      0.9159427901372637
+     ],
+     "impulse_cos": 0.9592934033805558,
+     "approach_speed": 4.55467832312357,
+     "e": -0.170528097667536,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100007",
+     "seed": 1,
+     "frames_both_tracked": 35,
+     "size_ratio": 1.0768119431736094,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9212030031020388,
+     "contact_frame": 5,
+     "separate_frame": 5,
+     "merged_frames": 0,
+     "n_pre": 1,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100008",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1967575534266766,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.893980759968591,
+     "contact_frame": 24,
+     "separate_frame": 24,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -2.0485386589869727,
+       -0.280168212091784
+      ],
+      [
+       -1.6832160283451052,
+       0.3511704518418417
+      ]
+     ],
+     "position_post": [
+      [
+       -1.1187906198393707,
+       -0.08638285566070414
+      ],
+      [
+       -0.4381826880087525,
+       0.05534860157513699
+      ]
+     ],
+     "mass": [
+      0.437591334403055,
+      2.979582792993085
+     ],
+     "velocity_pre": [
+      [
+       -0.9849570197637336,
+       -0.615538470466013
+      ],
+      [
+       -1.5517673500436795,
+       -0.5249763841740962
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.695878465650002,
+       0.20590068643420492
+      ],
+      [
+       0.927205755796601,
+       0.7505858041736047
+      ]
+     ],
+     "fit_resid_px": 12.583879097399665,
+     "path_lateral_px": {
+      "A_pre": 11.842338336848558,
+      "B_pre": 9.42928149644287,
+      "A_post": 3.893880377714447,
+      "B_post": 3.1875892448307637
+     },
+     "path_lateral_max_px": 11.842338336848558,
+     "r_momentum": 1.6971186860004104,
+     "ke_ratio": 0.5206757932550582,
+     "contact_normal": [
+      0.8691590354782867,
+      0.49453267945248536
+     ],
+     "impulse_cos": -0.9997868398752014,
+     "approach_speed": 0.447862408774498,
+     "e": 1.0503779417531869,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,curved_path"
+    },
+    {
+     "group": "f1_100008",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0014255167498218,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9523261930867569,
+     "contact_frame": 6,
+     "separate_frame": 6,
+     "merged_frames": 0,
+     "n_pre": 2,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100009",
+     "seed": 0,
+     "frames_both_tracked": 80,
+     "size_ratio": 1.0215927559786395,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.884829136801471,
+     "contact_frame": 40,
+     "separate_frame": 41,
+     "merged_frames": 1,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       1.6069914071681932,
+       0.7352766381761482
+      ],
+      [
+       0.8578354777431247,
+       0.04163645586897324
+      ]
+     ],
+     "position_post": [
+      [
+       0.9192849303397601,
+       1.0956636847086139
+      ],
+      [
+       1.034373733188548,
+       0.626560510816141
+      ]
+     ],
+     "mass": [
+      0.6627669950134637,
+      1.11759393587013
+     ],
+     "velocity_pre": [
+      [
+       5.644146558692953,
+       -1.7966950437639315
+      ],
+      [
+       5.893781462636778,
+       -2.7562696050124917
+      ]
+     ],
+     "velocity_post": [
+      [
+       1.0773772584319545,
+       0.7286792380515138
+      ],
+      [
+       0.9360454431250896,
+       -1.609831399704278
+      ]
+     ],
+     "fit_resid_px": 8.154534332536606,
+     "path_lateral_px": {
+      "A_pre": 23.540953033320044,
+      "B_pre": 18.99059054236074,
+      "A_post": 2.1991511234905143,
+      "B_post": 2.2897398520204093
+     },
+     "path_lateral_max_px": 23.540953033320044,
+     "r_momentum": 0.8109110888455203,
+     "ke_ratio": 0.07081068805755295,
+     "contact_normal": [
+      -0.2727757614674891,
+      -0.9620776392557057
+     ],
+     "impulse_cos": -0.9616371282321935,
+     "approach_speed": -0.855090877563704,
+     "e": -2.6761841896926044,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,still_approaching,curved_path"
+    },
+    {
+     "group": "f1_100010",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0416002550207204,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0271293767740264,
+     "contact_frame": 37,
+     "separate_frame": 37,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       0.5737379648612575,
+       0.35599234600638985
+      ],
+      [
+       -0.06713851877839683,
+       0.11333771285248662
+      ]
+     ],
+     "position_post": [
+      [
+       0.5703386497061071,
+       0.4913280141674905
+      ],
+      [
+       -0.02416747319544177,
+       0.007337195797785245
+      ]
+     ],
+     "mass": [
+      4.725243456263542,
+      0.8563061234803135
+     ],
+     "velocity_pre": [
+      [
+       -1.3663753813950448,
+       1.129919310730274
+      ],
+      [
+       0.32782148607492034,
+       -0.8054965520377846
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.8417456135075941,
+       1.3217292494142805
+      ],
+      [
+       0.4703200738317225,
+       -1.1485715360698912
+      ]
+     ],
+     "fit_resid_px": 1.730828434851778,
+     "path_lateral_px": {
+      "A_pre": 1.6899488787524224,
+      "B_pre": 4.676955783535028,
+      "A_post": 1.050644235717599,
+      "B_post": 2.2026440265889753
+     },
+     "path_lateral_max_px": 4.676955783535028,
+     "r_momentum": 1.3678346083084671,
+     "ke_ratio": 0.8335454158649361,
+     "contact_normal": [
+      -0.9680704969771896,
+      -0.2506781061088843
+     ],
+     "impulse_cos": -0.3022254996448643,
+     "approach_speed": 1.1549356204570578,
+     "e": 0.8475073518133794,
+     "impulse_check": false,
+     "measurable": false,
+     "reason": "fit_residual,curved_path"
+    },
+    {
+     "group": "f1_100011",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0385310054184227,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0130747098020936,
+     "contact_frame": 16,
+     "separate_frame": 16,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "position_pre": [
+      [
+       -1.1340503278188618,
+       0.13804316447186038
+      ],
+      [
+       -1.1821642139758544,
+       0.8698328944852491
+      ]
+     ],
+     "position_post": [
+      [
+       -1.3287210151100208,
+       0.09581352528269345
+      ],
+      [
+       -1.2533463171657044,
+       0.9443584842877634
+      ]
+     ],
+     "mass": [
+      0.5028420244354865,
+      1.2146453316322878
+     ],
+     "velocity_pre": [
+      [
+       0.6986343041622094,
+       0.9466591929278165
+      ],
+      [
+       0.5700473755747797,
+       -1.6740451340918536
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.5083645259399578,
+       -0.028788868309071985
+      ],
+      [
+       0.30214273753444193,
+       0.00036171733484732663
+      ]
+     ],
+     "fit_resid_px": 1.1544016076078256,
+     "path_lateral_px": {
+      "A_pre": 0.7048649399174162,
+      "B_pre": 0.3421860455587256,
+      "A_post": 2.953120755272696,
+      "B_post": 4.566889528359347
+     },
+     "path_lateral_max_px": 4.566889528359347,
+     "r_momentum": 0.8533045322214461,
+     "ke_ratio": 0.05367495816425163,
+     "contact_normal": [
+      -0.029285211639945664,
+      0.9995710962103714
+     ],
+     "impulse_cos": 0.9389278837985605,
+     "approach_speed": 2.6158146015845016,
+     "e": 0.013447945257351985,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "fit_residual,impulse_not_opposite,curved_path"
+    },
+    {
+     "group": "f1_100012",
+     "seed": 0,
+     "frames_both_tracked": 79,
+     "size_ratio": 2.034278718628851,
+     "extra_object_frames": 0,
+     "measurable": false,
+     "reason": "size_change"
+    }
+   ],
+   "real": {
+    "conserve_e015": {
+     "n": 64,
+     "measurable": 61,
+     "drop_reasons": {
+      "still_approaching": 2,
+      "impulse_not_opposite,still_approaching": 1
+     },
+     "median_e": 0.14101133186546583,
+     "median_r_momentum": 0.04128482598433626,
+     "median_ke_ratio": 0.751822071229593,
+     "median_res_momentum": 0.04128482598433626,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.03521013660461485,
+     "median_res_angular_momentum": 0.02421837489507174
+    },
+    "conserve_e1": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 1.0005988202505915,
+     "median_r_momentum": 0.030767036318939803,
+     "median_ke_ratio": 0.9989368794180318,
+     "median_res_momentum": 0.030767036318939803,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.023231703599827357,
+     "median_res_angular_momentum": 0.021031770204575986
+    },
+    "energy_create": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 1.4998925903098332,
+     "median_r_momentum": 0.02927090610614075,
+     "median_ke_ratio": 1.318856391307403,
+     "median_res_momentum": 0.02927090610614075,
+     "median_res_energy": 0.31885639130740284,
+     "median_res_com": 0.023843255558732655,
+     "median_res_angular_momentum": 0.026653985629506948
+    },
+    "mom_violate_e015": {
+     "n": 64,
+     "measurable": 59,
+     "drop_reasons": {
+      "never_separate": 1,
+      "still_approaching": 3,
+      "short_window": 1
+     },
+     "median_e": 0.1408437903548368,
+     "median_r_momentum": 0.3300904334996482,
+     "median_ke_ratio": 0.6134490046074283,
+     "median_res_momentum": 0.3300904334996482,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.2897023516406965,
+     "median_res_angular_momentum": 0.14425180930165604
+    },
+    "mom_violate_e1": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 0.9999816875799352,
+     "median_r_momentum": 0.6103920586755924,
+     "median_ke_ratio": 0.8389617598015007,
+     "median_res_momentum": 0.6103920586755924,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.4905387245126059,
+     "median_res_angular_momentum": 0.26970584714361384
+    },
+    "all": {
+     "n": 320,
+     "measurable": 312,
+     "drop_reasons": {
+      "never_separate": 1,
+      "still_approaching": 5,
+      "short_window": 1,
+      "impulse_not_opposite,still_approaching": 1
+     }
+    }
+   }
+  },
+  "loose": {
+   "generated": {
+    "n": 22,
+    "measurable": 8,
+    "drop_reasons": {
+     "extra_objects": 2,
+     "short_window": 5,
+     "size_change": 2,
+     "no_collision": 1,
+     "jitter": 4
+    },
+    "median_e": -0.1523692338412292,
+    "median_r_momentum": 0.9979379419914324,
+    "median_ke_ratio": 0.3147135381557662,
+    "median_res_momentum": 0.9979379419914324,
+    "median_res_energy": 0.0,
+    "median_res_com": 0.7229671942106927,
+    "median_res_angular_momentum": 0.31999552200266757,
+    "violations": {
+     "impulse_not_opposite": 7,
+     "still_approaching": 4,
+     "curved_path": 8,
+     "self_acceleration": 5
+    },
+    "measurable_without_violation": 0
+   },
+   "measurable_clips": [
+    "f1_100002/seed0",
+    "f1_100002/seed1",
+    "f1_100003/seed0",
+    "f1_100003/seed1",
+    "f1_100005/seed1",
+    "f1_100007/seed0",
+    "f1_100009/seed0",
+    "f1_100011/seed0"
+   ],
+   "rows": [
+    {
+     "group": "f1_100000",
+     "seed": 0,
+     "frames_both_tracked": 32,
+     "size_ratio": 1.0858412441930922,
+     "extra_object_frames": 3,
+     "measurable": false,
+     "reason": "extra_objects"
+    },
+    {
+     "group": "f1_100000",
+     "seed": 1,
+     "frames_both_tracked": 39,
+     "size_ratio": 1.1512068621583882,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.2120638004896838,
+     "contact_frame": 2,
+     "separate_frame": 4,
+     "merged_frames": 2,
+     "n_pre": 0,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100001",
+     "seed": 0,
+     "frames_both_tracked": 57,
+     "size_ratio": 2.6312346688470973,
+     "extra_object_frames": 8,
+     "measurable": false,
+     "reason": "size_change"
+    },
+    {
+     "group": "f1_100001",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 0.9919710959454034,
+     "extra_object_frames": 0,
+     "collided": false,
+     "min_dist_over_rsum": 6.539767062288295,
+     "measurable": false,
+     "reason": "no_collision"
+    },
+    {
+     "group": "f1_100002",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 0.9898458748866727,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9390535207597679,
+     "contact_frame": 36,
+     "separate_frame": 36,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 1.054461460658332,
+     "quadratic_windows": [
+      "A_pre",
+      "B_pre"
+     ],
+     "vel_se_rel": 0.03003147290512572,
+     "position_pre": [
+      [
+       -0.5971275779018532,
+       -0.19312086136417705
+      ],
+      [
+       -0.8172100635426882,
+       0.9387817399799807
+      ]
+     ],
+     "position_post": [
+      [
+       -0.31681482038665165,
+       -0.039814040187542976
+      ],
+      [
+       -0.11323004966868044,
+       0.7551007973286168
+      ]
+     ],
+     "mass": [
+      0.7937795376695433,
+      0.733452880080267
+     ],
+     "velocity_pre": [
+      [
+       1.5812204528671083,
+       -0.6731464345808826
+      ],
+      [
+       3.4498849189787317,
+       0.13363287946162716
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.6610550917480777,
+       -0.18559986438519707
+      ],
+      [
+       1.9451464256785056,
+       1.0106242967363253
+      ]
+     ],
+     "fit_resid_px": 1.6680276721809262,
+     "path_lateral_px": {
+      "A_pre": 4.073324670761092,
+      "B_pre": 11.225019539033875,
+      "A_post": 6.9116302785962125,
+      "B_post": 4.105112249616938
+     },
+     "path_lateral_max_px": 11.225019539033875,
+     "r_momentum": 0.8035742956439366,
+     "ke_ratio": 0.3516288062275737,
+     "contact_normal": [
+      0.8842911033830623,
+      0.46693601754155367
+     ],
+     "impulse_cos": -0.9512322968501586,
+     "approach_speed": -2.0291576825244846,
+     "e": -1.4110293083791854,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "still_approaching",
+      "curved_path",
+      "self_acceleration"
+     ],
+     "res_momentum": 0.8035742956439366,
+     "res_energy": 0.0,
+     "res_com": 0.785871362295251,
+     "res_angular_momentum": 0.18928835769944977
+    },
+    {
+     "group": "f1_100002",
+     "seed": 1,
+     "frames_both_tracked": 63,
+     "size_ratio": 0.9938439254028608,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0544030602773309,
+     "contact_frame": 11,
+     "separate_frame": 11,
+     "merged_frames": 0,
+     "n_pre": 7,
+     "n_post": 12,
+     "self_accel": 0.46247710410966086,
+     "quadratic_windows": [],
+     "vel_se_rel": 0.05526680007617382,
+     "position_pre": [
+      [
+       0.09821077150983659,
+       -0.10675071248028623
+      ],
+      [
+       -0.42516475231659356,
+       -0.21464027948745024
+      ]
+     ],
+     "position_post": [
+      [
+       0.38303568455586134,
+       -0.24574668439058983
+      ],
+      [
+       -0.35174627630998256,
+       -0.05197148828837356
+      ]
+     ],
+     "mass": [
+      0.7937795376695433,
+      0.733452880080267
+     ],
+     "velocity_pre": [
+      [
+       -1.9270525215184726,
+       1.1034433049941095
+      ],
+      [
+       2.107659011072235,
+       -0.6514538695581196
+      ]
+     ],
+     "velocity_post": [
+      [
+       2.670582475755167,
+       0.11597643763291257
+      ],
+      [
+       0.3138501219379669,
+       0.5393889826368767
+      ]
+     ],
+     "fit_resid_px": 2.5240639351802416,
+     "path_lateral_px": {
+      "A_pre": 0.5139132660455002,
+      "B_pre": 1.4066006211720465,
+      "A_post": 1.2648608540085096,
+      "B_post": 2.5056393138516158
+     },
+     "path_lateral_max_px": 2.5056393138516158,
+     "r_momentum": 5.862185042798049,
+     "ke_ratio": 0.7960759047415505,
+     "contact_normal": [
+      -0.9465369433063173,
+      0.3225954354238965
+     ],
+     "impulse_cos": 0.9306921902081681,
+     "approach_speed": 4.385125339329997,
+     "e": 0.5398534841091753,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "curved_path"
+     ],
+     "res_momentum": 5.862185042798049,
+     "res_energy": 0.0,
+     "res_com": 0.6908482654108902,
+     "res_angular_momentum": 0.02793311142879071
+    },
+    {
+     "group": "f1_100003",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0667338709677419,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9961812069333055,
+     "contact_frame": 34,
+     "separate_frame": 34,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.8001096323881218,
+     "quadratic_windows": [
+      "A_pre",
+      "A_post",
+      "B_pre",
+      "B_post"
+     ],
+     "vel_se_rel": 0.05416728244933527,
+     "position_pre": [
+      [
+       -0.09733754578947629,
+       -0.540922528840728
+      ],
+      [
+       -1.0407360139004052,
+       0.34023441776566127
+      ]
+     ],
+     "position_post": [
+      [
+       -0.07495078419400625,
+       -0.2951278414082626
+      ],
+      [
+       0.11396316343722823,
+       0.4664848975022451
+      ]
+     ],
+     "mass": [
+      3.5541261153311208,
+      2.7497954181482145
+     ],
+     "velocity_pre": [
+      [
+       -1.5359396586840126,
+       0.9128336975115363
+      ],
+      [
+       0.24590084689444414,
+       0.2667328890918805
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.4028806877474814,
+       0.3190020892194556
+      ],
+      [
+       1.7129494364996816,
+       1.2469165472987227
+      ]
+     ],
+     "fit_resid_px": 0.9939190449674367,
+     "path_lateral_px": {
+      "A_pre": 4.160271864452073,
+      "B_pre": 4.498923896632333,
+      "A_post": 6.020218059946095,
+      "B_post": 3.428469784596643
+     },
+     "path_lateral_max_px": 6.020218059946095,
+     "r_momentum": 1.2992530299421232,
+     "ke_ratio": 1.1344686558913182,
+     "contact_normal": [
+      0.20756819542295835,
+      0.9782205499011235
+     ],
+     "impulse_cos": -0.478583889866802,
+     "approach_speed": 0.2621756698293842,
+     "e": 5.137334189063125,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "curved_path",
+      "self_acceleration"
+     ],
+     "res_momentum": 1.2992530299421232,
+     "res_energy": 0.1344686558913183,
+     "res_com": 1.099958319778069,
+     "res_angular_momentum": 0.4250926256702309
+    },
+    {
+     "group": "f1_100003",
+     "seed": 1,
+     "frames_both_tracked": 63,
+     "size_ratio": 0.99039780521262,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.942793845056879,
+     "contact_frame": 14,
+     "separate_frame": 14,
+     "merged_frames": 0,
+     "n_pre": 10,
+     "n_post": 12,
+     "self_accel": 0.33457227154010294,
+     "quadratic_windows": [
+      "B_post"
+     ],
+     "vel_se_rel": 0.02373539253243985,
+     "position_pre": [
+      [
+       0.02360534252379387,
+       -0.007183220256600897
+      ],
+      [
+       0.14193492626890458,
+       0.8072700564196713
+      ]
+     ],
+     "position_post": [
+      [
+       0.06697923806632966,
+       0.03960592192050963
+      ],
+      [
+       0.08952022116164149,
+       1.160512132294996
+      ]
+     ],
+     "mass": [
+      3.5541261153311208,
+      2.7497954181482145
+     ],
+     "velocity_pre": [
+      [
+       -1.8314780536455977,
+       3.685496258522591
+      ],
+      [
+       0.6472945426633989,
+       -1.9490852228602087
+      ]
+     ],
+     "velocity_post": [
+      [
+       2.878956725404851,
+       -0.17158089855108713
+      ],
+      [
+       -0.07340912900308913,
+       -0.44846114243634105
+      ]
+     ],
+     "fit_resid_px": 3.3323036747671804,
+     "path_lateral_px": {
+      "A_pre": 0.533828972568543,
+      "B_pre": 0.44939733397098025,
+      "A_post": 2.571757244802074,
+      "B_post": 1.3453168256389014
+     },
+     "path_lateral_max_px": 2.571757244802074,
+     "r_momentum": 1.9402115578507233,
+     "ke_ratio": 0.41967164436019716,
+     "contact_normal": [
+      -0.711903406700201,
+      0.7022773950004713
+     ],
+     "impulse_cos": 0.9060525760171935,
+     "approach_speed": 5.721685860410886,
+     "e": 0.33335499706000293,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "curved_path",
+      "self_acceleration"
+     ],
+     "res_momentum": 1.9402115578507233,
+     "res_energy": 0.0,
+     "res_com": 0.8679594415456703,
+     "res_angular_momentum": 0.3232416591385036
+    },
+    {
+     "group": "f1_100004",
+     "seed": 0,
+     "frames_both_tracked": 79,
+     "size_ratio": 1.1974870254028953,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9168486336885433,
+     "contact_frame": 33,
+     "separate_frame": 35,
+     "merged_frames": 2,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.5101696882103698,
+     "quadratic_windows": [
+      "A_pre"
+     ],
+     "vel_se_rel": 0.1300775947371083,
+     "position_pre": [
+      [
+       -1.0727413917729054,
+       0.2805117422882814
+      ],
+      [
+       0.26476532013063414,
+       0.19764012049179697
+      ]
+     ],
+     "position_post": [
+      [
+       -0.5832813395607104,
+       0.4927658800742649
+      ],
+      [
+       1.1599008875306156,
+       0.09905475435671374
+      ]
+     ],
+     "mass": [
+      0.7437902940972906,
+      0.8658363074374661
+     ],
+     "velocity_pre": [
+      [
+       1.1938472081226026,
+       0.2926111365610589
+      ],
+      [
+       0.9146405988445051,
+       -0.09781905631122612
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.385073642855792,
+       -0.5765004938644004
+      ],
+      [
+       3.149077717488228,
+       -0.3514034607847683
+      ]
+     ],
+     "fit_resid_px": 1.5572365624821203,
+     "path_lateral_px": {
+      "A_pre": 2.260505479363061,
+      "B_pre": 1.432477492389501,
+      "A_post": 0.8271124491519943,
+      "B_post": 1.0375781832003057
+     },
+     "path_lateral_max_px": 2.260505479363061,
+     "r_momentum": 0.6838394143578538,
+     "ke_ratio": 4.875364991397087,
+     "contact_normal": [
+      0.9872220068307851,
+      0.15935089968053895
+     ],
+     "impulse_cos": 0.8160853107446686,
+     "approach_speed": 0.33785431162858726,
+     "e": 10.43308104060608,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "jitter"
+    },
+    {
+     "group": "f1_100004",
+     "seed": 1,
+     "frames_both_tracked": 30,
+     "size_ratio": 1.2488352973417374,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9705936480834405,
+     "contact_frame": 4,
+     "separate_frame": 5,
+     "merged_frames": 1,
+     "n_pre": 2,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100005",
+     "seed": 0,
+     "frames_both_tracked": 80,
+     "size_ratio": 1.482358195623046,
+     "extra_object_frames": 7,
+     "measurable": false,
+     "reason": "extra_objects"
+    },
+    {
+     "group": "f1_100005",
+     "seed": 1,
+     "frames_both_tracked": 74,
+     "size_ratio": 1.0469723953695458,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.2803778312077956,
+     "contact_frame": 17,
+     "separate_frame": 24,
+     "merged_frames": 7,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.2108354470619906,
+     "quadratic_windows": [],
+     "vel_se_rel": 0.01641068297604652,
+     "position_pre": [
+      [
+       2.2812606752905267,
+       0.07730387536845565
+      ],
+      [
+       1.2493557093827206,
+       -0.18382835702582545
+      ]
+     ],
+     "position_post": [
+      [
+       2.1829761339524496,
+       0.01030630368001145
+      ],
+      [
+       2.3527625298359753,
+       -0.1790044096003221
+      ]
+     ],
+     "mass": [
+      1.0197950981788957,
+      0.18630772081773214
+     ],
+     "velocity_pre": [
+      [
+       0.05370641702184571,
+       -0.016323964399452107
+      ],
+      [
+       3.941401135176764,
+       -1.87667084794431
+      ]
+     ],
+     "velocity_post": [
+      [
+       -7.715867726110151e-05,
+       -0.022561146175548434
+      ],
+      [
+       2.3012605459166235,
+       -0.008815034148365295
+      ]
+     ],
+     "fit_resid_px": 2.4438586221228844,
+     "path_lateral_px": {
+      "A_pre": 0.5294440476788337,
+      "B_pre": 2.1764174628659725,
+      "A_post": 0.4001544752016786,
+      "B_post": 3.0492270257913527
+     },
+     "path_lateral_max_px": 3.0492270257913527,
+     "r_momentum": 0.5708417476651815,
+     "ke_ratio": 0.2777982700839587,
+     "contact_normal": [
+      -0.6460813173796829,
+      0.763268584007578
+     ],
+     "impulse_cos": -0.5688636407682457,
+     "approach_speed": 3.931711256641759,
+     "e": -0.3755004434679611,
+     "impulse_check": false,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "still_approaching",
+      "curved_path"
+     ],
+     "res_momentum": 0.5708417476651815,
+     "res_energy": 0.0,
+     "res_com": 0.5704514695135677,
+     "res_angular_momentum": 0.3167493848668316
+    },
+    {
+     "group": "f1_100006",
+     "seed": 0,
+     "frames_both_tracked": 71,
+     "size_ratio": 1.0132450331125828,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0327407655288179,
+     "contact_frame": 14,
+     "separate_frame": 20,
+     "merged_frames": 6,
+     "n_pre": 12,
+     "n_post": 10,
+     "self_accel": 0.9493063917581475,
+     "quadratic_windows": [
+      "A_post",
+      "B_post"
+     ],
+     "vel_se_rel": 0.07068785212165825,
+     "position_pre": [
+      [
+       -0.27545717666815506,
+       -0.7286189987547941
+      ],
+      [
+       -0.07899565482115195,
+       -0.15153019657621258
+      ]
+     ],
+     "position_post": [
+      [
+       -0.005258198027061289,
+       -0.9614682715620293
+      ],
+      [
+       -0.1761054424572681,
+       -0.5451895923978662
+      ]
+     ],
+     "mass": [
+      2.7533203776005886,
+      0.29744812920483904
+     ],
+     "velocity_pre": [
+      [
+       0.1140942963876348,
+       0.49517132821209026
+      ],
+      [
+       -0.3737954694666052,
+       -1.511326307379397
+      ]
+     ],
+     "velocity_post": [
+      [
+       -0.5811442172072929,
+       -0.3944555700960406
+      ],
+      [
+       -0.19741450112915282,
+       -0.8064912760483264
+      ]
+     ],
+     "fit_resid_px": 0.6840767212237746,
+     "path_lateral_px": {
+      "A_pre": 0.20748586045882114,
+      "B_pre": 0.12095566463990319,
+      "A_post": 3.4834560234751932,
+      "B_post": 4.267906685937882
+     },
+     "path_lateral_max_px": 4.267906685937882,
+     "r_momentum": 3.1113558233856744,
+     "ke_ratio": 1.0917902273822881,
+     "contact_normal": [
+      0.479663269218195,
+      0.8774526472482224
+     ],
+     "impulse_cos": 0.9138432814438592,
+     "approach_speed": 1.994629462154794,
+     "e": -0.08897931881878489,
+     "impulse_check": true,
+     "measurable": false,
+     "reason": "jitter"
+    },
+    {
+     "group": "f1_100006",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1202285120747857,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.8858004715783312,
+     "contact_frame": 5,
+     "separate_frame": 5,
+     "merged_frames": 0,
+     "n_pre": 1,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100007",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1850961538461537,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9836918602820064,
+     "contact_frame": 10,
+     "separate_frame": 10,
+     "merged_frames": 0,
+     "n_pre": 6,
+     "n_post": 12,
+     "self_accel": 0.5421189899610054,
+     "quadratic_windows": [
+      "A_post"
+     ],
+     "vel_se_rel": 0.06684505540678148,
+     "position_pre": [
+      [
+       -1.4980882421556039,
+       -0.3491135921716968
+      ],
+      [
+       -1.313384537624835,
+       0.282084389534059
+      ]
+     ],
+     "position_post": [
+      [
+       -1.6844077702842692,
+       -0.46914108722139847
+      ],
+      [
+       -1.0215593793111135,
+       0.8019814239426678
+      ]
+     ],
+     "mass": [
+      2.5294477454815056,
+      2.8174482807854515
+     ],
+     "velocity_pre": [
+      [
+       1.8134822214243724,
+       1.9293765445866529
+      ],
+      [
+       -0.7499470104807923,
+       -1.9201558555912974
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.7599322189721729,
+       0.9665765084308399
+      ],
+      [
+       -0.2669109354100204,
+       -0.13998316682229567
+      ]
+     ],
+     "fit_resid_px": 2.443964063981804,
+     "path_lateral_px": {
+      "A_pre": 1.0325215453311272,
+      "B_pre": 0.2665106058633966,
+      "A_post": 9.092327357530339,
+      "B_post": 9.241251345863777
+     },
+     "path_lateral_max_px": 9.241251345863777,
+     "r_momentum": 1.1425713517614176,
+     "ke_ratio": 0.1373367263736945,
+     "contact_normal": [
+      0.48872959867421334,
+      0.8724353152983563
+     ],
+     "impulse_cos": 0.8443677261916507,
+     "approach_speed": 4.6112917530392465,
+     "e": -0.31818641293981054,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "still_approaching",
+      "curved_path",
+      "self_acceleration"
+     ],
+     "res_momentum": 1.1425713517614176,
+     "res_energy": 0.0,
+     "res_com": 0.23117493515480858,
+     "res_angular_momentum": 0.2321057294555067
+    },
+    {
+     "group": "f1_100007",
+     "seed": 1,
+     "frames_both_tracked": 35,
+     "size_ratio": 1.0768119431736094,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9212030031020388,
+     "contact_frame": 5,
+     "separate_frame": 5,
+     "merged_frames": 0,
+     "n_pre": 1,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100008",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.1967575534266766,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.893980759968591,
+     "contact_frame": 24,
+     "separate_frame": 24,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 2.560449675953069,
+     "quadratic_windows": [
+      "A_pre",
+      "A_post",
+      "B_pre"
+     ],
+     "vel_se_rel": 0.2549032480678787,
+     "position_pre": [
+      [
+       -2.0485386589869727,
+       -0.280168212091784
+      ],
+      [
+       -1.6832160283451052,
+       0.3511704518418417
+      ]
+     ],
+     "position_post": [
+      [
+       -1.1187906198393707,
+       -0.08638285566070414
+      ],
+      [
+       -0.4381826880087525,
+       0.05534860157513699
+      ]
+     ],
+     "mass": [
+      0.437591334403055,
+      2.979582792993085
+     ],
+     "velocity_pre": [
+      [
+       1.163904129513258,
+       0.19774399370822435
+      ],
+      [
+       2.901978042668208,
+       -0.4940725746986604
+      ]
+     ],
+     "velocity_post": [
+      [
+       1.2603819125987927,
+       0.4193111346962026
+      ],
+      [
+       0.9272057557965995,
+       0.7505858041736038
+      ]
+     ],
+     "fit_resid_px": 5.555525147525966,
+     "path_lateral_px": {
+      "A_pre": 11.842338336848558,
+      "B_pre": 9.42928149644287,
+      "A_post": 3.893880377714447,
+      "B_post": 3.1875892448307637
+     },
+     "path_lateral_max_px": 11.842338336848558,
+     "r_momentum": 0.7528923517393779,
+     "ke_ratio": 0.18964599795418183,
+     "contact_normal": [
+      -0.8965868730956248,
+      0.4428679024185543
+     ],
+     "impulse_cos": -0.15113072758689294,
+     "approach_speed": 1.8647176075134324,
+     "e": 0.23887385672682554,
+     "impulse_check": false,
+     "measurable": false,
+     "reason": "jitter"
+    },
+    {
+     "group": "f1_100008",
+     "seed": 1,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0014255167498218,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.9523261930867569,
+     "contact_frame": 6,
+     "separate_frame": 6,
+     "merged_frames": 0,
+     "n_pre": 2,
+     "n_post": 12,
+     "measurable": false,
+     "reason": "short_window"
+    },
+    {
+     "group": "f1_100009",
+     "seed": 0,
+     "frames_both_tracked": 80,
+     "size_ratio": 1.0215927559786395,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 0.884829136801471,
+     "contact_frame": 40,
+     "separate_frame": 41,
+     "merged_frames": 1,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.6629198306349818,
+     "quadratic_windows": [
+      "B_post"
+     ],
+     "vel_se_rel": 0.036739116240391,
+     "position_pre": [
+      [
+       1.6069914071681932,
+       0.7352766381761482
+      ],
+      [
+       0.8578354777431247,
+       0.04163645586897324
+      ]
+     ],
+     "position_post": [
+      [
+       0.9192849303397601,
+       1.0956636847086139
+      ],
+      [
+       1.034373733188548,
+       0.626560510816141
+      ]
+     ],
+     "mass": [
+      0.6627669950134637,
+      1.11759393587013
+     ],
+     "velocity_pre": [
+      [
+       5.644146558692949,
+       -1.7966950437639315
+      ],
+      [
+       5.89378146263677,
+       -2.7562696050124913
+      ]
+     ],
+     "velocity_post": [
+      [
+       1.077377258431955,
+       0.7286792380515139
+      ],
+      [
+       1.489533564175867,
+       -1.6759247772604642
+      ]
+     ],
+     "fit_resid_px": 8.154534332536606,
+     "path_lateral_px": {
+      "A_pre": 23.540953033320044,
+      "B_pre": 18.99059054236074,
+      "A_post": 2.1991511234905143,
+      "B_post": 2.2897398520204093
+     },
+     "path_lateral_max_px": 23.540953033320044,
+     "r_momentum": 0.7565242938258593,
+     "ke_ratio": 0.09551292929611713,
+     "contact_normal": [
+      0.11176461311536204,
+      -0.9937347086899869
+     ],
+     "impulse_cos": -0.9652001347978201,
+     "approach_speed": -0.9814628955480313,
+     "e": -2.4816047267536794,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "still_approaching",
+      "curved_path",
+      "self_acceleration"
+     ],
+     "res_momentum": 0.7565242938258593,
+     "res_energy": 0.0,
+     "res_com": 0.7550861230104952,
+     "res_angular_momentum": 0.3233010796051907
+    },
+    {
+     "group": "f1_100010",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0416002550207204,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0271293767740264,
+     "contact_frame": 37,
+     "separate_frame": 37,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.18610571504765536,
+     "quadratic_windows": [
+      "B_pre"
+     ],
+     "vel_se_rel": 0.07185967258513208,
+     "position_pre": [
+      [
+       0.5737379648612575,
+       0.35599234600638985
+      ],
+      [
+       -0.06713851877839683,
+       0.11333771285248662
+      ]
+     ],
+     "position_post": [
+      [
+       0.5703386497061071,
+       0.4913280141674905
+      ],
+      [
+       -0.02416747319544177,
+       0.007337195797785245
+      ]
+     ],
+     "mass": [
+      4.725243456263542,
+      0.8563061234803135
+     ],
+     "velocity_pre": [
+      [
+       -1.3663753813950448,
+       1.1299193107302747
+      ],
+      [
+       0.40051917801456727,
+       -0.9864223373146126
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.8417456135075932,
+       1.321729249414279
+      ],
+      [
+       0.47032007383172175,
+       -1.1485715360698894
+      ]
+     ],
+     "fit_resid_px": 1.2326237259575603,
+     "path_lateral_px": {
+      "A_pre": 1.6899488787524224,
+      "B_pre": 4.676955783535028,
+      "A_post": 1.050644235717599,
+      "B_post": 2.2026440265889753
+     },
+     "path_lateral_max_px": 4.676955783535028,
+     "r_momentum": 1.3866584335658683,
+     "ke_ratio": 0.8165346684678093,
+     "contact_normal": [
+      -0.9865749463178708,
+      -0.16330914027662527
+     ],
+     "impulse_cos": -0.31442343730297706,
+     "approach_speed": 1.3975559700250493,
+     "e": 0.5508629678388495,
+     "impulse_check": false,
+     "measurable": false,
+     "reason": "jitter"
+    },
+    {
+     "group": "f1_100011",
+     "seed": 0,
+     "frames_both_tracked": 81,
+     "size_ratio": 1.0385310054184227,
+     "extra_object_frames": 0,
+     "collided": true,
+     "min_dist_over_rsum": 1.0130747098020936,
+     "contact_frame": 16,
+     "separate_frame": 16,
+     "merged_frames": 0,
+     "n_pre": 12,
+     "n_post": 12,
+     "self_accel": 0.34354821853745415,
+     "quadratic_windows": [],
+     "vel_se_rel": 0.01913546875304338,
+     "position_pre": [
+      [
+       -1.1340503278188618,
+       0.13804316447186038
+      ],
+      [
+       -1.1821642139758544,
+       0.8698328944852491
+      ]
+     ],
+     "position_post": [
+      [
+       -1.3287210151100208,
+       0.09581352528269345
+      ],
+      [
+       -1.2533463171657044,
+       0.9443584842877634
+      ]
+     ],
+     "mass": [
+      0.5028420244354865,
+      1.2146453316322878
+     ],
+     "velocity_pre": [
+      [
+       0.6986343041622094,
+       0.946659192927817
+      ],
+      [
+       0.570047375574781,
+       -1.6740451340918596
+      ]
+     ],
+     "velocity_post": [
+      [
+       0.5083645259399582,
+       -0.02878886830907196
+      ],
+      [
+       0.30214273753444176,
+       0.0003617173348477087
+      ]
+     ],
+     "fit_resid_px": 1.1544016076078307,
+     "path_lateral_px": {
+      "A_pre": 0.7048649399174162,
+      "B_pre": 0.3421860455587256,
+      "A_post": 2.953120755272696,
+      "B_post": 4.566889528359347
+     },
+     "path_lateral_max_px": 4.566889528359347,
+     "r_momentum": 0.8533045322214472,
+     "ke_ratio": 0.05367495816425133,
+     "contact_normal": [
+      -0.029285211639946275,
+      0.9995710962103714
+     ],
+     "impulse_cos": 0.9389278837985605,
+     "approach_speed": 2.6158146015845083,
+     "e": 0.01344794525735214,
+     "impulse_check": true,
+     "measurable": true,
+     "reason": null,
+     "gate": "loose",
+     "violations": [
+      "impulse_not_opposite",
+      "curved_path"
+     ],
+     "res_momentum": 0.8533045322214472,
+     "res_energy": 0.0,
+     "res_com": 0.583918563292644,
+     "res_angular_momentum": 0.40892069105381945
+    },
+    {
+     "group": "f1_100012",
+     "seed": 0,
+     "frames_both_tracked": 79,
+     "size_ratio": 2.034278718628851,
+     "extra_object_frames": 0,
+     "measurable": false,
+     "reason": "size_change"
+    }
+   ],
+   "real": {
+    "conserve_e015": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 0.13937031562308075,
+     "median_r_momentum": 0.04241011517450994,
+     "median_ke_ratio": 0.7435722357033829,
+     "median_res_momentum": 0.04241011517450994,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.03657664268304053,
+     "median_res_angular_momentum": 0.02407450511092432,
+     "violations": {
+      "impulse_not_opposite": 1
+     },
+     "measurable_without_violation": 63
+    },
+    "conserve_e1": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 1.0005988202505898,
+     "median_r_momentum": 0.030767036318941482,
+     "median_ke_ratio": 0.9989368794180273,
+     "median_res_momentum": 0.030767036318941482,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.02323170359982896,
+     "median_res_angular_momentum": 0.02103177020457563
+    },
+    "energy_create": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 1.499892590309827,
+     "median_r_momentum": 0.029270906106140637,
+     "median_ke_ratio": 1.3188563913073985,
+     "median_res_momentum": 0.029270906106140637,
+     "median_res_energy": 0.3188563913073985,
+     "median_res_com": 0.023843255558732915,
+     "median_res_angular_momentum": 0.026653985629507736
+    },
+    "mom_violate_e015": {
+     "n": 64,
+     "measurable": 62,
+     "drop_reasons": {
+      "never_separate": 1,
+      "short_window": 1
+     },
+     "median_e": 0.1404675800708708,
+     "median_r_momentum": 0.32856153225770035,
+     "median_ke_ratio": 0.6130758742751806,
+     "median_res_momentum": 0.32856153225770035,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.28765692875758975,
+     "median_res_angular_momentum": 0.14407489097856296
+    },
+    "mom_violate_e1": {
+     "n": 64,
+     "measurable": 64,
+     "drop_reasons": {},
+     "median_e": 0.9999816875799344,
+     "median_r_momentum": 0.610392058675592,
+     "median_ke_ratio": 0.8389617598014976,
+     "median_res_momentum": 0.610392058675592,
+     "median_res_energy": 0.0,
+     "median_res_com": 0.49053872451260594,
+     "median_res_angular_momentum": 0.26970584714361445
+    },
+    "all": {
+     "n": 320,
+     "measurable": 318,
+     "drop_reasons": {
+      "never_separate": 1,
+      "short_window": 1
+     },
+     "violations": {
+      "impulse_not_opposite": 1
+     },
+     "measurable_without_violation": 317
+    }
+   }
+  }
+ },
+ "model": "wan2.2-i2v-a14b",
+ "family": "f1",
+ "track": "B",
+ "readouts": "/tmp/claude-0/-root/1e571780-01d0-4d88-a090-f041787bcada/scratchpad/levels/wan_trackB",
+ "model_config_hash": "f617bc4bb176",
+ "eval_config_hash": "bda925980daa"
+}
