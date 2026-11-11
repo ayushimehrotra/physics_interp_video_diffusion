@@ -29,7 +29,7 @@ from pathlib import Path
 
 import numpy as np
 
-from physlaw.eval.l0_states import complete_groups, load_index
+from physlaw.eval.l0_states import load_index
 from physlaw.probes.ridge import DEFAULT_ALPHAS, _SVDRidge, grouped_kfold, r2_score
 
 # --------------------------------------------------------------------------- #
@@ -125,8 +125,9 @@ def clip_target(labels, name: str) -> np.ndarray:
 
 
 def load_family(cache_dir: Path, data_dir: Path):
-    """(records, labels, pooled [n, P, L, D] float32, pool names, layer keys) for every complete group."""
-    recs = complete_groups(load_index(cache_dir))
+    """(records, labels, pooled [n, P, L, D] float32, pool names, layer keys) for every cached clip. Not L0's
+    complete_groups: F6 / F7 sub-families have different twin sets, and stage 4 caches complete groups only."""
+    recs = load_index(cache_dir)
     labels = [json.loads((data_dir / r["clip"] / "labels.json").read_text()) for r in recs]
     first = np.load(cache_dir / recs[0]["file"])
     pools = [str(p) for p in first["pools"]]
