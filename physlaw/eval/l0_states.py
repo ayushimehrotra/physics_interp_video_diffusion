@@ -210,7 +210,8 @@ def _run_rigidbench(job):
 
 
 def _select(cells: dict, Y: np.ndarray, groups: np.ndarray, n_splits: int) -> dict:
-    """Held-out selection over cells {name: {"oof": [n, k]}} by R² on held-out group halves."""
+    """Held-out selection over cells {name: {"oof": [fold_seeds, n, k]}}: R² on a half of the groups, averaged
+    over fold seeds (like the cell's own score; an average of the seeds' predictions would be an ensemble)."""
     rows = {}
 
     def score(c, gids):
@@ -218,7 +219,7 @@ def _select(cells: dict, Y: np.ndarray, groups: np.ndarray, n_splits: int) -> di
         if key not in rows:
             rows[key] = np.isin(groups, gids)
         r = rows[key]
-        return r2_score(Y[r], cells[c]["oof"][r])
+        return float(np.mean([r2_score(Y[r], o[r]) for o in cells[c]["oof"]]))
     return heldout_select(score, list(cells), groups, n_splits=n_splits)
 
 

@@ -32,8 +32,9 @@ Added for spec v2 §5.3 (all in ``motion_adjusted``):
   * control check   per (covariate set, distance): the legal-vs-legal control's adjusted win-rate CI must
                     contain 0.5; otherwise every contrast under it is ``inconclusive``
   * Holm            across the violating contrasts within each (covariate set, distance); a verdict per contrast
-  * summary         per contrast, under ``primary_covariates``: the distance is selected on half the groups and
-                    the adjusted win rate reported on the other half (probes.select.heldout_select)
+  * summary         per contrast, under ``primary_covariates``: among the distances whose control is at chance,
+                    the distance is selected on half the groups and the adjusted win rate reported on the other
+                    half (probes.select.heldout_select)
 """
 from __future__ import annotations
 
@@ -259,9 +260,15 @@ def motion_adjusted(model_recs: dict, cov: dict[str, dict], contrasts: list[dict
                 rec["verdict"] = ("inconclusive (legal-vs-legal control not at chance)" if not ok else
                                   "no difference" if not p < alpha else
                                   "more surprised by violation" if rec["adj_win_rate"] > 0.5 else "less surprised by violation")
-    # summary: under the primary covariate set, distance selected on held-out groups
+    # summary: under the primary covariate set, the distance is selected on held-out groups among the distances
+    # whose legal-vs-legal control sits at chance (a validity filter that never looks at a violation)
+    valid = [m for m in metrics if out["contrasts"][primary][ctrl_key][m]["control_at_chance"]]
     for key in out["contrasts"].get(primary, {}):
-        ms = [m for m in metrics if (primary, key, m) in resid]
+        ms = [m for m in valid if (primary, key, m) in resid]
+        if not ms:
+            out["summary"][key] = {"verdict": "inconclusive (no distance has its control at chance)",
+                                   "n_variants": 0, "covariates": primary}
+            continue
 
         def score(m, gids, key=key):
             r = resid[(primary, key, m)]
@@ -269,22 +276,26 @@ def motion_adjusted(model_recs: dict, cov: dict[str, dict], contrasts: list[dict
             return _win(v) if len(v) else float("nan")
         sel = heldout_select(score, ms, list(resid[(primary, key, ms[0])]), n_splits=n_splits)
         rec = out["contrasts"][primary][key][sel["selected"]]
-        out["summary"][key] = {**sel, "covariates": primary, "full_sample_adj_win_rate": rec["adj_win_rate"],
-                               "full_sample_ci95": rec["adj_win_rate_ci95"], "verdict": rec.get("verdict", "control"),
-                               "control_at_chance": out["contrasts"][primary][ctrl_key][sel["selected"]]["control_at_chance"]}
+        out["summary"][key] = {**sel, "covariates": primary, "n_distances_total": len(metrics),
+                               "full_sample_adj_win_rate": rec["adj_win_rate"], "full_sample_ci95": rec["adj_win_rate_ci95"],
+                               "verdict": rec.get("verdict", "control")}
     return out
 
 
 def adjusted_table(adj: dict, metrics=None) -> str:
     rows = []
-    if adj.get("summary"):
-        s0 = next(iter(adj["summary"].values()))
+    s0 = next((v for v in adj.get("summary", {}).values() if "selected" in v), None)
+    if s0:
         rows += [f"### Summary (covariates {adj['primary_covariates']}; distance selected on {s0['n_select_groups']} groups, "
                  f"adjusted win rate on the other {s0['n_eval_groups']}, {2 * s0['n_splits']} evaluations; "
-                 f"variants searched = {s0['n_variants']} distances; zero-fit, no folds)", "",
+                 f"variants searched = {s0['n_variants']} of {s0['n_distances_total']} distances (those whose "
+                 "legal-vs-legal control is at chance); zero-fit, no folds)", "",
                  "| contrast | selected distance (picks) | held-out adj. win [2.5%, 97.5%] | full-sample adj. win [95% CI] | verdict (Holm) |",
                  "|---|---|---|---|---|"]
         for c, s in adj["summary"].items():
+            if "selected" not in s:
+                rows.append(f"| {c} | | | | {s['verdict']} |")
+                continue
             rows.append(f"| {c} | {s['selected']} ({s['selected_counts'][s['selected']]}/{2 * s['n_splits']}) | "
                         f"{s['score']:.2f} [{s['score_q025']:.2f}, {s['score_q975']:.2f}] | {s['full_sample_adj_win_rate']:.2f} "
                         f"[{s['full_sample_ci95'][0]:.2f}, {s['full_sample_ci95'][1]:.2f}] | {s['verdict']} |")

@@ -113,5 +113,5 @@ def test_l2_control_check_dose_and_holm(bias, ok):
         assert rec["verdict"].startswith(("more", "less")) and rec["dose_spearman"] > 0.5
     else:
         assert rec["verdict"].startswith("inconclusive")
-    assert out["summary"]["mom_violate_e1 vs conserve_e1"]["n_variants"] == 1
+    assert out["summary"]["mom_violate_e1 vs conserve_e1"]["n_variants"] == int(ok)
     json.dumps(out)
