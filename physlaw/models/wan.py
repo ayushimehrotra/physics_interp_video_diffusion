@@ -36,7 +36,7 @@ def _load_pipe(pipe_cls, cfg, device):
     import torch
     from diffusers import AutoencoderKLWan, UniPCMultistepScheduler
     src, kw = source(cfg)
-    vae = AutoencoderKLWan.from_pretrained(src, subfolder="vae", torch_dtype=torch.float32, **kw).to(device)
+    vae = AutoencoderKLWan.from_pretrained(src, subfolder="vae", torch_dtype=torch.float32, device_map=device, **kw)
     pipe = pipe_cls.from_pretrained(src, vae=vae, text_encoder=None, torch_dtype=getattr(torch, cfg.get("dtype", "bfloat16")),
                                     device_map=device, **kw)
     off = cfg["official"]
