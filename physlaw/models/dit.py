@@ -25,26 +25,73 @@ from __future__ import annotations
 
 import json
 import math
+import re
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, fit_frames, sample_frames, token_spec
+from physlaw.models.base import ModelAdapter, fit_frames, frame_means, sample_frames, token_spec
 
 DEFAULT_PROMPT = ("A static camera looks straight down at a flat grey floor. Two balls roll across the floor, "
                   "collide with each other and bounce apart.")
 
-LOOKS = {"rubber": "matte red rubber ball", "metal": "polished silver metal ball with soft reflections"}
+# Collision families (F1-F4): two balls, labels.objects A / B with radius and material. Every other family gets a
+# neutral description of what is in the frame before the event (FAMILY_SCENES; never the outcome), so no prompt
+# reads a label field a family does not have.
+COLLISION_FAMILIES = ("f1", "f2", "f3", "f4")
+FAMILY_SCENES = {   # family -> text, or {subfamily: text, "": the family's fallback}
+    "f6": "Objects slide across a flat surface.",
+    "f7": {"projectile": "Side view of a ball flying through the air above a flat floor.",
+           "drop": "Side view of two balls held in the air above a flat floor and released together.",
+           "bounce": "Side view of a ball held in the air above a flat floor and released.",
+           "": "Side view of balls moving through the air above a flat floor."},
+    "f8": "Side view of a block on a ramp that runs down to a flat floor with a strip of a different surface and up "
+          "a second ramp. The block is released and slides down the ramp.",
+    "f9": {"pair": "Side view of two pendulums hanging side by side and swinging together.",
+           "swing": "Side view of a pendulum released from one side, swinging down over a strip below its lowest "
+                    "point.",
+           "": "Side view of a swinging pendulum."},
+    "f10": "View across an incline of two cylinders, one solid and one hollow, held side by side and released "
+           "together.",
+    "f11": "Side view of a block resting on the edge of a shelf, overhanging it, held up by a thin prop that drops "
+           "away.",
+    "f12": "Overhead view of a smooth table: a puck slides towards a bar lying at rest and hits it.",
+}
+SCENE_TAIL = ("Nothing else is in the scene; no people, no text, no other objects. The camera is completely fixed: no "
+              "zoom, no pan, no cuts, no change of lighting. Realistic physics, clean 3D render, sharp focus, natural "
+              "motion.")
+
+LOOKS = {"rubber": "matte red rubber ball", "metal": "polished silver metal ball with soft reflections",
+         "neutral": "matte dark grey ball"}
+
+
+def family_of(labels: dict) -> tuple[str, str]:
+    pl = labels.get("physlaw", {})
+    return str(pl.get("family", "")), str(pl.get("subfamily") or "")
+
+
+def family_scene(labels: dict) -> str:
+    """The neutral pre-event description of a non-collision family (sub-family text where one exists)."""
+    fam, sub = family_of(labels)
+    if fam not in FAMILY_SCENES:
+        raise KeyError(f"no prompt description for family {fam!r} (physlaw.models.dit.FAMILY_SCENES)")
+    d = FAMILY_SCENES[fam]
+    return d if isinstance(d, str) else d.get(sub, d[""])
 
 
 def scene_prompt(labels: dict) -> str:
     """Long, literal scene description in the style of CogVideoX's training captions (the model cards
     recommend long, detailed prompts). Uses PRE-contact facts only (materials, sizes, which ball moves),
-    so every twin of a group gets the same prompt. Adapted from the old project's scene_prompt."""
+    so every twin of a group gets the same prompt. Adapted from the old project's scene_prompt.
+    Non-collision families: the family's description + the same fixed-camera / render tail."""
+    if family_of(labels)[0] not in COLLISION_FAMILIES:
+        return f"{family_scene(labels)} {SCENE_TAIL}"
     o = labels["objects"]
     small, large = sorted(("A", "B"), key=lambda k: o[k]["radius"])
-    name = {small: f"smaller {LOOKS[o[small]['material']]}", large: f"larger {LOOKS[o[large]['material']]}"}
+    look = lambda k: LOOKS.get(o[k].get("material"), "ball")
+    name = {small: f"smaller {look(small)}", large: f"larger {look(large)}"}
     motion = (f"The {name['A']} and the {name['B']} roll toward each other across the floor at a steady pace"
               if labels.get("b_moving") else
               f"The {name['A']} rolls steadily across the floor toward the {name['B']}, which sits still")
@@ -52,23 +99,35 @@ def scene_prompt(labels: dict) -> str:
             f"the whole frame. There are exactly two balls on the floor: a {name[small]} and a {name[large]}, each "
             f"casting a small soft shadow. {motion}. The two balls meet and collide once, a single clean impact, and "
             f"then both balls roll away from each other in straight lines, keeping their size, colour and shape, "
-            f"sliding smoothly without spinning or bouncing off the floor. Nothing else is in the scene; no people, "
-            f"no text, no other objects. The camera is completely fixed: no zoom, no pan, no cuts, no change of "
-            f"lighting. Realistic physics, clean 3D render, sharp focus, natural motion.")
+            f"sliding smoothly without spinning or bouncing off the floor. {SCENE_TAIL}")
 
 
-MINIMAL_LOOKS = {"rubber": "matte red rubber ball", "metal": "shiny grey metal ball"}
+MINIMAL_LOOKS = {"rubber": "matte red rubber ball", "metal": "shiny grey metal ball", "neutral": "matte dark grey ball"}
 
 
 def minimal_prompt(labels: dict) -> str:
     """The user's minimal prompt (2026-11-05): name the two balls, say they collide and separate, nothing
     else -- no motion, outcome, camera or quality wording; the model decides the collision. First
-    measurable collisions came from this template on Wan2.2-I2V-A14B. Pre-contact facts only."""
+    measurable collisions came from this template on Wan2.2-I2V-A14B. Pre-contact facts only.
+    Non-collision families: the family's neutral description (FAMILY_SCENES)."""
+    if family_of(labels)[0] not in COLLISION_FAMILIES:
+        return family_scene(labels)
     o = labels["objects"]
     small, large = sorted(("A", "B"), key=lambda k: o[k]["radius"])
-    return (f"Overhead view of a plain flat grey floor with two balls on it: a smaller "
-            f"{MINIMAL_LOOKS[o[small]['material']]} and a larger {MINIMAL_LOOKS[o[large]['material']]}. "
-            f"The two balls collide and then separate.")
+    look = lambda k: MINIMAL_LOOKS.get(o[k].get("material"), "ball")
+    return (f"Overhead view of a plain flat grey floor with two balls on it: a smaller {look(small)} and a larger "
+            f"{look(large)}. The two balls collide and then separate.")
+
+
+def clip_prompt(cfg, labels: dict) -> str:
+    """Stage-4 (encode / surprise / forecast), stage-7 track A without a template and PC2 training text for one clip:
+    the config's fixed ``prompt`` on the collision families. Elsewhere the ball-collision description
+    (DEFAULT_PROMPT, the text the T2V configs pin) is replaced by the family's neutral description; any other
+    configured prompt is a model card's own (PhysRVG: "The video shows rigid body motion.") and kept for every family."""
+    fixed = cfg.get("prompt", DEFAULT_PROMPT)
+    if fixed != DEFAULT_PROMPT or family_of(labels)[0] in COLLISION_FAMILIES:
+        return fixed
+    return family_scene(labels)
 
 
 PROMPTS = {"scene": scene_prompt, "minimal": minimal_prompt}
@@ -100,62 +159,83 @@ def text_encoder_source(cfg) -> tuple[str, dict]:
 
 # --------------------------------------------------------------------------- weights
 
-def _lora_pairs(sd: dict) -> dict[str, tuple[Any, Any]]:
-    """{module name: (A, B)} from a diffusers ('transformer.<m>.lora_A.weight') or PEFT
-    ('base_model.model.<m>.lora_A.weight') LoRA state dict."""
+LORA_SUFFIXES = {".lora_A.weight": "A", ".lora_B.weight": "B", ".lora_B.bias": "bias",
+                 ".lora_magnitude_vector.weight": "m", ".lora_magnitude_vector": "m"}
+
+
+def _lora_parts(sd: dict) -> dict[str, dict[str, Any]]:
+    """{module name: {"A", "B"[, "bias" (PEFT lora_bias), "m" (DoRA magnitude)]}} from a diffusers
+    ('transformer.<m>.lora_A.weight') or PEFT ('base_model.model.<m>.lora_A.weight') LoRA state dict."""
     out = {}
-    for k in sd:
-        if not k.endswith(".lora_A.weight"):
-            continue
-        m = k[: -len(".lora_A.weight")]
+    for k, v in sd.items():
+        suf = next((x for x in LORA_SUFFIXES if k.endswith(x)), None)
+        if suf is None:
+            raise ValueError(f"unexpected LoRA key {k!r} (known suffixes: {list(LORA_SUFFIXES)})")
+        m = k[: -len(suf)]
         for pre in ("base_model.model.", "transformer."):
             if m.startswith(pre):
                 m = m[len(pre):]
                 break
-        out[m] = (sd[k], sd[k.replace(".lora_A.weight", ".lora_B.weight")])
-    if len(out) * 2 != len(sd):
-        raise ValueError(f"LoRA file has {len(sd)} tensors, {len(out)} A/B pairs: unexpected keys")
+        out.setdefault(m, {})[LORA_SUFFIXES[suf]] = v
+    bad = [m for m, d in out.items() if not {"A", "B"} <= set(d)]
+    if bad:
+        raise ValueError(f"{len(bad)} LoRA modules without an A/B pair, e.g. {bad[:3]}")
     return out
 
 
-def lora_scale(path: str | Path, scale: float = 1.0) -> float:
-    """Total factor on B @ A: ``scale`` x (lora_alpha / r) when a PEFT adapter_config.json sits beside the weights
-    (PEFT's own scaling), else ``scale`` alone (a diffusers LoRA file without alpha: alpha = r)."""
+def lora_config(path: str | Path) -> dict:
+    """The PEFT adapter_config.json beside the weights ({} for a diffusers LoRA file without one)."""
     p = Path(path)
     c = (p if p.is_dir() else p.parent) / "adapter_config.json"
-    if not c.exists():
-        return float(scale)
-    c = json.loads(c.read_text())
-    if c.get("use_dora") or c.get("use_rslora") or c.get("rank_pattern") or c.get("alpha_pattern"):
-        raise NotImplementedError(f"{c}: only plain LoRA is supported")
-    return float(scale) * float(c["lora_alpha"]) / float(c["r"])
+    return json.loads(c.read_text()) if c.exists() else {}
+
+
+def lora_scale(conf: dict, module: str, r: int, scale: float = 1.0) -> float:
+    """Factor on B @ A for one module, as PEFT computes it: ``scale`` x alpha / r (rsLoRA: alpha / sqrt(r)); r is the
+    module's own rank (A's rows, so ``rank_pattern`` needs no lookup), alpha from ``alpha_pattern`` (PEFT's match:
+    the pattern equals the module name or a dotted suffix of it) else ``lora_alpha``. No config (a diffusers file
+    without alpha): alpha = r."""
+    alpha = conf.get("lora_alpha", r)
+    for pat, a in (conf.get("alpha_pattern") or {}).items():
+        if re.match(rf"(.*\.)?{pat}$", module):
+            alpha = a
+            break
+    return float(scale) * float(alpha) / (math.sqrt(r) if conf.get("use_rslora") else r)
 
 
 def merge_lora(module, path: str | Path, scale: float = 1.0) -> int:
-    """Merge a LoRA into ``module``'s Linear weights in place: W += (s * B @ A) cast to W's dtype, the product in
-    fp32 (as PEFT's merge / diffusers' fuse_lora do). ``path``: a .safetensors file, or a directory holding
-    adapter_model.safetensors (PEFT) or pytorch_lora_weights.safetensors (diffusers). ``s`` from :func:`lora_scale`.
-    Returns the number of merged layers; every LoRA pair must match a module of the right shape."""
+    """Merge a LoRA into ``module``'s Linear weights in place, as PEFT's merge does, the arithmetic in fp32 and the
+    result cast to W's dtype: W += s B @ A (s from :func:`lora_scale`); DoRA (a magnitude vector m): W <- m / ||W +
+    s B @ A||_row (W + s B @ A); lora_bias: b += s b_B. ``path``: a .safetensors file, or a directory holding
+    adapter_model.safetensors (PEFT) or pytorch_lora_weights.safetensors (diffusers). Returns the number of merged
+    layers; every LoRA module must match a module of the right shape."""
     import torch
     from safetensors.torch import load_file
     p = Path(path)
     f = next((p / n for n in ("adapter_model.safetensors", "pytorch_lora_weights.safetensors") if (p / n).exists()),
              p) if p.is_dir() else p
-    s = lora_scale(p, scale)
+    conf = lora_config(p)
     dev = next(module.parameters()).device
-    pairs = _lora_pairs(load_file(str(f), device=str(dev)))
+    parts = _lora_parts(load_file(str(f), device=str(dev)))
     mods = dict(module.named_modules())
-    missing = [m for m in pairs if m not in mods]
+    missing = [m for m in parts if m not in mods]
     if missing:
         raise KeyError(f"{len(missing)} LoRA targets not in the model, e.g. {missing[:3]}")
     with torch.no_grad():
-        for m, (A, B) in pairs.items():
+        for m, d in parts.items():
             W = mods[m].weight
-            delta = (B.float() @ A.float()) * s
+            s = lora_scale(conf, m, d["A"].shape[0], scale)
+            delta = (d["B"].float() @ d["A"].float()) * s
             if delta.shape != W.shape:
                 raise ValueError(f"{m}: LoRA delta {tuple(delta.shape)} != weight {tuple(W.shape)}")
-            W += delta.to(W.dtype)
-    return len(pairs)
+            if "m" in d:
+                Wn = W.float() + delta
+                W.copy_((d["m"].float().reshape(-1, 1) / torch.linalg.norm(Wn, dim=1, keepdim=True) * Wn).to(W.dtype))
+            else:
+                W += delta.to(W.dtype)
+            if "bias" in d:
+                mods[m].bias += (d["bias"].float() * s).to(mods[m].bias.dtype)
+    return len(parts)
 
 
 def load_dit_weights(module, path: str | Path) -> int:
@@ -190,6 +270,8 @@ def apply_weight_overrides(transformer, cfg) -> None:
 class DiTAdapter(ModelAdapter):
     """Common part of the diffusion adapters; see the module docstring for the hooks a family provides."""
 
+    generator = True
+
     def __init__(self, cfg, pipe, device):
         super().__init__(cfg)
         import torch
@@ -216,23 +298,40 @@ class DiTAdapter(ModelAdapter):
         self.set_prompt(cfg.get("prompt", DEFAULT_PROMPT))
 
     # ------------------------------------------------------------------ family hooks
-    def _init_schedule(self): ...
+    def _init_schedule(self):
+        """Optional: family state the hooks below need (called before the encode SNRs are mapped to timesteps)."""
 
-    def _t_for_db(self, db: float): raise NotImplementedError
+    @abstractmethod
+    def _t_for_db(self, db: float):
+        """Training timestep whose SNR is closest to ``db``."""
 
-    def _add_noise(self, z0, eps, t): raise NotImplementedError
+    @abstractmethod
+    def _add_noise(self, z0, eps, t):
+        """Forward-noised latents at timestep t (the training schedule)."""
 
-    def _train_err(self, z_in, pred, z0, eps, t): raise NotImplementedError
+    @abstractmethod
+    def _train_err(self, z_in, pred, z0, eps, t):
+        """The model's training loss per latent element [1, F, C, h, w]."""
 
-    def _vae_encode(self, x): raise NotImplementedError
+    @abstractmethod
+    def _vae_encode(self, x):
+        """[1, 3, T, H, W] in [-1, 1] -> model-space latents [1, F, C, h, w]."""
 
-    def _vae_decode(self, lat): raise NotImplementedError
+    @abstractmethod
+    def _vae_decode(self, lat):
+        """Model-space latents [1, F, C, h, w] -> pixels [1, 3, T, H, W] in [-1, 1]."""
 
-    def _encode_text(self, text: str): raise NotImplementedError
+    @abstractmethod
+    def _encode_text(self, text: str):
+        """(prompt_embeds, negative_embeds or None)."""
 
-    def _pass(self, z_t, t, embeds, keep=(), clean: int = 0): raise NotImplementedError
+    @abstractmethod
+    def _pass(self, z_t, t, embeds, keep=(), clean: int = 0):
+        """One transformer pass: (prediction [B, F, C, h, w], {layer: block output [B, N, D]} for ``keep``)."""
 
-    def _sample(self, x, context_end_frame: int, seed: int, capture: bool = True, **kw): raise NotImplementedError
+    @abstractmethod
+    def _sample(self, x, context_end_frame: int, seed: int, capture: bool = True, **kw):
+        """The official sampler conditioned on the context: ({fc key: [T_post, gh, gw, D]}, final latents)."""
 
     # ------------------------------------------------------------------ text
 
@@ -363,7 +462,7 @@ class DiTAdapter(ModelAdapter):
         obj = None
         if object_masks is not None:
             obj = torch.as_tensor(np.asarray(object_masks), device=z0.device).bool()
-        acc = {}
+        acc, pf = {}, {}
         for d in range(self.n_draws):
             eps = self._noise(z0, self.noise_seed + 1000 + d)
             for db in self.snrs:
@@ -376,9 +475,15 @@ class DiTAdapter(ModelAdapter):
                     v, _ = self._pass(zin, t, self.prompt_embeds, clean=kl if variant == "clean" else 0)
                     e = self._token_err(self._train_err(zin, v, z0, eps, t))[kt:]
                     acc.setdefault(f"{variant}_mse_all", []).append(float(e.mean()))
+                    pf.setdefault(f"{variant}_mse_all", []).append(frame_means(e))
                     if obj is not None and obj.any():
                         acc.setdefault(f"{variant}_mse_obj", []).append(float(e[obj].mean()))
-        return {k_: float(np.mean(v_)) for k_, v_ in acc.items()}
+                        pf.setdefault(f"{variant}_mse_obj", []).append(frame_means(e, obj))
+        res = {k_: float(np.mean(v_)) for k_, v_ in acc.items()}
+        # per post token-frame: mean over draws x SNRs (the weights are the same in every draw)
+        res["per_frame"] = {"surprise": {k_: np.nanmean([d[0] for d in v_], 0).tolist() for k_, v_ in pf.items()},
+                            "weight": {k_: v_[0][1] for k_, v_ in pf.items()}}
+        return res
 
     def _capture_steps(self, ts) -> dict[int, list[float]]:
         """Sampling step index nearest each encode SNR's timestep -> those SNRs (forecast keys match encode's)."""

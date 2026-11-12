@@ -6,7 +6,8 @@
     /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
         --level configs/eval/l2_surprise.yaml --data data/f1
     ... --level configs/eval/l1_forecast_laws.yaml     (P-pred-real used if stage 4 --pred-real ran)
-    ... --level configs/eval/l2b_detection.yaml        (after L2: reads l2.json for the encoded-but-unused index)
+    ... --level configs/eval/l2b_detection.yaml        (equality-law contrasts: momentum, gravity, friction,
+                                                        oscillation, angular_momentum; never energy / statics)
 
     /root/envs/physics_venv/bin/python scripts/06_eval.py --model configs/models/vjepa2_vitl.yaml \\
         --level configs/eval/l3_invariance.yaml --data data/f4
@@ -85,16 +86,9 @@ def main():
         res.update(meta)
         (out_dir / "l2.json").write_text(json.dumps(res, indent=1))
         md = l2_surprise.table(res)
-        if "motion_adjusted" in res:
-            md = ("## Motion-adjusted (calibrated on legal-vs-legal pairs)\n\n" + l2_surprise.adjusted_table(res["motion_adjusted"])
-                  + "\n\n## Raw contrasts\n\n" + md)
     elif level == "l2b":
         from physlaw.eval import l2b_detection
-        l2f = out_dir / "l2.json"
-        l2s = json.loads(l2f.read_text()).get("motion_adjusted", {}).get("summary") if l2f.exists() else None
-        if l2s is None:
-            print(f"[06] WARNING: no motion-adjusted summary in {l2f}; run L2 first for the encoded-but-unused index")
-        res = l2b_detection.run(cache, data, cfg, l2s, workers=min(a.workers, 8))
+        res = l2b_detection.run(cache, data, cfg, workers=min(a.workers, 8))
         res.update(meta)
         (out_dir / "l2b.json").write_text(json.dumps(res, indent=1))
         md = l2b_detection.table(res)
@@ -117,7 +111,7 @@ def main():
         (out_dir / "l4.json").write_text(json.dumps(res, indent=1, default=float))
         md = l4_causal.table(res)
     else:
-        sys.exit(f"06_eval.py: level {level} not built yet (see docs/RESUME.md)")
+        sys.exit(f"06_eval.py: unknown level {level!r} (l0, l1, l2, l2b, l3, l4)")
 
     (out_dir / f"{level}.md").write_text(f"# {level.upper()} — {mcfg.name} on {data.name}\n\n{md}\n")
     print(md)

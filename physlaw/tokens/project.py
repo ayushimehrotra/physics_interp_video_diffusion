@@ -42,6 +42,14 @@ def _fit_map(H: int, W: int, spec: TokenGridSpec):
     return (s, (h - H * s) / 2.0), (s, (w - W * s) / 2.0)
 
 
+def roi_object_ids(labels: dict) -> tuple[tuple[str, int], ...]:
+    """``(("A", seg id), ("B", seg id))`` for the pools: the first two NON-aux objects of the labels (F9 rods and the
+    F11 prop are never pooled); a family with one scored object gets B = -1 (no pixel matches: empty roi_B)."""
+    objs = labels["physlaw"].get("objects") or {"A": {}, "B": {}}      # minimal labels: the two balls, ids 1 and 2
+    sids = [int(o.get("segmentation_id", i + 1)) for i, o in enumerate(objs.values()) if not o.get("aux")]
+    return (("A", sids[0]), ("B", sids[1] if len(sids) > 1 else -1))
+
+
 def project_masks(instance: np.ndarray, frames: list[int], spec: TokenGridSpec,
                   object_ids=(("A", 1), ("B", 2)), roi_mult: float = 1.5) -> dict[str, ObjectTokens]:
     T, H, W = instance.shape
@@ -94,3 +102,36 @@ def token_frame_phase(frames: list[int], spec: TokenGridSpec, first_post_contact
         out.append("pre" if max(fs) < first_post_contact_frame else
                    "post" if min(fs) >= first_post_contact_frame else "straddle")
     return out
+
+
+def group_object_region(clips, frames: list[int], spec: TokenGridSpec | None, t_end: float,
+                        master_fps: float) -> np.ndarray:
+    """ONE object region per twin group for the L2 "obj" surprise (``spec``: token grid, [gh, gw]) and the pixel
+    baselines (``spec`` None: master pixels, [H, W]): the union over the group's twins of their object masks (the
+    two scored, non-aux objects of :func:`roi_object_ids`; token grid: their ROIs) at every post-event frame inside
+    the group's clean window (time <= ``t_end``, the min over the twins of clean_until_s), held fixed over all
+    post-event frames. Every twin of a group is scored on the same region, so the region cannot carry any one twin's
+    outcome. ``clips``: iterable of (instance masks [T_master, H, W], labels), one per twin (loaded lazily);
+    ``frames``: the master frames the model sees (the same for every twin of a group). A token-frame (frame) is in
+    the window when it is wholly post-event and its last master frame is no later than ``t_end``; if none is, the
+    first post-event one."""
+    region = None
+    for inst, labels in clips:
+        fpc = int(labels["physlaw"]["first_post_contact_frame"])
+        ids = [sid for _, sid in roi_object_ids(labels)]
+        if spec is None:
+            idx = [[i] for i in range(len(frames))]
+            post = [frames[i] >= fpc for i in range(len(frames))]
+            obj = np.isin(inst[frames], ids)
+        else:
+            idx = spec.token_frames(len(frames))
+            post = [p == "post" for p in token_frame_phase(frames, spec, fpc)]
+            o = project_masks(inst, frames, spec, roi_object_ids(labels))
+            obj = o["A"].roi | o["B"].roi
+        t_last = np.array([max(frames[i] for i in ix) / master_fps for ix in idx])
+        keep = np.asarray(post) & (t_last <= t_end + 1e-9)
+        if not keep.any() and any(post):
+            keep[post.index(True)] = True
+        u = obj[keep].any(0)
+        region = u if region is None else region | u
+    return region

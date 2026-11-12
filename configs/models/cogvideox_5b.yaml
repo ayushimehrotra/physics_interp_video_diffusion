@@ -30,7 +30,7 @@ official:
 input:
   center_on_contact: false            # 6.0 s master == 6.0 s native clip
 token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # 13 x 30 x 45 tokens, 3072-d
-layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 41]
+layers: [0, 4, 8, 10, 12, 16, 20, 21, 24, 28, 32, 36, 41]   # + forecast_layers (L1 / L3 read them on real rows)
 encode_snr_db: [-20, -8, 0, 8]
 # --- adapter settings (physlaw/models/cogvideox.py) ---
 prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."

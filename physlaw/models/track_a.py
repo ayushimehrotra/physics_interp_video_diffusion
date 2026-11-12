@@ -26,9 +26,11 @@ pipeline-only track A adapters (wan_vace.py, ltx.py).
 """
 from __future__ import annotations
 
+from abc import abstractmethod
+
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, fit_frames, sample_frames, token_spec
+from physlaw.models.base import Adapter, fit_frames, sample_frames, token_spec
 
 TRACKS = ("A", "B", "none")
 MODES = ("native", "variant", "hack", "n/a")
@@ -125,10 +127,11 @@ def vace_inputs(context: np.ndarray, n_frames: int, grey: int = 128):
             [known] * k + [todo] * (n_frames - k))
 
 
-class ContinuationAdapter(ModelAdapter):
+class ContinuationAdapter(Adapter):
     """Pipeline-only track A generator: input window, context bounds and splicing; no internals (stage 4 does not
-    run these models). Subclasses implement ``load`` and ``_continue(context_uint8, seed) -> uint8 frames`` (the
-    pipeline's clip, starting at the first context frame)."""
+    run these models). Subclasses implement ``load`` and ``_continue``."""
+
+    generator = True
 
     def __init__(self, cfg, pipe, device):
         super().__init__(cfg)
@@ -152,8 +155,9 @@ class ContinuationAdapter(ModelAdapter):
     def to_tensor(self, frames_uint8: np.ndarray) -> np.ndarray:
         return fit_frames(np.asarray(frames_uint8), (self.H, self.W), self.token_grid.fit)
 
+    @abstractmethod
     def _continue(self, context: np.ndarray, seed: int) -> np.ndarray:
-        raise NotImplementedError
+        """uint8 context frames [k, H, W, 3] -> the pipeline's uint8 clip, starting at the first context frame."""
 
     def generate(self, video, context_end_frame: int, seed: int) -> np.ndarray:
         x = np.asarray(video)
@@ -162,11 +166,6 @@ class ContinuationAdapter(ModelAdapter):
         n = context_len(self.cfg, context_end_frame)
         s = context_end_frame - n
         return splice(x, self._continue(x[s:context_end_frame], seed), s, self.n_frames)
-
-    def encode(self, video, noise_level=None):
-        raise NotImplementedError(f"{self.name}: output track A generator only")
-
-    forecast = surprise = encode
 
 
 def to_uint8(frames01) -> np.ndarray:

@@ -4,6 +4,7 @@ name: videomaev2-base
 kind: encoder
 hf_id: OpenGVLab/VideoMAEv2-Base
 revision: 78c337a418cc4adaf7f1ff6c7ba343418393966b
+local_path: ${env:PHYSLAW_MODELS,/root/models}/VideoMAEv2-Base   # plain-file copy of that snapshot
 trust_remote_code: true
 dtype: float32
 input:
@@ -14,3 +15,7 @@ input:
 token_grid: {patch: 16, tubelet: 2}
 layers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 surprise: {mask_ratio: 0.9, mask_kind: tube, n_mask_draws: 8}
+# Encoder only (the HF repo has no pre-training decoder): physlaw/models/videomae2.py builds the blocks from
+# config.json and caches encode() alone (adapter predicts=False: no surprise, no forecast; L0 only).
+sha256:
+  model.safetensors: ebffa1874066ea227330016e58a848e9e2bb1ff5605746459bded1122a42176d

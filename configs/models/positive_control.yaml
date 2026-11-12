@@ -26,8 +26,9 @@ data:
   # PC training render set (wp-data): legal clips only, seeds disjoint from the evaluation twins.
   root: data/pc1              # <root>/<family>/<group>/<twin>/ (configs/data/pc1_train.yaml writes it)
   code_path_test: false      # true only for runs on stand-in data (labelled in curves and plot)
-  families: [f1, f2, f3, f4, f7, f8]
-  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]
+  families: [f1, f2, f3, f4, f7, f8, f9, f11, f12]   # every family of configs/data/pc1_train.yaml
+  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10, data/f11,
+                 data/f12]
   train_splits: [train, test]
   holdout_splits: [val]      # in-distribution prediction error (spec §4.4)
   n_holdout: 64
@@ -41,7 +42,7 @@ mask:
   aspect: [0.75, 1.5]
 
 train:
-  # Full run (6 families x >= 3,000 legal clips; ~53 epochs). Measured on an RTX 6000 Ada: ~4.6 s/step of compute at
+  # Full run (9 families x >= 3,000 legal clips; ~35 epochs). Measured on an RTX 6000 Ada: ~4.6 s/step of compute at
   # batch 32, 5.4 GB peak at micro_batch 8 -> 30k steps ~ 38 GPU-h (~15-20 h on one H100). micro_batch 32: ~20 GB (extrapolated).
   steps: 30000
   batch_size: 32
@@ -60,11 +61,14 @@ train:
   save_every: 500
   seed: 0
 
-pass_criterion:              # spec §4.4, accepted by the user 2026-11-10
-  l1_s_family_min: 0.5
-  l1_options: ["P-pred-real|frame", "P-real-mm|frame"]   # leak-free frame pool (spec §5.2); first one present
-  l2_adj_win_min: 0.7
-  l2_covariates: speed+copy_last   # brings the legal control to chance on V-JEPA 2 (STATUS milestone 3)
+pass_criterion:              # spec §4.4 / §5.0.5 (momentum accepted by the user 2026-11-10)
+  momentum_family: f1
+  l1_s_mom_min: 0.5                # L1 S_mom (spec §5.0.4), held-out selected over spaces
+  l1_pools: [frame, contact]       # leak-free pools, first one present (roi leaks the post location: never used)
+  l2_win_min: 0.7                  # raw win rate (no regression adjustment), and model − pixel-baseline win CI > 0
   l2_distance: l1_obj              # pre-registered: object-region L1 (no selection over distances)
   l2_contrasts: ["mom_violate_e1 vs conserve_e1", "mom_violate_e015 vs conserve_e015"]
-  l2_control: "conserve_e1 vs conserve_e015"
+  l2_control: "conserve_e1 vs conserve_e015"   # legal-vs-legal reference, reported only
+  energy:                          # spec §5.0.5: raw L2 kink with CI > 0 beyond every baseline on F2 OR F7 bounce,
+    entries: {f2: energy_kink, f7: energy_kink_bounce}   # and the untrained model's K CI containing 0 (same entry)
+    distance: l1_obj               # pre-registered, as for momentum

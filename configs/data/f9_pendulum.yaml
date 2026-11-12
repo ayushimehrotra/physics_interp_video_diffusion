@@ -1,0 +1,17 @@
+# F9. Pendulum (spec §2.3; physlaw/data/families/f9_pendulum.py), closed form: the bob and the rod are
+# keyframed from the exact (elliptic) large-angle motion, no hinge constraint. Laws: oscillation (pair),
+# energy (swing: the bob crosses a damper at the bottom; eps = sqrt(h_apex_after / h_apex_before)).
+defaults: _master.yaml
+family: f9
+seed_offset: 900000
+n_groups: 300
+subfamilies: {pair: 150, swing: 150}
+nuisance_frac: 0.2
+# acceptance: master defaults, no physics_check_tol (no PyBullet check: Kubric's bodies refuse the hinge constraint)
+twins:
+  period_factors: [0.8, 1.25]      # pair: both periods x k after the branch (at a common apex)
+  heavy_period_factor: 0.8         # pair: the heavier bob's period x k
+  # pair: both pendulums share L, bob radius, amplitude and phase (only density differs), so the true
+  # mass_period_ratio is exactly 1 on legal / period_x* twins (tests/test_l3_invariance.py f9 labels) and 0.8 on heavy_x0.8
+  swing_ladder: [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50]
+  swing_eps_later: 0.9             # later damper crossings (after the clean window)

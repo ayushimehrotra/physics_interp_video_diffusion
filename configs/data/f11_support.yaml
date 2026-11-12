@@ -1,0 +1,12 @@
+# F11. Static equilibrium / torque balance (law statics; physlaw/data/families/f11_support.py): a block on a
+# shelf edge with overhang x (CoM (x - 1) half-lengths beyond the edge), held by a prop that drops away at the
+# event. Twins stay / tip (legal: tip iff x > 1). Groups on a grid of x symmetric about the boundary x = 1.
+defaults: _master.yaml
+family: f11
+seed_offset: 1100000
+n_groups: 220
+subfamilies: {support: 220}
+nuisance_frac: 0.2
+# acceptance: master defaults, no physics_check_tol (closed form (frictionless edge); no PyBullet check)
+twins:
+  overhang_grid: [0.55, 0.65, 0.75, 0.85, 0.95, 1.05, 1.15, 1.25, 1.35, 1.45]

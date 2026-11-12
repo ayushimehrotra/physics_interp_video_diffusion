@@ -1,0 +1,16 @@
+f2_restitution 200000 f2
+f3_hidden_mass 300000 f3
+f4_galilean 400000 f4
+f6_friction 600000 f6_flat
+f6_friction 600300 f6_incline
+f6_friction 600600 f6_slides
+f6_friction 600800 f6_glide
+f7_freefall 700000 f7_projectile
+f7_freefall 700300 f7_drop
+f7_freefall 700500 f7_bounce
+f8_ramp 800000 f8_ramp
+f10_rolling 1000000 f10_rolling
+f11_support 1100002 f11_support_x0.65
+f11_support 1100000 f11_support_x1.35
+f9_pendulum 900000 f9_pair
+f9_pendulum 900150 f9_swing

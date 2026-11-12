@@ -23,7 +23,8 @@ from typing import Any
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames, spatial_mask_groups
+from physlaw.models.base import (PRED_LAYER, ModelAdapter, TokenGridSpec, add_frame_means, fit_frames,
+                                 sample_frames, spatial_mask_groups)
 
 FINAL = -1   # key for the encoder's final (layer-normed) output: the predictor's target space
 
@@ -131,11 +132,14 @@ class VJEPA2Adapter(ModelAdapter):
             h = layer(h, ids[None])[0]
         return enc.layernorm(h)
 
-    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0) -> dict[int, Any]:
+    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0, layers=()) -> dict:
         """P-pred-real features (spec §5.2): predictor outputs for MASKED REAL post-event tokens, with the rest
         of the full clip (every pre token, the other post tokens) as context. The spatial positions are split
         into ``n_masks`` seeded groups; pass k masks group k in every post token-frame. Same FINAL space and
-        shape [T_post_tok, gh, gw, D] as forecast(), but informed by the real future."""
+        shape [T_post_tok, gh, gw, D] as forecast(), but informed by the real future. ``layers``: predictor block
+        indices whose outputs at the same masked post tokens are also returned (keys PRED_LAYER, [T_post_tok, gh,
+        gw, pred width]; L4's post-event steering site). Context and targets together are every position, so the
+        predictor's position-sorted sequence index is the token's position in the clip, as in forecast()."""
         torch = self.torch
         x = video if torch.is_tensor(video) else self.to_tensor(video)
         tub = self.token_grid.tubelet
@@ -143,7 +147,7 @@ class VJEPA2Adapter(ModelAdapter):
         per = gh * gw
         n_ctx, n_all = (context_end_frame // tub) * per, (x.shape[1] // tub) * per
         T_post = (n_all - n_ctx) // per
-        out = None
+        out = {}
         with torch.no_grad():
             for grp in spatial_mask_groups(per, n_masks, seed):
                 tgt = torch.zeros(n_all, dtype=torch.bool, device=x.device)
@@ -153,12 +157,15 @@ class VJEPA2Adapter(ModelAdapter):
                 enc = self._encode_visible(x, ctx_ids)
                 full = torch.zeros(1, n_all, enc.shape[-1], dtype=enc.dtype, device=enc.device)
                 full[:, ctx_ids] = enc
-                pred = self.model.predictor(encoder_hidden_states=full, context_mask=[ctx_ids[None]],
-                                            target_mask=[tgt_ids[None]]).last_hidden_state[0]
-                if out is None:
-                    out = torch.zeros(n_all - n_ctx, pred.shape[-1], dtype=pred.dtype, device=pred.device)
-                out[tgt_ids - n_ctx] = pred
-        return {FINAL: self._grid(out, T_post)}
+                po = self.model.predictor(encoder_hidden_states=full, context_mask=[ctx_ids[None]],
+                                          target_mask=[tgt_ids[None]], output_hidden_states=bool(layers))
+                got = {FINAL: po.last_hidden_state[0],
+                       **{PRED_LAYER.format(int(l)): po.hidden_states[int(l) + 1][0, tgt_ids] for l in layers}}
+                for key, h in got.items():
+                    if key not in out:
+                        out[key] = torch.zeros(n_all - n_ctx, h.shape[-1], dtype=h.dtype, device=h.device)
+                    out[key][tgt_ids - n_ctx] = h
+        return {key: self._grid(h, T_post) for key, h in out.items()}
 
     def surprise(self, video, context_end_frame: int, object_masks=None) -> dict[str, float]:
         """Predictor error on post-context tokens: L1, MSE, 1-cos; over all tokens and over ``object_masks``
@@ -174,11 +181,12 @@ class VJEPA2Adapter(ModelAdapter):
         regions = {"all": torch.ones(pred.shape[:3], dtype=torch.bool, device=pred.device)}
         if object_masks is not None:
             regions["obj"] = torch.as_tensor(np.asarray(object_masks), device=pred.device).bool()
+        maps = {"l1": (pred - tgt).abs().mean(-1), "mse": ((pred - tgt) ** 2).mean(-1),
+                "cos": 1 - torch.nn.functional.cosine_similarity(pred, tgt, dim=-1)}     # [T_post, gh, gw]
         for tag, m in regions.items():
             if m.sum() == 0:
                 continue
-            p, t = pred[m], tgt[m]
-            res[f"l1_{tag}"] = float((p - t).abs().mean())
-            res[f"mse_{tag}"] = float(((p - t) ** 2).mean())
-            res[f"cos_{tag}"] = float(1 - torch.nn.functional.cosine_similarity(p, t, dim=-1).mean())
+            for k, e in maps.items():
+                res[f"{k}_{tag}"] = float(e[m].mean())
+                add_frame_means(res, f"{k}_{tag}", e, m)
         return res

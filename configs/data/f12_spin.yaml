@@ -1,0 +1,18 @@
+# F12. Conservation of angular momentum (law angular_momentum; physlaw/data/families/f12_spin.py): a puck hits
+# a free marked bar off-centre on a frictionless table (top-down); closed-form rigid impulse.
+defaults: _master.yaml
+family: f12
+seed_offset: 1200000
+n_groups: 200
+subfamilies: {spin: 200}
+nuisance_frac: 0.2
+# acceptance: master defaults, no physics_check_tol (closed form; no PyBullet check)
+twins:
+  e_hi: 0.9                        # legal twin (and the base of the spin ladder)
+  e_lo: 0.4                        # second legal twin
+  spin_ladder: [0.7, 0.8, 0.9, 1.1, 1.2, 1.3]   # bar spin x k at conserved linear momentum (equality law); k > 1
+  #   also creates energy in many draws (energy_physical False: x1.1 ~half the groups, x1.2 / x1.3 nearly all)
+  # KE-conserving L violators (primary F12 contrast, audit M3): bar spin x k with the radial relative translation
+  # paying for the spin energy, so linear momentum, orbital L and total KE (= legal) are unchanged; only L breaks.
+  # Draws whose radial relative KE cannot pay for k = 1.2 are resampled (~0.6 extra draws per group).
+  spin_ke_ladder: [0.8, 1.2]

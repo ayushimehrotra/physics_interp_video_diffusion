@@ -22,3 +22,7 @@
     11:25:28 FAIL stage4 cogvideox-2b
 === 11:25:28 queue finished
 === 11:28:27 cogvideox_2b (cogvideox-2b) stage4
+    13:12:42 maskfeat cogvideox-2b
+    13:13:22 L1 cogvideox-2b
+    14:07:02 DONE cogvideox-2b
+=== 14:07:02 queue finished

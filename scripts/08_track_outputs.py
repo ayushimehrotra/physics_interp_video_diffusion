@@ -51,8 +51,8 @@ def review(frames, r, pix, path, title):
     D = ImageDraw.Draw(im)
     D.text((4, 3), title[:200], fill=(255, 255, 255))
     ok = r["measurable"]
-    laws = (f"e={r['e']:.2f}  momentum residual={r['r_momentum']:.2f}  KE ratio={r['ke_ratio']:.2f}"
-            if r.get("e") is not None and np.isfinite(r.get("e", np.nan)) else "laws: n/a")
+    laws = "  ".join(f"{k}={r[k]:.2f}" for k in O.STAT_KEYS
+                     if isinstance(r.get(k), (int, float)) and np.isfinite(r[k])) or "laws: n/a"
     D.text((4, 18), f"{'MEASURABLE' if ok else 'REJECTED'} reason={r.get('reason')} violations={r.get('violations')} "
                     f"contact f{c0}->f{r.get('separate_frame')} | {laws} | size x{r.get('size_ratio', float('nan')):.2f}",
            fill=(120, 255, 120) if ok else (255, 150, 150))

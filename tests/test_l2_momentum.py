@@ -83,29 +83,23 @@ def test_primary_first_and_eta_config():
 
 
 def test_pixel_gap_fields():
-    from physlaw.eval.l2_surprise import adjusted_table, motion_adjusted
+    """model win − pixel-baseline win on the same pairs, paired group bootstrap."""
+    from physlaw.eval.l2_surprise import _pair_pixel_gap
     rng = np.random.default_rng(1)
-    recs, cov = {}, {}
+    recs, pix = {}, {}
     for g in range(30):
-        for t, sp in (("conserve_e1", 2.0), ("conserve_e015", 1.0), ("mom_violate_e015", 0.9)):
+        for t, sp in (("conserve_e015", 1.0), ("mom_violate_e015", 0.9)):
             sp = sp * rng.uniform(0.8, 1.2)
             c = f"g{g}/{t}"
-            recs[c] = {"group": f"g{g}", "surprise": {"l1_obj": sp * rng.uniform(0.9, 1.1) * (1.08 if t.startswith("mom") else 1)}}
-            cov[c] = {"post_speed_sum": sp, "post_ke": sp ** 2, "copy_last_mse_obj": sp, "constvel_px": sp * rng.uniform(0.5, 1.5)}
-    con = [{"viol": "mom_violate_e015", "legal": "conserve_e015", "primary": True}]
-    out = motion_adjusted(recs, cov, con, primary="post_speed", n_boot=200, n_splits=5)
-    assert out["primary_contrast"] == "mom_violate_e015 vs conserve_e015"
-    rec = out["contrasts"]["post_speed"]["mom_violate_e015 vs conserve_e015"]["l1_obj"]
-    vp = rec["vs_pixel"]
+            recs[c] = {"group": f"g{g}", "surprise": {"l1_obj": sp * (1.5 if t.startswith("mom") else 1.0)}}
+            pix[c] = {"group": f"g{g}", "surprise": {"copy_last_mse_obj": sp, "constvel_px": sp * rng.uniform(0.5, 1.5)}}
+    vp = _pair_pixel_gap(recs, pix, "mom_violate_e015", "conserve_e015", "l1_obj", n_boot=200)
     assert set(vp) == {"copy_last", "const_velocity"}
     g = vp["copy_last"]
-    assert g["adj_minus_baseline"] == pytest.approx(rec["adj_win_rate"] - g["baseline_raw_win"])
-    assert g["adj_minus_baseline_ci95"][0] <= g["adj_minus_baseline"] <= g["adj_minus_baseline_ci95"][1]
-    assert rec["adj_win_rate_boot_sd"] > 0
-    assert out["summary"]["mom_violate_e015 vs conserve_e015"]["primary"]
-    md = adjusted_table(out)
-    assert "Primary motion control" in md and "not identified for CoM motion" in md
-    json.dumps(out)
+    assert g["n"] == 30 and g["model_minus_baseline"] == pytest.approx(g["model_win"] - g["baseline_win"])
+    assert g["model_minus_baseline_ci95"][0] <= g["model_minus_baseline"] <= g["model_minus_baseline_ci95"][1]
+    assert g["model_win"] > 0.9 and g["baseline_win"] < 0.6
+    json.dumps(vp)
 
 
 @pytest.mark.skipif(not F1.exists(), reason="data/f1 absent")

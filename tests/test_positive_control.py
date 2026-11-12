@@ -59,28 +59,64 @@ def test_training_clips_legal_only_and_refuses_eval_groups(tmp_path):
         PC.training_clips(dc, ["train"])
 
 
-def _results(d, s_family, wins, control_ci=(0.4, 0.6), option="P-real-mm|frame"):
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "l1.json").write_text(json.dumps({"selected": {option: {"family": {"score": s_family, "n_variants": 1}},
-                                                        "P-real-mm|roi": {"family": {"score": 0.9}}}}))
-    con = {c: {CRIT["l2_distance"]: {"adj_win_rate": w, "adj_win_rate_ci95": [w - 0.1, w + 0.1]}}
-           for c, w in zip(CRIT["l2_contrasts"], wins)}
-    con[CRIT["l2_control"]] = {CRIT["l2_distance"]: {"adj_win_rate": 0.5, "adj_win_rate_ci95": list(control_ci)}}
-    (d / "l2.json").write_text(json.dumps({"motion_adjusted": {"contrasts": {CRIT["l2_covariates"]: con}}}))
+def test_pc_configs_read_every_rendered_family():
+    """PC1 and PC2 train on every family of the PC render set (the controls must see every law they are judged on),
+    and the set holds >= 3,000 legal clips per family; every benchmark family dir is excluded."""
+    pc = load_config("configs/data/pc1_train.yaml")
+    for cfg in ("positive_control", "pc2_wan22_ti2v_5b"):
+        dc = load_config(f"configs/models/{cfg}.yaml")["data"]
+        assert list(dc["families"]) == list(pc.families), cfg
+        assert {f"data/{f}" for f in pc.families} <= set(dc["exclude_eval"]), cfg
+    assert all(int(spec.n_groups) > 0 for spec in pc.families.values())
+
+
+def _results(d, s_mom, wins, gap_lo=0.1, option="energy|frame"):
+    f = d / CRIT["momentum_family"]
+    f.mkdir(parents=True, exist_ok=True)
+    sel = {option: {"momentum": {"score": s_mom, "n_variants": 1, "selected": "energy|L1|frame"}},
+           "energy|roi": {"momentum": {"score": 0.9, "selected": "energy|L1|roi"}}}
+    (f / "l1.json").write_text(json.dumps({"selected": sel, "variants": {"energy|L1|frame": {"instrument": "pred_real"}}}))
+    vp = {b: {"model_minus_baseline": gap_lo + 0.1, "model_minus_baseline_ci95": [gap_lo, gap_lo + 0.2]}
+          for b in ("copy_last", "const_velocity")}
+    rec = lambda w: {"pc1-vits": {CRIT["l2_distance"]: {"win_rate": w, "win_rate_ci95": [w - 0.1, w + 0.1], "vs_pixel": vp}},
+                     "pixel_baselines": {}}
+    con = {c: rec(w) for c, w in zip(CRIT["l2_contrasts"], wins)}
+    con[CRIT["l2_control"]] = rec(0.8)
+    (f / "l2.json").write_text(json.dumps({"contrasts": con}))
+
+
+def _kink(d, fam, K, ci, verdict):
+    en = CRIT["energy"]
+    rec = {"model": {"K": K, "K_ci95": list(ci)}, "verdict": verdict}
+    (d / fam).mkdir(parents=True, exist_ok=True)
+    (d / fam / "l2.json").write_text(json.dumps({"energy_kink": {en["entries"][fam]: {"distances": {en["distance"]: rec}}}}))
 
 
 def test_pass_check_verdicts(tmp_path):
-    _results(tmp_path / "a", 0.6, [0.8, 0.75], option="P-pred-real|frame")
-    r = PC.pass_check(tmp_path / "a", CRIT)
-    assert r["verdict"] == "PASS" and r["l1"]["option"] == "P-pred-real|frame" and "PASS" in PC.format_pass(r)
-    _results(tmp_path / "b", 0.3, [0.8, 0.75])                  # ROI pool's 0.9 is never used
-    assert PC.pass_check(tmp_path / "b", CRIT)["verdict"] == "FAIL"
-    _results(tmp_path / "c", 0.6, [0.8, 0.65])
-    assert PC.pass_check(tmp_path / "c", CRIT)["verdict"] == "FAIL"
-    _results(tmp_path / "d", 0.6, [0.8, 0.75], control_ci=(0.6, 0.8))
-    assert PC.pass_check(tmp_path / "d", CRIT)["verdict"] == "INCONCLUSIVE"
-    (tmp_path / "d" / "l1.json").unlink()
-    assert PC.pass_check(tmp_path / "d", CRIT)["verdict"] == "MISSING"
+    u = tmp_path / "untrained"
+    _kink(u, "f2", 0.05, (-0.1, 0.2), "no kink")
+    _kink(u, "f7", 0.4, (0.2, 0.6), "kink, not beyond every baseline")
+    _results(tmp_path / "a", 0.6, [0.8, 0.75], option="energy|contact")
+    _kink(tmp_path / "a", "f2", 0.8, (0.5, 1.1), "kink beyond baselines")
+    r = PC.pass_check(tmp_path / "a" / "f1", CRIT, u)                 # a family dir is accepted too
+    assert r["verdict"] == "PASS" and r["l1"]["option"] == "energy|contact" and "PASS" in PC.format_pass(r)
+    assert r["energy"]["f2/energy_kink"]["untrained_contains_0"]
+    assert PC.pass_check(tmp_path / "a", CRIT)["verdict"] == "MISSING"          # no untrained run
+    for k, (s, w, lo) in {"b": (0.3, [0.8, 0.75], 0.1), "c": (0.6, [0.8, 0.65], 0.1),
+                          "d": (0.6, [0.8, 0.75], -0.05)}.items():
+        _results(tmp_path / k, s, w, lo)
+        _kink(tmp_path / k, "f2", 0.8, (0.5, 1.1), "kink beyond baselines")
+    assert PC.pass_check(tmp_path / "b", CRIT, u)["verdict"] == "FAIL"           # ROI pool's 0.9 is never used
+    assert PC.pass_check(tmp_path / "c", CRIT, u)["verdict"] == "FAIL"
+    assert PC.pass_check(tmp_path / "d", CRIT, u)["verdict"] == "FAIL"           # a pixel extrapolator matches it
+    # energy: kink not beyond baselines on F2, and on F7 the untrained model kinks too -> FAIL
+    _results(tmp_path / "e", 0.6, [0.8, 0.75])
+    _kink(tmp_path / "e", "f2", 0.3, (0.1, 0.5), "kink, not beyond every baseline")
+    _kink(tmp_path / "e", "f7", 0.8, (0.5, 1.1), "kink beyond baselines")
+    r = PC.pass_check(tmp_path / "e", CRIT, u)
+    assert r["verdict"] == "FAIL" and not r["energy"]["f7/energy_kink_bounce"]["untrained_contains_0"]
+    (tmp_path / "d" / "f1" / "l1.json").unlink()
+    assert PC.pass_check(tmp_path / "d", CRIT, u)["verdict"] == "MISSING"
 
 
 def test_context_encoding_equals_encoding_the_prefix_alone():

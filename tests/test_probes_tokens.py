@@ -1,67 +1,12 @@
-"""Spec §8 unit tests: probe pipeline on synthetic linear data, token projection, frame sampling."""
+"""Spec §8 unit tests: token projection, frame sampling (probe tests: tests/test_probes.py)."""
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
 from physlaw.models.base import TokenGridSpec, sample_frames
-from physlaw.probes.ridge import auc_score, fit_probe, grouped_kfold, permutation_null
 from physlaw.tokens.pool import pool, pool_weights
-from physlaw.tokens.project import project_masks, token_frame_phase
-
-
-# ------------------------------------------------------------------ probes
-
-def synthetic(n=400, d=64, noise=0.3, seed=0, group_size=5):
-    rng = np.random.default_rng(seed)
-    w = rng.normal(size=d); w /= np.linalg.norm(w)
-    X = rng.normal(size=(n, d))
-    y = X @ w + noise * rng.normal(size=n)
-    groups = np.repeat(np.arange(n // group_size), group_size)
-    return X, y, groups, w
-
-
-def test_probe_recovers_known_direction():
-    X, y, g, w = synthetic()
-    res = fit_probe(X, y, g, fold_seeds=3)
-    expected_r2 = 1 / (1 + 0.3 ** 2)
-    assert res.score_mean == pytest.approx(expected_r2, abs=0.05)
-    cos = abs(res.direction @ w) / np.linalg.norm(res.direction)
-    assert cos > 0.98
-
-
-def test_probe_on_noise_scores_near_zero():
-    rng = np.random.default_rng(1)
-    X = rng.normal(size=(300, 64)); y = rng.normal(size=300)
-    g = np.repeat(np.arange(60), 5)
-    assert fit_probe(X, y, g, fold_seeds=3).score_mean < 0.05
-
-
-def test_groups_never_split_across_folds():
-    g = np.repeat(np.arange(37), 5)
-    for seed in range(5):
-        folds = grouped_kfold(g, 5, seed)
-        assert sorted(np.concatenate(folds)) == list(range(len(g)))
-        for f in folds:
-            others = np.setdiff1d(np.arange(len(g)), f)
-            assert not set(g[f]) & set(g[others])
-
-
-def test_auc_matches_definition():
-    rng = np.random.default_rng(2)
-    y = rng.integers(0, 2, 200); s = y + rng.normal(size=200)
-    brute = np.mean([(a > b) + 0.5 * (a == b) for a in s[y == 1] for b in s[y == 0]])
-    assert auc_score(y, s) == pytest.approx(brute, abs=1e-12)
-
-
-def test_permutation_null_signal_vs_noise():
-    X, y, g, _ = synthetic(n=200, d=16)
-    rng = np.random.default_rng(3)
-    grid = {"signal": X, "noise1": rng.normal(size=X.shape), "noise2": rng.normal(size=X.shape)}
-    res = permutation_null(grid, y, g, n_permutations=40)
-    assert res["best_cell"] == "signal" and res["p_corrected"] <= 1 / 41 + 1e-12
-    res0 = permutation_null({"a": grid["noise1"], "b": grid["noise2"]}, y, g, n_permutations=40)
-    assert res0["p_corrected"] > 0.05
+from physlaw.tokens.project import group_object_region, project_masks, token_frame_phase
 
 
 # ------------------------------------------------------------------ frames / tokens
@@ -101,6 +46,51 @@ def test_projection_letterbox_offsets():
     obj = project_masks(m, list(range(12)), spec)
     s = 64 / 160; oy = (64 - 96 * s) / 2
     assert obj["B"].center[0] == pytest.approx([(60.5 * s + oy) / 8, 120.5 * s / 8], abs=0.05)
+
+
+def _moving_twin(dx_post, T=12, H=96, W=160, r=8, fpc=5):
+    """A twin: ball A at (30, 40) until frame fpc - 1, then moving dx_post px per frame; ball B static; an aux rod
+    (seg 3) everywhere on the bottom row (never part of the region)."""
+    yy, xx = np.mgrid[:H, :W]
+    m = np.zeros((T, H, W), np.uint8)
+    m[:, H - 4:, :] = 3
+    for t in range(T):
+        cx = 40 + dx_post * max(t - fpc + 1, 0)
+        m[t, (yy - 60) ** 2 + (xx - 120) ** 2 <= r ** 2] = 2
+        m[t, (yy - 30) ** 2 + (xx - cx) ** 2 <= r ** 2] = 1
+    labels = {"physlaw": {"first_post_contact_frame": fpc, "objects": {
+        "A": {"segmentation_id": 1}, "B": {"segmentation_id": 2}, "rod": {"segmentation_id": 3, "aux": True}}}}
+    return m, labels
+
+
+@pytest.mark.parametrize("spec", [TokenGridSpec(input_hw=(64, 64), patch=8, tubelet=2), None])
+def test_group_object_region_is_one_region_per_group(spec):
+    """L2 "obj" surprise (stage 4, token grid) and the pixel baselines (stage 5, spec None): every twin of a group is
+    scored on the SAME region, the union over the group's twins of the scored objects' masks over the clean window.
+    Each twin's own post-event mask (the old region) differs between twins and reveals where its object went."""
+    frames, fps = list(range(12)), 48.0
+    twins = [_moving_twin(6), _moving_twin(-3)]
+    t_end = 9 / fps                                      # clean window: post frames 5..9 (token-frames 3, 4)
+    reg = group_object_region(twins, frames, spec, t_end, fps)
+    assert np.array_equal(reg, group_object_region(twins[::-1], frames, spec, t_end, fps))   # order-free
+    # every twin gets the identical weight map: what stage 4 / 5 hand to surprise() for twin 0 and for twin 1
+    w = [np.broadcast_to(reg, (3, *reg.shape)) for _ in twins]
+    assert np.array_equal(w[0], w[1])
+    own = []
+    for m, lab in twins:
+        if spec is None:
+            o = np.isin(m[5:10], [1, 2]).any(0)
+        else:
+            ob = project_masks(m, frames, spec)
+            o = (ob["A"].roi | ob["B"].roi)[3:5].any(0)
+        own.append(o)
+        assert not (o & ~reg).any()                      # covers each twin's objects inside the window
+    assert not np.array_equal(own[0], own[1])            # the per-twin regions would differ (the bug)
+    assert np.array_equal(reg, own[0] | own[1])
+    if spec is None:
+        assert not reg[-4:].any()                        # aux bodies are never part of the region
+        late = np.isin(twins[0][0][11], [1]) & ~np.isin(twins[0][0][5:10], [1, 2]).any(0)
+        assert late.any() and not (late & reg).any()     # frames after the clean window do not enter
 
 
 def test_phase_and_pooling():
@@ -168,6 +158,28 @@ def test_pred_real_masks_only_its_targets(make):
     assert not torch.allclose(flat_b[:, other], flat_n[:, other], atol=1e-4)
     # the context-only forecast never sees post frames
     assert torch.equal(m.forecast(frames, k)[fin], m.forecast(edited, k)[fin])
+
+
+@pytest.mark.parametrize("make", [_tiny_vjepa, _tiny_videomae])
+def test_surprise_per_frame_record(make):
+    """surprise()'s per_frame block (L2 clean window): one value per post token-frame whose weighted mean is the
+    clip-level value, over all tokens and over the object mask (VideoMAE tube_*_obj: approximately, the object
+    positions masked by a tube differ between draws)."""
+    torch, m = make()
+    frames = np.random.default_rng(0).integers(0, 255, (8, 48, 48, 3), dtype=np.uint8)
+    obj = np.zeros((2, 3, 3), bool)
+    obj[0, :2] = obj[1, 1] = True
+    s = m.surprise(m.to_tensor(frames), 4, obj)
+    pf = s.pop("per_frame")
+    assert set(pf["surprise"]) == set(s) == set(pf["weight"]) and any(k.endswith("_obj") for k in s)
+    for k, v in s.items():
+        f, w = np.array(pf["surprise"][k], float), np.array(pf["weight"][k], float)
+        ok = np.isfinite(f) & (w > 0)
+        assert len(f) == 2 and ok.any()
+        tol = 0.25 if k.startswith("tube_") and k.endswith("_obj") else 1e-5
+        assert (w[ok] * f[ok]).sum() / w[ok].sum() == pytest.approx(v, rel=tol), k
+    if "l1_obj" in s:
+        assert pf["weight"]["l1_obj"] == [6.0, 3.0] and pf["weight"]["l1_all"] == [9.0, 9.0]
 
 
 def test_vjepa_visible_encoder_matches_prefix_encoding():

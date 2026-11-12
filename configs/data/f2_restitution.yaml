@@ -1,4 +1,4 @@
-# F2. Restitution sweep (spec §2.3): legal outcomes at e = 0.0..1.0, identical pre-contact frames.
+# F2. Restitution sweep (spec §2.3, §5.0.2): ladder e = 0.0..1.5 (legal <= 1), identical pre-contact frames.
 # Same scene as F1; one simulation at e = 1, the other levels in closed form (twins.f2_twins).
 defaults: _master.yaml
 family: f2
@@ -21,5 +21,10 @@ twins:
   # [margin, 1 - margin] is shrunk to fit, or skipped if that is below the range minimum.
   violators: [1.0, 0.5, 0.15]
   violator_signs: [pos, neg]
+  # Speed-matched momentum contrasts (spec §5.0.4 L2): both drift signs must exist at every listed e, so a
+  # draw where a sign does not fit (or a violator leaves the frame) is RESAMPLED instead of dropping the twin.
+  # Each violator's labels carry physlaw.ke_ratio_to_legal = KE(violator) / KE(legal twin at the same e).
+  # false = the older optional violators (dropped when they fail; the ladder's sampling then equals violators: []).
+  violators_required: true
   violator_split_delta_range: [0.10, 0.35]
   violator_split_margin: 0.05

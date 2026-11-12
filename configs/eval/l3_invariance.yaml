@@ -1,35 +1,42 @@
-# L3 invariance (spec §5.5). Stage 6 (--level configs/eval/l3_invariance.yaml) runs the analyses listed for the
-# family of --data, from stage 4's cache. Label keys are dotted paths into labels.json.
+# L3 invariance (spec §5.0.4, §5.5). Stage 6 (--level configs/eval/l3_invariance.yaml) runs the analyses listed for
+# the family of --data, from stage 4's cache. Label keys are dotted paths into labels.json.
 defaults: _probe.yaml
 level: l3
-families: [f4, f6, f7, f1]
+families: [f4, f6, f7, f9]   # not F1: nuisance_frac 0, so no clean <-> nuisance transfer
 fold_seeds: 2                 # outer CV repeats (each with held-out (pool, layer) selection inside)
 bootstrap: {n: 2000}
 min_groups: 4                 # fewer groups: the analysis is skipped (test runs may lower it)
 analyses:
-  f4: [galilean, momentum_invariance]
-  f6: [mass_independence, transfer]
+  f4: [galilean]
+  f6: [mass_independence]     # F6 pairs (the old flat <-> incline transfer is gone with those scenes)
   f7: [mass_independence, transfer]
-  f1: [transfer]              # clean -> nuisance
-galilean:                             # F4: a group holds every boost level (twins <level>_e1, <level>_e015)
+  f9: [mass_independence]     # pendulum pairs: period independent of the bob's mass
+# F4 camera boosts (cam_usmall, cam_ularge: unboosted collision, camera moving at -u; labels frame: camera, so the
+# instrument's targets are the camera-frame motion the clip shows) are levels of their own against u0; galilean()
+# also pairs each cam_<level> with <level> (camera_vs_ball: same ball image motion, only the background differs).
+galilean:                             # F4: a group holds every boost level (twins <level>_<rung>)
   boost_key: physlaw.edit.boost_level   # the u = 0 level is the base; the others are boosts
   base_level: u0
-  boost_vec_key: physlaw.edit.boost     # boost velocity u (for the error-vs-boost-size figure)
-  pair_keys: [physlaw.twin_group_id, physlaw.edit.e]   # a boosted clip's u = 0 partner: same group, same e
+  pair_keys: [physlaw.twin_group_id, physlaw.edit.e]   # a boosted clip's u = 0 partner: same group, same rung
   cv_key: physlaw.twin_group_id
-  targets: [restitution, com_angle]
-  pools: [roi_pair.all, frame.all]
+  pools: [roi_own, frame]             # instrument cells: l0_states.POOL_KINDS, paired pre / post pools
+  # Law test (audit H2): the same statistics from the model's FORECAST of each boost level (one forecast per
+  # (group, pre_segment = level)) vs its u = 0 forecast (and cam_<level> vs <level>), decoded by one R1 instrument per
+  # forecast space (real pre + post rows, cells forecast_pools); the real-video d with that instrument is the floor.
+  # Verdict per level: not invariant when d(forecast) − d(floor) has a scene-bootstrap CI above 0.
+  forecast_pools: [roi_own, frame]
   layers: all
-  l2_contrasts: {calibration: ["{level}_e1", "{level}_e015"], list: []}   # L2 per boost level (F4: legal twins only)
-momentum_invariance:                  # F4: eta / antiparallel of decoded post velocities per boost level (levels, pairs,
-  pools: [roi_pair.all, frame.all]    # CV unit from galilean); probes for physlaw.post_velocity A, B (x, y) on u = 0
-  layers: all
-mass_independence:                    # per-object target over window_s after the event; twins as the data generator names them
+  max_floor_eps_err: 0.25             # floor median |eps_hat - eps| above this: the level is unmeasurable (R2)
+  l2_contrasts: {calibration: ["{level}_e1", "{level}_e015"], list: []}   # L2 per boost level (legal twins only)
+# Mass independence: the forecast's heavy / light ratio through ROI pools must also beat the same instrument on the
+# ROI pooling weights alone (S − S_mask CI > 0; audit M0), since the real post-event masks already move lawfully.
+mass_independence:                    # per-object target (over window_s after the event); law = the ratio's law (laws.<law>)
+  min_log_sensitivity: 0.0953         # log 1.1: probes that cannot tell the violator from the floor -> unmeasurable
   families:
-    f7: {subfamily: drop, target: accel_z, window_s: 0.2, objects: [A, B], legal: [legal, legal_e04], violating: [heavy_x13]}
-    f6: {subfamily: slides, target: decel, window_s: 0.5, objects: [A, B], legal: [legal_mu1, legal_mu2], violating: [heavy_x13]}
-transfer:                             # train on conditions[0], test on conditions[1], and back
-  f6: {split_key: physlaw.subfamily, conditions: [flat, incline], twins: [legal_mu1, legal_mu2], targets: [mu, accel, size],
-       pools: [roi_A.all, frame.all]}
+    f7: {subfamily: drop, target: accel_g, law: gravity, window_s: 0.2, objects: [A, B], legal: [legal, legal_e04], violating: [heavy_x13]}
+    # F6 pairs: the deceleration over 0.5 s after the branch (both blocks still slide: the heavy_x13 block stops >= 2.2 s after it)
+    f6: {subfamily: pair, target: decel, law: friction, window_s: 0.5, objects: [A, B], legal: [legal], violating: [heavy_x13]}
+    # F9 pairs: the period after the branch; period_x* change both periods alike, so they obey mass independence
+    f9: {subfamily: pair, target: period, law: oscillation, objects: [A, B], legal: [legal, period_x0.8, period_x1.25], violating: [heavy_x0.8]}
+transfer:                             # train on conditions[0], test on conditions[1], and back; size = control target
   f7: {split_key: physlaw.nuisance, conditions: [0, 1], targets: [velocity, size], pools: [roi_A.all, frame.all]}
-  f1: {split_key: physlaw.nuisance, conditions: [0, 1], targets: [velocity, log_mass, radius], pools: [roi_A.pre, frame.pre]}

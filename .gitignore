@@ -12,3 +12,15 @@ results/**/*.gif
 results/**/*.npz
 # Reference PDFs (copyrighted papers, 67 MB): kept locally only
 docs/references/*.pdf
+# Literature collection PDFs (~1 GB, copyrighted): kept locally only; papers/INDEX.md is tracked
+papers/*.pdf
+# Smoke runs: keep tables (md/json), logs and scripts; not media, caches or rendered clip sets
+smoke/**/*.mp4
+smoke/**/*.npz
+smoke/**/work/
+smoke/**/__pycache__/
+smoke/newlaws/
+smoke/render_check/f*/
+smoke/render_check_full/f*/
+smoke/render_check*/logs/
+.ipynb_checkpoints/

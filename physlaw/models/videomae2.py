@@ -1,4 +1,6 @@
-"""VideoMAE v2-giant adapter (spec §4.1/4.2, milestone 6): encode / forecast / surprise.
+"""VideoMAE v2 adapter (spec §4.1/4.2, milestone 6): giant with its pre-training decoder (encode / forecast /
+surprise, below), and the encoder-only OpenGVLab/VideoMAEv2-* model repos (base: encode() only, ``predicts`` False;
+same blocks, patch 16, 768-d, MLP ratio 4, no final norm, config.json gives the dims).
 
 Checkpoint: OpenGVLab's PRE-TRAINING checkpoint ``mae-g/vit_g_hybrid_pt_1200e.pth`` (HF repo
 OpenGVLab/VideoMAE2, file pinned by sha256 in the model config). It is the only public
@@ -35,13 +37,14 @@ surprise(): ``fut_*`` (primary) the pre-training loss, MSE between the decoder's
 from __future__ import annotations
 
 import hashlib
-import math
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, TokenGridSpec, fit_frames, sample_frames, spatial_mask_groups
+from physlaw.models.base import (PRED_LAYER, ModelAdapter, TokenGridSpec, add_frame_means, fit_frames, frame_means,
+                                 sample_frames, spatial_mask_groups)
 
 FINAL = -1          # forecast space: decoder hidden (512-d)
 ENC_NORM = 40       # encoder final LayerNorm output (1408-d)
@@ -96,11 +99,11 @@ def _build(torch):
             return self.proj(x).flatten(2).transpose(1, 2)
 
     class Encoder(nn.Module):
-        def __init__(self, dim, depth, heads, mlp_ratio, patch, tubelet):
+        def __init__(self, dim, depth, heads, mlp_ratio, patch, tubelet, final_norm=True):
             super().__init__()
             self.patch_embed = PatchEmbed(dim, patch, tubelet)
             self.blocks = nn.ModuleList([Block(dim, heads, mlp_ratio) for _ in range(depth)])
-            self.norm = nn.LayerNorm(dim, eps=1e-6)
+            self.norm = nn.LayerNorm(dim, eps=1e-6) if final_norm else nn.Identity()
 
     class Decoder(nn.Module):
         def __init__(self, dim, depth, heads, mlp_ratio, out):
@@ -110,13 +113,18 @@ def _build(torch):
             self.head = nn.Linear(dim, out)
 
     class VideoMAEv2Pretrain(nn.Module):
+        """Giant pre-training model (defaults); ``dec_depth=None``: encoder only, without the final norm (the
+        OpenGVLab/VideoMAEv2-* model repos: blocks, then fc_norm on the clip-mean token, which no token-level output
+        uses)."""
+
         def __init__(self, enc_dim=1408, enc_depth=40, enc_heads=16, dec_dim=512, dec_depth=4, dec_heads=8,
                      mlp_ratio=48 / 11, patch=14, tubelet=2):
             super().__init__()
-            self.encoder = Encoder(enc_dim, enc_depth, enc_heads, mlp_ratio, patch, tubelet)
-            self.decoder = Decoder(dec_dim, dec_depth, dec_heads, mlp_ratio, 3 * tubelet * patch * patch)
-            self.encoder_to_decoder = nn.Linear(enc_dim, dec_dim, bias=False)
-            self.mask_token = nn.Parameter(torch.zeros(1, 1, dec_dim))
+            self.encoder = Encoder(enc_dim, enc_depth, enc_heads, mlp_ratio, patch, tubelet, dec_depth is not None)
+            if dec_depth is not None:
+                self.decoder = Decoder(dec_dim, dec_depth, dec_heads, mlp_ratio, 3 * tubelet * patch * patch)
+                self.encoder_to_decoder = nn.Linear(enc_dim, dec_dim, bias=False)
+                self.mask_token = nn.Parameter(torch.zeros(1, 1, dec_dim))
 
     return VideoMAEv2Pretrain
 
@@ -141,8 +149,10 @@ class VideoMAEv2Adapter(ModelAdapter):
         self.n_frames, self.fps = int(cfg["input"]["num_frames"]), int(cfg["input"]["fps"])
         gh, gw = self.token_grid.grid_hw
         n = (self.n_frames // self.token_grid.tubelet) * gh * gw
-        self.pos_enc = torch.from_numpy(sinusoid_table(n, model.encoder.norm.normalized_shape[0]))[None].to(device)
-        self.pos_dec = torch.from_numpy(sinusoid_table(n, model.mask_token.shape[-1]))[None].to(device)
+        self.predicts = hasattr(model, "decoder")          # encoder-only weights: encode() only (base.Adapter)
+        self.pos_enc = torch.from_numpy(sinusoid_table(n, model.encoder.patch_embed.proj.out_channels))[None].to(device)
+        if self.predicts:
+            self.pos_dec = torch.from_numpy(sinusoid_table(n, model.mask_token.shape[-1]))[None].to(device)
         self.mean = torch.tensor(IMAGENET_MEAN, device=device).view(1, 3, 1, 1, 1)
         self.std = torch.tensor(IMAGENET_STD, device=device).view(1, 3, 1, 1, 1)
         s = cfg.get("surprise", {})
@@ -151,7 +161,23 @@ class VideoMAEv2Adapter(ModelAdapter):
 
     @classmethod
     def load(cls, cfg, device: str = "cuda") -> "VideoMAEv2Adapter":
+        """Giant: the pre-training checkpoint (``checkpoint``, encoder + decoder). Otherwise an encoder-only
+        OpenGVLab/VideoMAEv2-* model repo at ``local_path`` (config.json ``model_config`` for the dims; its
+        ``model.*`` keys, fc_norm dropped; pinned by the config's ``sha256`` map, checked by the registry)."""
         import torch
+        if not cfg.get("checkpoint"):
+            from safetensors.torch import load_file
+            root = Path(cfg["local_path"])
+            mc = json.loads((root / "config.json").read_text())["model_config"]
+            if mc.get("use_learnable_pos_emb") or mc.get("init_values") or mc.get("cos_attn") or not mc.get("qkv_bias"):
+                raise ValueError(f"{root}: model_config {mc} is not the architecture videomae2.py builds")
+            model = _build(torch)(enc_dim=mc["embed_dim"], enc_depth=mc["depth"], enc_heads=mc["num_heads"],
+                                  dec_depth=None, mlp_ratio=mc["mlp_ratio"], patch=mc["patch_size"],
+                                  tubelet=mc["tubelet_size"])
+            sd = {"encoder." + k[len("model."):]: v for k, v in load_file(str(root / "model.safetensors")).items()
+                  if not k.startswith("model.fc_norm.")}
+            model.load_state_dict(sd, strict=True)
+            return cls(cfg, model.to(getattr(torch, cfg.get("dtype", "float32"))).to(device).eval(), device)
         ck = Path(cfg["checkpoint"]["path"])
         want = cfg["checkpoint"].get("sha256")
         if want:
@@ -208,9 +234,13 @@ class VideoMAEv2Adapter(ModelAdapter):
                 hs[i] = h
         return m.norm(h), hs
 
-    def _decoder(self, enc_out, visible, decode: "torch.Tensor"):
-        """Decoder over [visible tokens, mask tokens at ``decode`` positions]; returns (normed hidden, pixels)
-        for the decode positions (or for the visible ones if ``decode`` is empty)."""
+    def _decoder(self, enc_out, visible, decode: "torch.Tensor", keep=()):
+        """Decoder over [visible tokens, mask tokens at ``decode`` positions]; returns (normed hidden, pixels,
+        {block i in ``keep``: its output}) for the decode positions (or for the visible ones if ``decode`` is
+        empty). The sequence is visible positions then decode positions, each in clip order."""
+        if not self.predicts:
+            raise RuntimeError(f"{self.name}: encoder-only weights (no pre-training decoder): forecast / surprise / "
+                               "pred_real need the pre-training checkpoint (configs/models/videomae_v2_giant.yaml)")
         m = self.model
         v = m.encoder_to_decoder(enc_out) + self.pos_dec[:, visible].to(enc_out.dtype)
         parts = [v]
@@ -218,10 +248,13 @@ class VideoMAEv2Adapter(ModelAdapter):
         if nd:
             parts.append(m.mask_token.to(enc_out.dtype) + self.pos_dec[:, decode].to(enc_out.dtype))
         h = self.torch.cat(parts, 1)
-        for blk in m.decoder.blocks:
+        hs = {}
+        for i, blk in enumerate(m.decoder.blocks):
             h = blk(h)
+            if i in keep:
+                hs[i] = h[:, -nd:] if nd else h
         h = m.decoder.norm(h[:, -nd:] if nd else h)
-        return h, m.decoder.head(h)
+        return h, m.decoder.head(h), hs
 
     def target_pixels(self, x, with_scale: bool = False):
         """Per-patch-normalised pixels, the pre-training target: [N, 2*14*14*3] ordered (t, h, w).
@@ -248,10 +281,11 @@ class VideoMAEv2Adapter(ModelAdapter):
         allv = torch.ones(T_tok * self._n_per(), dtype=torch.bool, device=x.device)
         with torch.no_grad():
             out, hs = self._encoder(x, allv, keep=self.layers)
-            dec, _ = self._decoder(out, allv, torch.zeros_like(allv))
-        acts = {l: self._grid(h[0], T_tok) for l, h in hs.items()}
-        acts[ENC_NORM] = self._grid(out[0], T_tok)
-        acts[FINAL] = self._grid(dec[0], T_tok)
+            acts = {l: self._grid(h[0], T_tok) for l, h in hs.items()}
+            if self.predicts:                     # final norm + decoder space (giant pre-training weights only)
+                dec, _, _ = self._decoder(out, allv, torch.zeros_like(allv))
+                acts[ENC_NORM] = self._grid(out[0], T_tok)
+                acts[FINAL] = self._grid(dec[0], T_tok)
         return acts
 
     def _future(self, x, context_end_frame):
@@ -267,7 +301,7 @@ class VideoMAEv2Adapter(ModelAdapter):
             out, _ = self._encoder(x[:, :, :context_end_frame], vis[:n_ctx])
             # positions are absolute token indices, so the context encoding equals the full-clip one restricted
             # to context positions only if no future token is visible: true here (context tokens only)
-            h, pix = self._decoder(out, vis, ~vis)
+            h, pix, _ = self._decoder(out, vis, ~vis)
         return h[0], pix[0], (n_all - n_ctx) // self._n_per()
 
     def forecast(self, video, context_end_frame: int) -> dict[int, Any]:
@@ -276,28 +310,31 @@ class VideoMAEv2Adapter(ModelAdapter):
         h, _, T_post = self._future(x, context_end_frame)
         return {FINAL: self._grid(h, T_post)}
 
-    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0) -> dict[int, Any]:
+    def pred_real(self, video, context_end_frame: int, n_masks: int = 4, seed: int = 0, layers=()) -> dict:
         """P-pred-real features (spec §5.2): decoder hidden states (FINAL) for MASKED REAL post-event tokens,
         with every other token of the clip (all pre, the other post tokens) visible to the encoder. Spatial
         positions split into ``n_masks`` seeded groups, group k masked in every post token-frame on pass k.
-        Same space and shape [T_post_tok, gh, gw, 512] as forecast()."""
+        Same space and shape [T_post_tok, gh, gw, 512] as forecast(). ``layers``: decoder block indices whose
+        outputs at the same masked tokens are also returned (keys PRED_LAYER; L4's post-event steering site)."""
         torch = self.torch
         x = video if torch.is_tensor(video) else self.to_tensor(video)
         per = self._n_per()
         n_ctx = (context_end_frame // self.token_grid.tubelet) * per
         n_all = (x.shape[2] // self.token_grid.tubelet) * per
-        out = None
+        keep = [int(l) for l in layers]
+        out = {}
         with torch.no_grad():
             for grp in spatial_mask_groups(per, n_masks, seed):
                 tgt = torch.zeros(n_all, dtype=torch.bool, device=x.device)
                 for t in range((n_all - n_ctx) // per):
                     tgt[n_ctx + t * per + torch.as_tensor(grp, device=x.device)] = True
                 enc, _ = self._encoder(x, ~tgt)
-                h, _ = self._decoder(enc, ~tgt, tgt)
-                if out is None:
-                    out = torch.zeros(n_all - n_ctx, h.shape[-1], dtype=h.dtype, device=h.device)
-                out[tgt[n_ctx:]] = h[0]
-        return {FINAL: self._grid(out, (n_all - n_ctx) // per)}
+                h, _, hs = self._decoder(enc, ~tgt, tgt, keep)
+                for key, v in {FINAL: h, **{PRED_LAYER.format(i): hs[i] for i in keep}}.items():
+                    if key not in out:
+                        out[key] = torch.zeros(n_all - n_ctx, v.shape[-1], dtype=v.dtype, device=v.device)
+                    out[key][tgt[n_ctx:]] = v[0]
+        return {key: self._grid(v, (n_all - n_ctx) // per) for key, v in out.items()}
 
     def surprise(self, video, context_end_frame: int, object_masks=None) -> dict[str, float]:
         torch = self.torch
@@ -308,17 +345,23 @@ class VideoMAEv2Adapter(ModelAdapter):
         d2 = (pix.float() - tgt[n_ctx:]) ** 2
         err, werr = d2.mean(-1), (d2 * var[n_ctx:]).mean(-1)          # normalised / raw-pixel MSE per token
         res = {"fut_mse_all": float(err.mean()), "fut_wmse_all": float(werr.mean())}
+        fr = lambda a: a.reshape(T_post, -1)                            # flat post tokens -> [T_post, per frame]
+        add_frame_means(res, "fut_mse_all", fr(err))
+        add_frame_means(res, "fut_wmse_all", fr(werr))
         obj = None
         if object_masks is not None:
             obj = torch.as_tensor(np.asarray(object_masks), device=x.device).bool().reshape(-1)
             if obj.any():
                 res["fut_mse_obj"] = float(err[obj].mean())
                 res["fut_wmse_obj"] = float(werr[obj].mean())
+                add_frame_means(res, "fut_mse_obj", fr(err), fr(obj))
+                add_frame_means(res, "fut_wmse_obj", fr(werr), fr(obj))
         # pre-training tube masks: same draws for every clip (seeded), scored on masked POST tokens
         n_all = tgt.shape[0]
         per = self._n_per()
         g = torch.Generator(device="cpu").manual_seed(0)
         e_all, e_obj, w_all, w_obj = [], [], [], []
+        pf = {}                                                         # metric -> per-draw frame_means
         for _ in range(self.tube_draws):
             keep = torch.randperm(per, generator=g)[: int(round(per * (1 - self.tube_ratio)))]
             vis2d = torch.zeros(per, dtype=torch.bool)
@@ -326,18 +369,25 @@ class VideoMAEv2Adapter(ModelAdapter):
             vis = vis2d.repeat(n_all // per).to(x.device)
             with torch.no_grad():
                 out, _ = self._encoder(x, vis)
-                _, p2 = self._decoder(out, vis, ~vis)
+                _, p2, _ = self._decoder(out, vis, ~vis)
             d2 = (p2[0].float() - tgt[~vis]) ** 2
-            for lst_a, lst_o, e in ((e_all, e_obj, d2.mean(-1)), (w_all, w_obj, (d2 * var[~vis]).mean(-1))):
+            for kind, lst_a, lst_o, e in (("mse", e_all, e_obj, d2.mean(-1)), ("wmse", w_all, w_obj, (d2 * var[~vis]).mean(-1))):
                 full = torch.full((n_all,), float("nan"), device=x.device)
                 full[~vis] = e
                 post = full[n_ctx:]
                 lst_a.append(torch.nanmean(post))
+                pf.setdefault(f"tube_{kind}_all", []).append(frame_means(fr(post)))
                 if obj is not None and obj.any():
                     lst_o.append(torch.nanmean(post[obj]))
+                    pf.setdefault(f"tube_{kind}_obj", []).append(frame_means(fr(post), fr(obj)))
         res["tube_mse_all"] = float(torch.stack(e_all).mean())
         res["tube_wmse_all"] = float(torch.stack(w_all).mean())
         if e_obj:
             res["tube_mse_obj"] = float(torch.stack(e_obj).mean())
             res["tube_wmse_obj"] = float(torch.stack(w_obj).mean())
+        for k, draws in pf.items():                                     # mean over draws per token-frame
+            v = np.array([d[0] for d in draws], float)
+            with np.errstate(invalid="ignore"):
+                res["per_frame"]["surprise"][k] = np.nanmean(np.where(np.isfinite(v), v, np.nan), 0).tolist()
+            res["per_frame"]["weight"][k] = np.sum([d[1] for d in draws], 0).tolist()
         return res

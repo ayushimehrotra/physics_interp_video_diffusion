@@ -1,4 +1,4 @@
-"""Closed-form scene families on top of the F1 machinery (spec §2.2, §2.3): F6 to F10.
+"""Closed-form scene families on top of the F1 machinery (spec §2.2, §2.3): F6 to F12.
 
 Pure numpy (+ scipy for F8/F9 path integration). Each family module exposes
 
@@ -39,9 +39,10 @@ from typing import Callable
 import numpy as np
 
 G = 9.81
-# F9 (pendulum) is not built: Kubric's PyBullet view creates every body with useMaximalCoordinates=True,
-# and pybullet then refuses every constraint (point2point, revolute, fixed); see docs/RESUME.md.
-FAMILY_MODULES = {"f6": "f6_friction", "f7": "f7_freefall", "f8": "f8_ramp", "f10": "f10_rolling"}
+# F9 (pendulum) needs no hinge constraint (Kubric's PyBullet bodies refuse every constraint): the bob and the
+# rod are keyframed from the exact (elliptic) pendulum motion, like every other closed-form family.
+FAMILY_MODULES = {"f6": "f6_friction", "f7": "f7_freefall", "f8": "f8_ramp", "f9": "f9_pendulum",
+                  "f10": "f10_rolling", "f11": "f11_support", "f12": "f12_spin"}
 
 
 def family_module(family: str):
@@ -55,14 +56,19 @@ def family_module(family: str):
 
 @dataclass
 class Body:
-    """A dynamic object. ``size`` is the radius (sphere, cylinder) or the half-extent (cube)."""
+    """A dynamic object. ``size`` is the radius (sphere, cylinder) or the half-extent (cube; box: half[0])."""
     name: str                     # "A", "B" (label key)
-    shape: str                    # sphere | cube | cylinder | tube
+    shape: str                    # sphere | cube | cylinder | tube | box
     size: float
     density: float
     look: dict                    # color (rgb), metallic, roughness, specular, ior
     seg_id: int
     length: float = 0.0           # cylinders: half-length along y
+    inner: float = 0.9            # tube: inner radius / outer radius (F10 samples it per group)
+    half: tuple | None = None     # box: half-extents along the body's x, y, z
+    spin_axis: int = 1            # box: the body axis (0 x, 1 y, 2 z) that `inertia` is about
+    aux: bool = False             # visual-only attachment (pendulum rod, release prop): labelled aux, left out of
+    #                               io.law_inputs and of the in-frame check
 
     @property
     def volume(self) -> float:
@@ -72,8 +78,10 @@ class Body:
             return (2.0 * self.size) ** 3
         if self.shape == "cylinder":
             return math.pi * self.size ** 2 * 2.0 * self.length
-        if self.shape == "tube":       # wall from 0.9 r to r (families.f10_rolling.TUBE_INNER)
-            return math.pi * self.size ** 2 * (1 - 0.81) * 2.0 * self.length
+        if self.shape == "tube":       # wall from inner * r to r
+            return math.pi * self.size ** 2 * (1 - self.inner ** 2) * 2.0 * self.length
+        if self.shape == "box":
+            return 8.0 * float(np.prod(self.half))
         raise ValueError(self.shape)
 
     @property
@@ -82,21 +90,67 @@ class Body:
 
     @property
     def inertia(self) -> float:
-        """Moment of inertia about a centroidal axis (the rolling axis for cylinders; thin-walled tube)."""
-        k = {"sphere": 0.4 * self.size ** 2, "cylinder": 0.5 * self.size ** 2, "tube": 0.5 * 1.81 * self.size ** 2,
+        """Moment of inertia about a centroidal axis (the rolling axis for cylinders; thin-walled tube; box:
+        ``spin_axis``)."""
+        if self.shape == "box":
+            h = [x for i, x in enumerate(self.half) if i != self.spin_axis]
+            return self.mass * (h[0] ** 2 + h[1] ** 2) / 3.0
+        k = {"sphere": 0.4 * self.size ** 2, "cylinder": 0.5 * self.size ** 2, "tube": 0.5 * (1 + self.inner ** 2) * self.size ** 2,
              "cube": (2.0 * self.size) ** 2 / 6.0}[self.shape]
         return k * self.mass
 
 
 @dataclass
 class Static:
-    """A static box (ramps, ledges, bands, hinge posts). ``half`` are half-extents."""
+    """A static box (ramps, ledges, bands, hinge posts). ``half`` are half-extents.
+
+    ``profile`` (F8 ramps): instead a prism, the surface polyline [(x, z), ...] (x increasing) extruded over
+    y in [-half[1], half[1]] and closed below at z = -2 half[2]; rendered as ONE mesh (:func:`profile_mesh_obj`: a
+    smooth swept surface, no overlapping slabs), simulated as one box under each polyline segment
+    (:func:`static_boxes`); ``position`` / ``quaternion`` stay the identity."""
     name: str
     half: tuple
     position: tuple
     quaternion: tuple = (1.0, 0.0, 0.0, 0.0)    # wxyz
     look: dict = field(default_factory=dict)
     friction: float = 0.0
+    profile: list | None = None
+
+
+def static_boxes(st: Static) -> list:
+    """[(half, position, quaternion wxyz)] of the boxes that make up a static (physics)."""
+    if st.profile is None:
+        return [(tuple(st.half), tuple(st.position), tuple(st.quaternion))]
+    out = []
+    for (xa, za), (xb, zb) in zip(st.profile[:-1], st.profile[1:]):
+        L = math.hypot(xb - xa, zb - za)
+        if L < 1e-9:
+            continue
+        phi = math.atan2(-(zb - za), xb - xa)                  # descent angle of the segment (x increasing)
+        n = np.array([math.sin(phi), 0.0, math.cos(phi)])
+        mid = np.array([0.5 * (xa + xb), 0.0, 0.5 * (za + zb)]) - st.half[2] * n
+        out.append(((0.5 * L, st.half[1], st.half[2]), tuple(mid), quat_y(phi)))
+    return out
+
+
+def profile_mesh_obj(st: Static, path) -> None:
+    """Write the extruded ``st.profile`` prism as an .obj (Blender axes as f10_rolling.mesh_obj: x, y, z)."""
+    xz = [tuple(map(float, q)) for q in st.profile]
+    y, zb = float(st.half[1]), -2.0 * float(st.half[2])
+    V, F = [], []
+    for x, z in xz:                                          # per profile point: front top, back top, front/back bottom
+        V += [(x, -y, z), (x, y, z), (x, -y, zb), (x, y, zb)]
+    for i in range(len(xz) - 1):
+        a, b = 4 * i, 4 * (i + 1)
+        F += [(a, b, b + 1, a + 1),                          # surface strip
+              (a, a + 2, b + 2, b),                          # front face (y = -half[1]): coplanar quads, no overlap
+              (a + 1, b + 1, b + 3, a + 3),                  # back face
+              (a + 2, a + 3, b + 3, b + 2)]                  # bottom
+    n = 4 * (len(xz) - 1)
+    F += [(0, 1, 3, 2), (n, n + 2, n + 3, n + 1)]            # end caps
+    with open(path, "w") as f:
+        f.writelines(f"v {x:.6f} {yy:.6f} {z:.6f}\n" for x, yy, z in V)
+        f.writelines("f " + " ".join(str(i + 1) for i in face) + "\n" for face in F)
 
 
 @dataclass
@@ -129,6 +183,32 @@ class Twin:
     constants: dict = field(default_factory=dict)  # per-twin legal-world constants (e.g. mu, e_floor)
     record: dict = field(default_factory=dict)    # what was done, for the labels' `edit`
     masses: dict | None = None    # per-twin body masses where they differ (F3-like)
+    # energy-ladder twins (F7 bounce, F8; collisions get theirs from :func:`collision_energy_labels`):
+    epsilon: float | None = None          # generalised restitution of the exchange event (spec §5.0.1)
+    clean_until_s: float | None = None    # first secondary event after the exchange (spec §5.0.2); also
+    #                                       the end of this twin's in-frame window (Scene.inframe_reason)
+    event_state: dict | None = None       # exact {"pre", "post"} states when not the event instant's limits
+    # moving camera (F4 camera boost): [T, 3] world translation of the camera from Scene.camera (the camera at
+    # ``camera_t_ref_s``); the camera moves at constant velocity ``camera_velocity`` and never turns
+    camera_shift: np.ndarray | None = None
+    camera_velocity: np.ndarray | None = None
+    camera_t_ref_s: float | None = None
+
+    def camera_frame(self) -> "Twin":
+        """This twin in the camera's rest frame (world axes, origin moving with the camera, = the world at
+        ``camera_t_ref_s``): positions - camera_shift, velocities - camera_velocity. Scene.camera projects these to the
+        rendered pixels at every frame. A static camera: the twin itself."""
+        if self.camera_shift is None:
+            return self
+        u = np.asarray(self.camera_velocity, float)
+        tracks = {n: Track(t.p - self.camera_shift, t.v - u, t.q.copy(), t.w.copy()) for n, t in self.tracks.items()}
+        es = None
+        if self.event_state is not None:                 # exact states at their own instants t_s
+            sh = lambda t_s: u * (float(t_s) - float(self.camera_t_ref_s))
+            es = {k: {**st, "p": (np.asarray(st["p"], float) - sh(st["t_s"])).tolist(),
+                      "v": (np.asarray(st["v"], float) - u).tolist()} for k, st in self.event_state.items()}
+        return Twin(**{**self.__dict__, "tracks": tracks, "event_state": es, "camera_shift": None,
+                       "camera_velocity": None, "camera_t_ref_s": None})
 
 
 @dataclass
@@ -202,6 +282,14 @@ def side_camera(fmt: dict, zc: float = 4.3, dist: float = 20.0, x0: float = 0.0)
                   resolution=tuple(fmt["resolution"]), aspect=fmt["aspect"])
 
 
+def framed_side_camera(fmt: dict, x_lo: float, x_hi: float, z_lo: float, z_hi: float, fill: float = 0.85) -> Camera:
+    """Side camera (as :func:`side_camera`) centred on the box [x_lo, x_hi] x [z_lo, z_hi] of the plane y = 0, at the
+    distance where the box fills ``fill`` of the binding image dimension (the rest is an even margin)."""
+    hw1, hh1 = visible_box(side_camera(fmt, dist=1.0), 1.0)          # half extents per metre of depth
+    dist = max(0.5 * (x_hi - x_lo) / hw1, 0.5 * (z_hi - z_lo) / hh1) / fill
+    return side_camera(fmt, zc=0.5 * (z_lo + z_hi), dist=dist, x0=0.5 * (x_lo + x_hi))
+
+
 def top_camera(fmt: dict, height: float = 20.0, z_plane: float = 0.0) -> Camera:
     return Camera((0.0, 0.0, z_plane + height), (0.0, 0.0, z_plane), (0.0, 1.0, 0.0),
                   sensor_w_mm=fmt["sensor_width_mm"], resolution=tuple(fmt["resolution"]),
@@ -259,10 +347,11 @@ class Scene:
     camera: Camera
     gravity: float                # |g| along -z (0 for planar collision scenes)
     t_event: float                # exact event time (s)
-    event_kind: str               # contact | branch | release | band
+    event_kind: str               # collision | bounce | pad (energy exchange events) | branch | release | contact
     twins: dict                   # name -> Twin (ordered; the first twin of each pre_segment renders in full)
     fps: int
     constants: dict = field(default_factory=dict)   # legal-world scene constants shared by all twins
+    stop_dose: dict | None = None                   # {body: dose} over the group's epsilon ladder (stop_dose())
     look: dict = field(default_factory=dict)        # floor / light / background settings
     sim_init: dict = field(default_factory=dict)    # PyBullet check: {"t0": s, "twin": name, "until": s}
     inframe: dict = field(default_factory=dict)     # {"start": frame, "stop": frame}: bodies fully visible
@@ -298,23 +387,113 @@ class Scene:
                         raise AssertionError(f"{tw.name}/{n}.{key} differs from {ref.name} before frame {k}")
                 if tw.statics != ref.statics:
                     raise AssertionError(f"{tw.name}: statics differ inside pre_segment {tw.pre_segment}")
+            sa, sb = tw.camera_shift, ref.camera_shift
+            if (sa is None) != (sb is None) or (sa is not None and not np.array_equal(sa[:k], sb[:k])):
+                raise AssertionError(f"{tw.name}: camera motion differs from {ref.name} before frame {k}")
 
     def inframe_reason(self, margin_px: float = 4.0) -> str | None:
-        """Every body's silhouette inside the image over [inframe.start, inframe.stop) in every twin."""
-        cam = self.camera
-        W, H = cam.resolution
+        """Every body's silhouette inside the image over [inframe.start, inframe.stop) in every twin; a twin
+        with ``clean_until_s`` uses its own stop instead: every frame up to that instant."""
         lo = self.inframe.get("start", self.first_post)
         hi = self.inframe.get("stop", self.first_post + self.fps)
         for tw in self.twins.values():
-            for b in self.bodies:
-                p = tw.tracks[b.name].p[lo:hi]
-                uvz = cam.project(p)
-                rad = bounding_radius(b) * cam.K()[0, 0] / uvz[:, 2] * 1.05 + margin_px
-                rad_v = rad * cam.K()[1, 1] / cam.K()[0, 0]
-                bad = ((uvz[:, 0] - rad < 0) | (uvz[:, 0] + rad > W) | (uvz[:, 1] - rad_v < 0) | (uvz[:, 1] + rad_v > H))
+            stop = hi if tw.clean_until_s is None else int(math.floor(tw.clean_until_s * self.fps + 1e-9)) + 1
+            cf = tw.camera_frame()                          # a moving camera: positions relative to it
+            for b in (b for b in self.bodies if not b.aux):
+                bad = outside(self.camera, b, cf.tracks[b.name].p[lo:stop], margin_px)
                 if bad.any():
                     return f"{tw.name}_{b.name}_out_of_frame_at_{lo + int(np.argmax(bad))}"
         return None
+
+
+def outside(cam: Camera, b: "Body", p: np.ndarray, margin_px: float = 4.0) -> np.ndarray:
+    """[n] bool: the body's silhouette (bounding sphere x 1.05 + margin) is not wholly inside the image."""
+    W, H = cam.resolution
+    uvz = cam.project(p)
+    rad = bounding_radius(b) * cam.K()[0, 0] / uvz[:, 2] * 1.05 + margin_px
+    rad_v = rad * cam.K()[1, 1] / cam.K()[0, 0]
+    return (uvz[:, 0] - rad < 0) | (uvz[:, 0] + rad > W) | (uvz[:, 1] - rad_v < 0) | (uvz[:, 1] + rad_v > H)
+
+
+def set_clean_until(sc: "Scene", t_secondary: dict | None = None, margin_px: float = 4.0) -> str | None:
+    """Set ``clean_until_s`` of every twin whose first secondary event after the event is an object leaving the
+    frame or ``t_secondary[twin]`` (an exact time, e.g. the first floor contact), whichever comes first: the time
+    of the last frame at which every non-aux body is wholly in frame, capped at ``t_secondary``. A body that never
+    leaves gives the clip's last frame, so a twin with no secondary event in the clip ends at the clip end. Returns
+    a rejection reason when a twin leaves the frame before ``inframe.stop`` (the in-frame span the sampler
+    requires; :meth:`Scene.inframe_reason` checks only up to ``clean_until_s`` once it is set)."""
+    k, fps = sc.first_post, sc.fps
+    need = sc.inframe.get("stop", k + fps)
+    for tw in sc.twins.values():
+        T = next(iter(tw.tracks.values())).p.shape[0]
+        stop = T
+        cf = tw.camera_frame()
+        for b in (b for b in sc.bodies if not b.aux):
+            out = outside(sc.camera, b, cf.tracks[b.name].p[k:], margin_px)
+            if out.any():
+                stop = min(stop, k + int(np.argmax(out)))
+        if stop < min(need, T):
+            return f"{tw.name}_leaves_frame_at_{stop}"
+        tw.clean_until_s = min((stop - 1) / fps, float((t_secondary or {}).get(tw.name, math.inf)))
+    return None
+
+
+# --------------------------------------------------------------------------- #
+# energy-ladder labels (spec §5.0.1-5.0.2): epsilon, clean_until_s, stop_dose
+# --------------------------------------------------------------------------- #
+
+
+EPS_LADDER = tuple(round(0.5 + 0.05 * i, 2) for i in range(21))   # 0.5, 0.55, ..., 1.5 (spec §5.0.2)
+
+
+def eps_ladder(cfg, key: str) -> list:
+    """The epsilon ladder ``cfg.twins.<key>`` (default :data:`EPS_LADDER`), sorted."""
+    tw = (cfg.get("twins") if hasattr(cfg, "get") else None) or {}
+    return sorted(float(e) for e in (tw.get(key) or EPS_LADDER))
+
+
+def eps_name(e: float) -> str:
+    """Twin name of ladder rung e: 0.5 -> "eps0.5", 1.0 -> "eps1.0", 1.25 -> "eps1.25"."""
+    s = f"{float(e):.3f}".rstrip("0")
+    return f"eps{s}0" if s.endswith(".") else f"eps{s}"
+
+
+def stop_dose(ladder: dict) -> dict:
+    """{body: dose} at which |v'(eps)| is minimal along an epsilon ladder ``{eps: {body: post velocity}}``.
+
+    Post-event velocities are affine in eps (v' = v0 + eps d), so the two ladder ends fix the line and the
+    minimiser is eps* = -v0.d / |d|^2. NaN when eps* is not strictly inside the ladder (the minimum is at a
+    ladder end), or when v' does not depend on eps."""
+    e_lo, e_hi = min(ladder), max(ladder)
+    out = {}
+    for n in ladder[e_lo]:
+        a, b = np.asarray(ladder[e_lo][n], float), np.asarray(ladder[e_hi][n], float)
+        d = (b - a) / (e_hi - e_lo)
+        v0 = a - e_lo * d
+        dd = float(d @ d)
+        x = -float(v0 @ d) / dd if dd > 1e-24 else math.nan
+        tol = 1e-9 * (e_hi - e_lo)
+        out[n] = x if (math.isfinite(x) and e_lo + tol < x < e_hi - tol) else math.nan
+    return out
+
+
+def collision_energy_labels(labels: dict) -> dict:
+    """``event_kind``, ``epsilon``, ``clean_until_s`` of a two-sphere collision clip (f1-f4), from its labels.
+
+    Works on labels-1 (the frozen F1 render) and labels-2: needs only physlaw.pre_velocity / post_velocity
+    (the twin's, planar), contact_normal (A -> B) and inframe_until (first frame at which a sphere's
+    silhouette leaves the image, num_frames if never). epsilon = -(v_A' - v_B').n / (v_A - v_B).n.
+    clean_until_s = time of the last frame before a sphere leaves the image, else of the last frame:
+    frictionless spheres on a plane with no walls have no other secondary event (they separate at
+    eps u_n >= 0 along n and never meet again)."""
+    pl = labels["physlaw"]
+    n = np.asarray(pl["contact_normal"], float)[:2]
+    pv, qv = pl["pre_velocity"], pl["post_velocity"]
+    rel = lambda v: np.asarray(v["A"], float)[:2] - np.asarray(v["B"], float)[:2]
+    T, fps = labels["scene_constants"]["num_frames"], labels["scene_constants"]["frame_rate"]
+    f_out = min(min(pl["inframe_until"].values()), T)
+    return {"event_kind": "collision", "epsilon": float(-(rel(qv) @ n) / (rel(pv) @ n)),
+            "clean_until_s": (f_out - 1) / fps}
 
 
 def bounding_radius(b: Body) -> float:
@@ -322,6 +501,8 @@ def bounding_radius(b: Body) -> float:
         return b.size * math.sqrt(3.0)
     if b.shape in ("cylinder", "tube"):
         return math.hypot(b.size, b.length)
+    if b.shape == "box":
+        return float(np.linalg.norm(b.half))
     return b.size
 
 
@@ -420,8 +601,9 @@ LOOKS = {
     "plastic_yellow": {"color": (0.85, 0.65, 0.10), "metallic": 0.0, "roughness": 0.5, "specular": 0.4, "ior": 1.45},
     "wood": {"color": (0.55, 0.38, 0.22), "metallic": 0.0, "roughness": 0.7, "specular": 0.2, "ior": 1.45},
     "ramp": {"color": (0.62, 0.62, 0.66), "metallic": 0.0, "roughness": 0.6, "specular": 0.2, "ior": 1.45},
-    "band": {"color": (0.30, 0.42, 0.55), "metallic": 0.0, "roughness": 0.9, "specular": 0.1, "ior": 1.45},
+    "pad": {"color": (0.18, 0.50, 0.28), "metallic": 0.0, "roughness": 0.95, "specular": 0.1, "ior": 1.45},
     "neutral": {"color": (0.22, 0.22, 0.22), "metallic": 0.0, "roughness": 0.6, "specular": 0.4, "ior": 1.45},
+    "ice": {"color": (0.78, 0.86, 0.92), "metallic": 0.0, "roughness": 0.15, "specular": 0.6, "ior": 1.31},
 }
 BODY_LOOKS = ("rubber_red", "plastic_blue", "plastic_yellow", "metal", "wood")
 

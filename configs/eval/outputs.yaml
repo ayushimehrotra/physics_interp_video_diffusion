@@ -1,20 +1,27 @@
 # Output-level evaluation (spec §6). Stages: 07 generate, 08 track + read out, 09 score.
 level: outputs
-families: [f1, f7, f8]
-# Laws scored on a measured outcome, per family (physlaw.eval.laws names); a dict = per sub-family.
-laws:
-  f1: [momentum, energy, com, angular_momentum]
-  f2: [momentum, energy, com, angular_momentum]
-  f3: [momentum, energy, com, angular_momentum]
-  f7: {projectile: [gravity, axis_independence], drop: [gravity, mass_independence], bounce: [bounce]}
-  f8: [ramp_energy]
+families: [f1, f2, f6, f7, f8, f9, f10, f11, f12]
+# Law statistics per readout (physlaw/eval/outputs.py READOUT_SELF; all scale-free: no true g, fps or metric speed):
+#   f1-f4 collisions (readout_self): epsilon along the line of centres, eta, antiparallel, normal alignment
+#   f6  readout_friction: glide -> momentum inertia_speed / inertia_turn; slide / pair -> friction
+#       decel_const (after vs before the branch, while moving), stop_hold (stop window), mass_ratio (pair)
+#   f7  readout_traj: bounce epsilon; projectile / drop gravity g_ratio, axis_ratio, mass_ratio
+#   f8  readout_traj: Galileo's ramp epsilon (apex / release height)
+#   f9  readout_pendulum: pair -> oscillation period_ratio, mass_period_ratio (zero crossings); swing -> epsilon
+#       from apex heights above the lowest tracked point
+#   f10 readout_rolling: rolling order and slip (marker-wedge rotation)
+#   f11 readout_support: statics tip_consistency (rotation over the tip window), alpha_ratio (g measured in the clip:
+#       the block's free fall after separation, else the prop's descent / prop_acc_over_g; half-length in pixels)
+#   f12 readout_spin: angular_momentum L_ratio (centre tracks + the bar's marker-wedge heading)
 bootstrap: {n: 2000}
 # Momentum package on generated outcomes (physlaw/eval/outputs.py, "Momentum package"); replaces r_p / S_outcome.
 #   kappa: interaction gate, track A D = |m_A dv_A| + |m_B dv_B| >= kappa * 2 mu u_n; track B |dv_A - dv_B| >= kappa * |u_n|
 #   min_mass_ratio: track A S_mom pools clips with m_max / m_min >= this (below, the mass-blind rule is nearly right)
-#   e_tol: track B "e_hat <= 1" share counts e_hat <= 1 + e_tol (readout noise: real Wan-geometry e = 1 clips 0.91,
+#   e_tol: track B "eps <= 1" share counts eps <= 1 + e_tol (readout noise: real Wan-geometry e = 1 clips 0.91,
 #          e = 1.5 energy_create clips 0.05)
 momentum: {kappa: 0.25, min_mass_ratio: 1.25, e_tol: 0.1}
+# Energy share: measurable clips with epsilon <= 1 + tol, generated vs the real-clip readout distribution.
+energy: {tol: 0.1}
 # Track A (§6.2): continue the real pre-event context with the adapter's generate().
 track_a:
   # Roster (configs/models/<stem>.yaml; output_track A, track_a_mode in brackets): native multi-frame conditioning,

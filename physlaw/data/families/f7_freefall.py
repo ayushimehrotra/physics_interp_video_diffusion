@@ -5,15 +5,22 @@ Sub-families (one event per group, in the master event window):
   projectile  a ball thrown in from off-screen; branch mid-flight (on a frame).
               legal       closed-form parabola, floor bounces at e_floor = 0.8
               legal_e04   same flight, floor bounces at e_floor = 0.4 (second legal twin)
-              gravity_x15 g scaled x1.5 after the branch           (constant g)
-              vx_x06      horizontal velocity x0.6 at the branch   (axis independence)
+              gravity_x15 g scaled x1.5 after the branch           (violated_law "gravity": constant g)
+              vx_x06      horizontal velocity x0.6 at the branch   (violated_law "gravity": axis independence)
   drop        two balls, identical size and look, different density, held at rest and
               released together; branch mid-fall.
               legal, legal_e04 (as above), heavy_x13: the heavier ball's acceleration
-              x1.3 after the branch (mass independence; creates energy -> flagged)
-  bounce      one ball held at rest and released; event = first floor contact.
-              legal_e08, legal_e04 (two legal twins), energy_x13: rebound height
-              ratio 1.3 x the drop height on that bounce (later bounces at 0.8)
+              x1.3 after the branch (violated_law "gravity": mass independence; creates energy -> flagged)
+              projectile / drop clean_until_s per twin: the first floor contact (exact) or the last frame a
+              ball is wholly in frame, whichever comes first (``families.set_clean_until``).
+  bounce      one ball held at rest and released (the fall shows g and the scale); event = first
+              floor contact (event_kind "bounce"). Twins: the ladder eps<e> (config
+              ``twins.bounce_ladder``, default 0.5, 0.55, ..., 1.5): first-bounce restitution e,
+              rebound apex e^2 x the drop height; e <= 1 legal, e > 1 violated_law "energy"
+              (magnitude e). Later bounces at 0.8 (outside the clean window, which ends at the
+              second floor contact: ``clean_until_s``). The camera is fitted per group so the floor
+              contact .. the e = 1.5 apex fill 85% of the image height; the ball radius is 0.17-0.22 x the
+              drop height (>= 50 px across at 832 x 480). stop_dose NaN (v' = e |v| is smallest at e = 0, off the ladder).
 
 Everything is closed form (``families.ballistic``); see the package docstring for why.
 The PyBullet check stops before the first floor contact: Bullet's restitution is not
@@ -26,12 +33,18 @@ import math
 
 import numpy as np
 
-from physlaw.data.families import (G, LOOKS, Body, Scene, Track, Twin, ballistic, energy, event_time,
-                                   frame_times, pick_look, side_camera, splice, visible_box)
+from physlaw.data.families import (G, LOOKS, Body, Scene, Track, Twin, ballistic, energy, eps_ladder, eps_name,
+                                   event_time, framed_side_camera, frame_times, pick_look, set_clean_until,
+                                   side_camera, splice, stop_dose, visible_box)
 
 SUBFAMILIES = {"projectile": 300, "drop": 200, "bounce": 200}
 E_HI, E_LO = 0.8, 0.4
 RADIUS = (0.30, 0.45)
+# bounce: the camera is fitted per group to the floor contact .. the highest rung's apex, and the ball scales with the
+# drop height H (radius / H), so the ball is >= BOUNCE_MIN_BALL_FRAC of the image width at every drop height
+BOUNCE_RADIUS_FRAC = (0.17, 0.22)
+BOUNCE_FILL = 0.85
+BOUNCE_MIN_BALL_FRAC = 50.0 / 832.0
 MARGIN = 0.15            # m between a silhouette and the image border
 
 
@@ -104,7 +117,7 @@ def _projectile(rng, cfg, fmt):
     twins, land = {}, {}
     for name, v0, g, e, law, mag in (("legal", vb, G, E_HI, None, 0.0), ("legal_e04", vb, G, E_LO, None, 0.0),
                                      ("gravity_x15", vb, 1.5 * G, E_HI, "gravity", 1.5),
-                                     ("vx_x06", vb * [0.6, 1, 1], G, E_HI, "axis_independence", 0.6)):
+                                     ("vx_x06", vb * [0.6, 1, 1], G, E_HI, "gravity", 0.6)):
         tr, b = post(v0, g, e)
         land[name] = b[0] if b else math.inf
         twins[name] = Twin(name, {"A": tr}, legal=law is None, violated_law=law, violation_magnitude=mag,
@@ -120,7 +133,7 @@ def _projectile(rng, cfg, fmt):
                params={"branch_position": pb.tolist(), "branch_velocity": vb.tolist(), "direction": s, "look": look})
     for tw in twins.values():
         tw.flags = _flags(sc, tw, k)
-    return sc
+    return set_clean_until(sc, land) or sc
 
 
 def _held_fall(t, t_rel, p0, r, e_seq, g=G):
@@ -153,16 +166,19 @@ def _drop(rng, cfg, fmt):
     look = pick_look(rng)
     bodies = [_ball(n, r, rho_lo * (ratio if n == heavy else 1.0), look, i + 1) for i, n in enumerate("AB")]
     p0 = {"A": np.array([xc - d / 2, 0.0, z0]), "B": np.array([xc + d / 2, 0.0, z0])}
-    twins = {}
+    twins, land = {}, {}
     for name, e in (("legal", E_HI), ("legal_e04", E_LO)):
-        tracks = {n: _held_fall(t, tr_, p0[n], r, e)[0] for n in "AB"}
+        falls = {n: _held_fall(t, tr_, p0[n], r, e) for n in "AB"}
+        tracks = {n: f[0] for n, f in falls.items()}
+        land[name] = min((f[1][0] for f in falls.values() if f[1]), default=math.inf)
         twins[name] = Twin(name, tracks, constants={"e_floor": e}, record={"kind": "release", "e_floor_post": e})
     # heavier ball: g x1.3 from the branch on, starting from its legal state at the branch
     tracks = {n: twins["legal"].tracks[n].copy() for n in "AB"}
     h = twins["legal"].tracks[heavy]
-    p, v, _ = ballistic(t[k:], tb, h.p[kb], h.v[kb], 1.3 * G, r, E_HI)
+    p, v, b_heavy = ballistic(t[k:], tb, h.p[kb], h.v[kb], 1.3 * G, r, E_HI)
     tracks[heavy] = splice(h, p, v, k)
-    twins["heavy_x13"] = Twin("heavy_x13", tracks, legal=False, violated_law="mass_independence",
+    land["heavy_x13"] = min(b_heavy[:1] + [land["legal"]])
+    twins["heavy_x13"] = Twin("heavy_x13", tracks, legal=False, violated_law="gravity",
                               violation_magnitude=1.3, constants={"e_floor": E_HI},
                               record={"kind": "branch", "body": heavy, "g_post": 1.3 * G, "e_floor_post": E_HI})
     sc = Scene("f7", "drop", bodies, [], cam, G, tb, "branch", twins, fps,
@@ -175,40 +191,51 @@ def _drop(rng, cfg, fmt):
                        "density_light": rho_lo, "density_ratio": ratio})
     for tw in twins.values():
         tw.flags = _flags(sc, tw, k)
-    return sc
+    return set_clean_until(sc, land) or sc
 
 
 def _bounce(rng, cfg, fmt):
-    cam, hw, zb, zt = _frame(fmt)
+    ladder = eps_ladder(cfg, "bounce_ladder")
     T, fps = fmt["num_frames"], fmt["fps"]
     t = frame_times(fmt)
+    t_end = (T - 1) / fps
     tc = event_time(rng, fmt, aligned=False)
-    kr = int(round((tc - rng.uniform(0.6, 1.0)) * fps))
+    kr = int(round((tc - rng.uniform(0.55, 0.85)) * fps))
     tr_ = kr / fps
     tf = tc - tr_
-    r = float(rng.uniform(*RADIUS))
-    z0 = r + 0.5 * G * tf ** 2
-    if r + 1.3 * (z0 - r) + r > zt - MARGIN:
-        return "rebound_above_frame"
-    x0 = float(rng.uniform(-5.0, 5.0))
+    H = 0.5 * G * tf ** 2
+    r = H * float(rng.uniform(*BOUNCE_RADIUS_FRAC))
+    z0 = r + H
+    # framing: the floor contact to the top of the highest rung's apex fills BOUNCE_FILL of the image height
+    z_top = 2.0 * r + max(max(ladder), 1.0) ** 2 * H
+    cam = framed_side_camera(fmt, -1.0, 1.0, 0.0, z_top, BOUNCE_FILL)
+    hw, _ = visible_box(cam, -cam.position[1])
+    if 2.0 * r * cam.px_per_m(-cam.position[1]) < BOUNCE_MIN_BALL_FRAC * cam.resolution[0]:
+        return "ball_too_small_in_view"
+    x0 = float(rng.uniform(-0.5, 0.5)) * (hw - r)
     look = pick_look(rng)
     ball = _ball("A", r, float(rng.uniform(0.8, 3.0)), look, 1)
     p0 = np.array([x0, 0.0, z0])
-    twins = {}
-    for name, eseq, law, mag in (("legal_e08", E_HI, None, 0.0), ("legal_e04", E_LO, None, 0.0),
-                                 ("energy_x13", lambda i: math.sqrt(1.3) if i == 0 else E_HI, "bounce", 1.3)):
-        tr, b = _held_fall(t, tr_, p0, r, eseq)
-        e0 = eseq(0) if callable(eseq) else eseq
-        twins[name] = Twin(name, {"A": tr}, legal=law is None, violated_law=law, violation_magnitude=mag,
-                           constants={"e_floor": e0 if law is None else E_HI},
-                           record={"kind": "bounce", "e_first_bounce": e0, "height_ratio_first_bounce": e0 ** 2,
-                                   "bounce_times_s": b[:4]})
+    twins, posts = {}, {}
+    for e in ladder:
+        name = eps_name(e)
+        tr, b = _held_fall(t, tr_, p0, r, lambda i, e=e: e if i == 0 else E_HI)
         assert abs(b[0] - tc) < 1e-9, (b[0], tc)
-    sc = Scene("f7", "bounce", [ball], [], cam, G, tc, "contact", twins, fps,
-               constants={"g": G, "radius": r, "e_floor": E_HI, "e_floor_lo": E_LO, "z_floor": r,
-                          "release_time_s": tr_, "release_frame": kr, "drop_height": z0 - r},
-               inframe={"start": kr, "stop": min(T, int(math.ceil(tc * fps)) + int(1.0 * fps))},
-               sim_init={"twin": "legal_e08", "t0": tr_, "until": tc - 0.5 / fps},
+        legal = e <= 1.0
+        twins[name] = Twin(name, {"A": tr}, legal=legal, violated_law=None if legal else "energy",
+                           violation_magnitude=0.0 if legal else e,
+                           constants={"e_floor": e, "e_floor_later": E_HI},
+                           record={"kind": "bounce", "epsilon": e, "e_first_bounce": e,
+                                   "height_ratio_first_bounce": e * e, "apex_height": e * e * H,
+                                   "e_later_bounces": E_HI, "bounce_times_s": b[:4]},
+                           epsilon=e, clean_until_s=min(b[1], t_end) if len(b) > 1 else t_end)
+        posts[e] = {"A": [0.0, 0.0, e * G * tf]}
+    sc = Scene("f7", "bounce", [ball], [], cam, G, tc, "bounce", twins, fps,
+               constants={"g": G, "radius": r, "z_floor": r, "release_time_s": tr_, "release_frame": kr,
+                          "drop_height": H},
+               inframe={"start": kr, "stop": T},      # each twin: up to its clean_until_s (second bounce)
+               stop_dose=stop_dose(posts),
+               sim_init={"twin": eps_name(ladder[0]), "t0": tr_, "until": tc - 0.5 / fps},
                params={"release_height": z0, "x": x0, "look": look})
     for tw in twins.values():
         tw.flags = _flags(sc, tw, sc.first_post)
@@ -253,11 +280,21 @@ def acceptance(view) -> list:
         vb = view.v[n][k - 1, 2] - g * (view.t_event - (k - 1) / fps)
         va = view.v[n][k, 2] + g * (k / fps - view.t_event)
         e = -va / vb
-        want = math.sqrt(view.magnitude) if view.violated_law == "bounce" else view.constants["e_floor"]
-        if not close(e, want, scale=1.0):
-            err.append(f"realised restitution {e:.9g} != {want:.9g}")
-        if view.violated_law == "bounce" and not close(e * e, view.magnitude, scale=1.0):
-            err.append("height ratio != 1.3")
+        if not close(e, view.record["epsilon"], scale=1.0):
+            err.append(f"realised restitution {e:.9g} != epsilon {view.record['epsilon']:.9g}")
+        # rebound flight up to the second contact: |v|^2 + 2 g dz = e^2 2 g H
+        H, zf = view.constants["drop_height"], view.constants["z_floor"]
+        t = np.arange(len(view.p[n])) / fps
+        b = view.record["bounce_times_s"]
+        fl = (t > b[0]) & (t < (b[1] if len(b) > 1 else np.inf))
+        e2 = ((view.v[n][fl] ** 2).sum(1) + 2 * g * (view.p[n][fl, 2] - zf)) / (2 * g * H)
+        if not close(e2, np.full_like(e2, e * e), scale=1.0):
+            err.append("rebound energy != e^2 m g H")
+        if view.violated_law:
+            if view.violated_law != "energy" or e <= 1.0 or not close(e, view.magnitude, scale=1.0):
+                err.append(f"violation {view.violated_law} x{view.magnitude} but realised e {e:.9g}")
+        elif e > 1.0 + 1e-9:
+            err.append(f"legal twin creates energy: realised e {e:.9g}")
         return err
     land = view.record.get("first_landing_s") if view.sub == "projectile" else None
     for n in names:
@@ -270,20 +307,19 @@ def acceptance(view) -> list:
             pre = list(range(kr + 1, k - 1))
             post = _flight_frames(view, n, k, min(k + int(0.4 * fps), len(view.v[n]) - 1))
             t_land = view.constants["release_time_s"] + math.sqrt(2 * view.constants["drop_height"] / g)
-            post = [f for f in post if (f + 1) / fps < t_land - 1e-9] if (
-                view.violated_law != "mass_independence" or n != view.constants["heavier"]) else \
-                [f for f in post if view.v[n][f + 1, 2] < view.v[n][f, 2]]
+            post = [f for f in post if view.v[n][f + 1, 2] < view.v[n][f, 2]] if n == view.record.get("body") else \
+                [f for f in post if (f + 1) / fps < t_land - 1e-9]
         check_accel(n, pre, 1.0, f"{n} pre-event")
-        factor = 1.0
-        if view.violated_law == "gravity" or (view.violated_law == "mass_independence" and n == view.constants["heavier"]):
-            factor = view.magnitude
-        check_accel(n, post, factor, f"{n} post-event")
-        if view.violated_law == "axis_independence":
+        # post-event g: the projectile's (gravity_x15: x1.5), the drop's edited ball (heavy_x13: the heavier, x1.3)
+        g_fac = view.record.get("g_post", g) / g if view.sub == "projectile" or n == view.record.get("body") else 1.0
+        check_accel(n, post, g_fac, f"{n} post-event")
+        if g_fac != 1.0 and not (view.violated_law == "gravity" and close(g_fac, view.magnitude, scale=1.0)):
+            err.append(f"{n}: post-event g x{g_fac:.6g} but violation {view.violated_law} x{view.magnitude}")
+        if view.sub == "projectile":   # vx_x06: horizontal velocity x0.6 (the gravity law's axis independence)
             r = view.v[n][k, 0] / view.v[n][k - 1, 0]
-            if not close(r, view.magnitude, scale=1.0):
-                err.append(f"vx ratio {r:.9g} != {view.magnitude}")
-        elif view.sub == "projectile" and not close(view.v[n][k, 0], view.v[n][k - 1, 0], scale=1.0):
-            err.append("vx changed in a twin that keeps axis independence")
+            r_want = view.magnitude if view.violated_law == "gravity" and g_fac == 1.0 else 1.0
+            if not close(r, r_want, scale=1.0):
+                err.append(f"vx ratio {r:.9g} != {r_want}")
     if view.sub == "drop" and view.legal and not close(view.p["A"][:, 2], view.p["B"][:, 2], scale=1.0):
         err.append("legal drop pair does not fall equally")
     return err

@@ -1,0 +1,161 @@
+[L4] site activations 100/320
+[L4] site activations 200/320
+[L4] site activations 300/320
+[L4 momentum] patch donors: 0 candidates excluded (contact in another token-frame) over 64 scenes; per scene {np.str_('f1_100010'): 0, np.str_('f1_100014'): 0, np.str_('f1_100016'): 0, np.str_('f1_100018'): 0, np.str_('f1_100023'): 0, np.str_('f1_100024'): 0, np.str_('f1_100025'): 0, np.str_('f1_100026'): 0, np.str_('f1_100028'): 0, np.str_('f1_100045'): 0, np.str_('f1_100047'): 0, np.str_('f1_100052'): 0, np.str_('f1_100056'): 0, np.str_('f1_100002'): 0, np.str_('f1_100011'): 0, np.str_('f1_100017'): 0, np.str_('f1_100033'): 0, np.str_('f1_100036'): 0, np.str_('f1_100039'): 0, np.str_('f1_100040'): 0, np.str_('f1_100043'): 0, np.str_('f1_100051'): 0, np.str_('f1_100053'): 0, np.str_('f1_100054'): 0, np.str_('f1_100055'): 0, np.str_('f1_100061'): 0, np.str_('f1_100000'): 0, np.str_('f1_100003'): 0, np.str_('f1_100004'): 0, np.str_('f1_100009'): 0, np.str_('f1_100013'): 0, np.str_('f1_100015'): 0, np.str_('f1_100027'): 0, np.str_('f1_100029'): 0, np.str_('f1_100042'): 0, np.str_('f1_100046'): 0, np.str_('f1_100048'): 0, np.str_('f1_100057'): 0, np.str_('f1_100063'): 0, np.str_('f1_100001'): 0, np.str_('f1_100005'): 0, np.str_('f1_100006'): 0, np.str_('f1_100008'): 0, np.str_('f1_100012'): 0, np.str_('f1_100021'): 0, np.str_('f1_100031'): 0, np.str_('f1_100034'): 0, np.str_('f1_100037'): 0, np.str_('f1_100038'): 0, np.str_('f1_100041'): 0, np.str_('f1_100058'): 0, np.str_('f1_100062'): 0, np.str_('f1_100007'): 0, np.str_('f1_100019'): 0, np.str_('f1_100020'): 0, np.str_('f1_100022'): 0, np.str_('f1_100030'): 0, np.str_('f1_100032'): 0, np.str_('f1_100035'): 0, np.str_('f1_100044'): 0, np.str_('f1_100049'): 0, np.str_('f1_100050'): 0, np.str_('f1_100059'): 0, np.str_('f1_100060'): 0}
+[L4] f1_100000 (1/64): 25 runs
+[L4] f1_100001 (2/64): 25 runs
+[L4] f1_100002 (3/64): 23 runs
+[L4] f1_100003 (4/64): 25 runs
+[L4] f1_100004 (5/64): 23 runs
+[L4] f1_100005 (6/64): 25 runs
+[L4] f1_100006 (7/64): 25 runs
+[L4] f1_100007 (8/64): 25 runs
+[L4] f1_100008 (9/64): 25 runs
+[L4] f1_100009 (10/64): 25 runs
+[L4] f1_100010 (11/64): 25 runs
+[L4] f1_100011 (12/64): 25 runs
+[L4] f1_100012 (13/64): 25 runs
+[L4] f1_100013 (14/64): 23 runs
+[L4] f1_100014 (15/64): 25 runs
+[L4] f1_100015 (16/64): 25 runs
+[L4] f1_100016 (17/64): 25 runs
+[L4] f1_100017 (18/64): 25 runs
+[L4] f1_100018 (19/64): 25 runs
+[L4] f1_100019 (20/64): 25 runs
+[L4] f1_100020 (21/64): 21 runs
+[L4] f1_100021 (22/64): 25 runs
+[L4] f1_100022 (23/64): 25 runs
+[L4] f1_100023 (24/64): 25 runs
+[L4] f1_100024 (25/64): 25 runs
+[L4] f1_100025 (26/64): 25 runs
+[L4] f1_100026 (27/64): 25 runs
+[L4] f1_100027 (28/64): 25 runs
+[L4] f1_100028 (29/64): 25 runs
+[L4] f1_100029 (30/64): 25 runs
+[L4] f1_100030 (31/64): 25 runs
+[L4] f1_100031 (32/64): 25 runs
+[L4] f1_100032 (33/64): 25 runs
+[L4] f1_100033 (34/64): 25 runs
+[L4] f1_100034 (35/64): 25 runs
+[L4] f1_100035 (36/64): 25 runs
+[L4] f1_100036 (37/64): 25 runs
+[L4] f1_100037 (38/64): 25 runs
+[L4] f1_100038 (39/64): 25 runs
+[L4] f1_100039 (40/64): 25 runs
+[L4] f1_100040 (41/64): 25 runs
+[L4] f1_100041 (42/64): 19 runs
+[L4] f1_100042 (43/64): 25 runs
+[L4] f1_100043 (44/64): 25 runs
+[L4] f1_100044 (45/64): 23 runs
+[L4] f1_100045 (46/64): 25 runs
+[L4] f1_100046 (47/64): 25 runs
+[L4] f1_100047 (48/64): 25 runs
+[L4] f1_100048 (49/64): 25 runs
+[L4] f1_100049 (50/64): 25 runs
+[L4] f1_100050 (51/64): 25 runs
+[L4] f1_100051 (52/64): 25 runs
+[L4] f1_100052 (53/64): 25 runs
+[L4] f1_100053 (54/64): 25 runs
+[L4] f1_100054 (55/64): 25 runs
+[L4] f1_100055 (56/64): 25 runs
+[L4] f1_100056 (57/64): 25 runs
+[L4] f1_100057 (58/64): 25 runs
+[L4] f1_100058 (59/64): 25 runs
+[L4] f1_100059 (60/64): 25 runs
+[L4] f1_100060 (61/64): 25 runs
+[L4] f1_100061 (62/64): 25 runs
+[L4] f1_100062 (63/64): 23 runs
+[L4] f1_100063 (64/64): 25 runs
+/workspace/meta/physlaw/physlaw/eval/l4_causal.py:732: RuntimeWarning: All-NaN slice encountered
+  m = np.nanmedian(v[B], 1)
+[L4 momentum] frame: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.38628486318350447}; frame_mm: {'matches_law': False, 'differs_from_controls': True, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.37318356593969326}
+## L4 manifold steering: momentum (f1), theta = log_mass_ratio (across), pool roi_A.pre; law prediction: 1.0
+
+Precondition (theta shuffled across scenes); layers passing: ['0', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '23']
+
+| layer | scenes | retention (null median, 1/sqrt S) | p retention | LOSO R² line (null median) | p line |
+|---|---|---|---|---|---|
+| 0 | 64 | - (-, -) | - | +0.154 (-0.018) | 0.005 |
+| 2 | 64 | - (-, -) | - | +0.148 (-0.018) | 0.005 |
+| 4 | 64 | - (-, -) | - | +0.149 (-0.018) | 0.005 |
+| 6 | 64 | - (-, -) | - | +0.152 (-0.018) | 0.005 |
+| 8 | 64 | - (-, -) | - | +0.157 (-0.018) | 0.005 |
+| 10 | 64 | - (-, -) | - | +0.155 (-0.018) | 0.005 |
+| 12 | 64 | - (-, -) | - | +0.158 (-0.018) | 0.005 |
+| 14 | 64 | - (-, -) | - | +0.159 (-0.018) | 0.005 |
+| 16 | 64 | - (-, -) | - | +0.160 (-0.018) | 0.005 |
+| 18 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+| 20 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+| 23 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+
+Injection layer 18 at roi_A tokens; dtheta [-1.0, -0.5, 0.5, 1.0]; 64 scenes; curve degree per fold [1, 1, 1, 1, 1]
+
+### frame (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.039 [-0.209, +0.135] | 6 | - |
+| random_dir | +0.023 [-0.215, +0.137] | 6 | -0.062 [-0.346, +0.350] |
+| input | +0.101 [-0.639, +0.347] | 48 | +0.637 [+0.637, +0.637] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.38628486318350447}
+
+Readout validity (real clips, readout on the true theta across scenes): slope -0.063 [-0.276, +0.143] (law +1; n 33/64), covers the law: False
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.199 | -0.039 | +0.193 | 0.67 |
+| random_dir | -0.318 | +0.023 | +0.128 | 0.33 |
+| input | -2.207 | +0.101 | +2.625 | 0.46 |
+
+Pairs swap: n 24, IIA 0.29, fraction achieved +0.01, error ratio 1.637 (p sign-flip 0.099), |change| 0.056, selectivity 2.20
+Pairs swap_random: n 23, IIA 0.04, fraction achieved -0.01, error ratio 1.008 (p sign-flip 0.002), |change| 0.011, selectivity 0.49
+Pairs patch: n 246, IIA 0.02, fraction achieved -, error ratio 1.002 (p sign-flip 0.008), |change| -, selectivity 1.09, slope ratio high/low k 0.49  [-7.460, +7.852] (physics 1.76, leak 1); closer to required than to none -0.566 [-0.646, -0.484] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak, beats_controls)
+Pairs patch_random: n 246, IIA 0.02, fraction achieved -, error ratio 0.999 (p sign-flip 0.251), |change| -, selectivity 0.97, slope ratio high/low k 4.11  [-26.903, +57.477] (physics 1.76, leak 1); closer to required than to none -0.565 [-0.643, -0.483] (p 0.000)
+
+### frame_mm (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.038 [-0.052, -0.015] | 33 | - |
+| random_dir | +0.012 [-0.001, +0.032] | 33 | -0.045 [-0.066, -0.024] |
+| input | +0.101 [-0.639, +0.347] | 48 | -0.241 [-0.654, +0.760] |
+Verdict: {'matches_law': False, 'differs_from_controls': True, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.37318356593969326}
+
+Readout validity (real clips, readout on the true theta across scenes): slope -0.063 [-0.276, +0.143] (law +1; n 33/64), covers the law: False
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.323 | -0.038 | +0.213 | 0.67 |
+| random_dir | -0.180 | +0.012 | +0.248 | 0.33 |
+| input | -2.207 | +0.101 | +2.625 | 0.46 |
+
+Pairs swap: n 130, IIA 0.07, fraction achieved -0.02, error ratio 1.007 (p sign-flip 0.012), |change| 0.079, selectivity 3.36
+Pairs swap_random: n 131, IIA 0.09, fraction achieved +0.00, error ratio 0.997 (p sign-flip 0.667), |change| 0.031, selectivity 1.57
+Pairs patch: n 246, IIA 0.02, fraction achieved -, error ratio 1.002 (p sign-flip 0.019), |change| -, selectivity 1.05, slope ratio high/low k 0.39  [-7.144, +7.327] (physics 1.76, leak 1); closer to required than to none -0.568 [-0.648, -0.486] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak, beats_controls)
+Pairs patch_random: n 246, IIA 0.01, fraction achieved -, error ratio 1.000 (p sign-flip 0.201), |change| -, selectivity 0.98, slope ratio high/low k 4.37  [-36.148, +31.962] (physics 1.76, leak 1); closer to required than to none -0.567 [-0.646, -0.486] (p 0.000)
+
+Off-distribution (Mahalanobis distance of the steered pooled vector to the training rows; real held-out median 27.3, q95 58.0):
+
+| condition | key | median | share > real q95 |
+|---|---|---|---|
+| law | -1 | 27.3 | 0.05 |
+| law | -0.5 | 27.3 | 0.05 |
+| law | 0.5 | 27.3 | 0.06 |
+| law | 1 | 27.3 | 0.06 |
+| random_dir | -1 | 51.9 | 0.19 |
+| random_dir | -0.5 | 35.1 | 0.08 |
+| random_dir | 0.5 | 34.8 | 0.08 |
+| random_dir | 1 | 52.0 | 0.20 |
+| swap | 1 | 27.4 | 0.05 |
+| swap | 2 | 27.4 | 0.05 |
+| swap | 3 | 27.3 | 0.05 |
+| swap | 4 | 27.3 | 0.06 |
+| swap_random | 1 | 59.7 | 0.50 |
+| swap_random | 2 | 59.5 | 0.52 |
+| swap_random | 3 | 102.6 | 0.75 |
+| swap_random | 4 | 88.9 | 0.59 |
+[06] l4 done in 24.4 min -> /tmp/claude-0/-workspace/1e09f4b9-65a0-4d0e-87b2-f3a82065f4e4/scratchpad/l4warm_un

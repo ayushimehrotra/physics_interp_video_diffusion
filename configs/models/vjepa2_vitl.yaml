@@ -10,8 +10,10 @@ input:
   resolution: 256
   # Each distinct master frame shown ONCE. The old capture showed every frame twice
   # ("5:37:1x2"), which halves apparent speed; do not reproduce that.
-  fps: 24                 # 64 frames at 24 fps = 2.67 s, contact at ~frame 32.
-                          # TODO(milestone 2): check against V-JEPA 2's pretraining frame rate.
+  fps: 24                 # 64 frames at 24 fps = 2.67 s, contact at ~frame 32. V-JEPA 2 pretrains at 4 fps
+                          # (facebookresearch/vjepa2 configs/train, `fps: 4`), but 64 frames at 4 fps = 16 s exceed
+                          # the 6 s master clip; the law statistics are time-scale invariant (spec §5.0.1), so the
+                          # rate changes no score's meaning. Kept: every cache and PC1 use this window.
   center_on_contact: true
 token_grid: {patch: 16, tubelet: 2}
 layers: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23]

@@ -6,14 +6,15 @@
     HF_HUB_OFFLINE=1 /root/envs/physics_venv/bin/python scripts/10_train_positive_control.py \\
         --config configs/models/pc2_wan22_ti2v_5b.yaml          # PC2: Wan2.2-TI2V-5B rank-32 LoRA
     /root/envs/physics_venv/bin/python scripts/10_train_positive_control.py \\
-        --config configs/models/positive_control.yaml --check results/pc1-vits/f1   # PC1 pass/fail
+        --config configs/models/positive_control.yaml --check results/pc1-vits \\
+        --untrained results/untrained-vitl   # PC1 pass/fail (momentum on f1, energy kink on f2 / f7)
 
 Output dir: the config's ``local_path`` (or --out):
   PC1  pc1.pt          eval weights (EMA target encoder + predictor; physlaw.models.positive_control.PC1Adapter)
        train_state.pt  online model, EMA encoder, optimizer, step (resume)
   PC2  lora/           adapter_model.safetensors + adapter_config.json (PEFT format; the Wan adapter merges
                        it via ``lora: {path, scale}``), lora_step<N>/ snapshots every save_every steps
-       train_state.pt  LoRA weights, optimizer, step (resume); prompt_embeds.pt (cached text embedding)
+       train_state.pt  LoRA weights, optimizer, step (resume); prompt_embeds.pt (cached text embeddings, one per prompt)
   both curves.json (train loss; PC1 also the held-out prediction error), curves.png, timing in curves.json
 Resumable: an existing train_state.pt is resumed; --force starts over. --steps overrides train.steps
 (e.g. a short test). The data loader refuses clips whose twin group ID is in an evaluation set.
@@ -166,7 +167,7 @@ def train_pc1(cfg, out: Path, a):
         model.eval()
         rows = []
         for i in range(len(hold_ds)):
-            frames, kin = hold_ds[i]
+            frames, kin, _ = hold_ds[i]
             k = kin - kin % tub
             x = ad.to_tensor(frames)
             s = ad.surprise(x, k)
@@ -195,7 +196,7 @@ def train_pc1(cfg, out: Path, a):
         tot = 0.0
         for _ in range(accum):
             td = time.time()
-            frames, _ = next(it)
+            frames, _, _ = next(it)
             t_data += time.time() - td
             x = ((frames.to(dev, non_blocking=True).permute(0, 1, 4, 2, 3).float() / 255.0) - mean) / std
             ctx, tgt = (torch.from_numpy(m).to(dev) for m in PC.sample_mask(rng, T_tok, grid, cfg["mask"]))
@@ -257,21 +258,29 @@ def train_pc2(cfg, out: Path, a):
     ds = PC.ClipWindows(train_paths, fps=pt["fps"], n_frames=pt["num_frames"], hw=(H, W), center=True,
                         jitter=dc["jitter"], flip=dc["flip"])
 
+    # one text per clip, stage 4's (physlaw.models.dit.clip_prompt: the config's prompt on F1-F4, the family's
+    # description elsewhere), so PC2 is trained on the conditioning it is evaluated with
+    from physlaw.models.dit import clip_prompt
+    groups = {g: json.loads((g / "_GROUP_COMPLETE").read_text()) for g in {q.parent for q in train_paths}}
+    texts = [clip_prompt(cfg, {"physlaw": {"family": q.parent.parent.name,
+                                           "subfamily": groups[q.parent].get("subfamily")}}) for q in train_paths]
+    prompts = sorted(set(texts))
+    tid = torch.tensor([prompts.index(t) for t in texts])
     pe_f = out / "prompt_embeds.pt"
     if not pe_f.exists():
         from transformers import AutoTokenizer, UMT5EncoderModel
         te = UMT5EncoderModel.from_pretrained(src, subfolder="text_encoder", torch_dtype=bf16, device_map=dev)
         pipe = WanPipeline(tokenizer=AutoTokenizer.from_pretrained(src, subfolder="tokenizer"), text_encoder=te,
                            vae=None, scheduler=None, transformer=None)
-        with torch.no_grad():
-            pe, _ = pipe.encode_prompt(cfg["prompt"], do_classifier_free_guidance=False, max_sequence_length=512,
-                                       device=dev)          # 512: WanPipeline.__call__ default
-        atomic_save({"prompt": cfg["prompt"], "embeds": pe.cpu()}, pe_f)
+        with torch.no_grad():                               # 512: WanPipeline.__call__ default
+            pe = torch.cat([pipe.encode_prompt(t, do_classifier_free_guidance=False, max_sequence_length=512,
+                                               device=dev)[0] for t in prompts])
+        atomic_save({"prompts": prompts, "embeds": pe.cpu()}, pe_f)
         del te, pipe
         torch.cuda.empty_cache()
     pe = torch.load(pe_f, weights_only=True)
-    assert pe["prompt"] == cfg["prompt"], "prompt changed: delete prompt_embeds.pt"
-    pe = pe["embeds"].to(dev, bf16)
+    assert pe.get("prompts") == prompts, "prompts changed: delete prompt_embeds.pt"
+    pe = pe["embeds"].to(dev, bf16)                         # [n_prompts, 512, D]
 
     vae = AutoencoderKLWan.from_pretrained(src, subfolder="vae", torch_dtype=torch.float32, device_map=dev).eval()
     vae.requires_grad_(False)
@@ -322,7 +331,7 @@ def train_pc2(cfg, out: Path, a):
         tot = 0.0
         for _ in range(accum):
             td = time.time()
-            frames, _ = next(it)
+            frames, _, idx = next(it)
             t_data += time.time() - td
             v = frames.to(dev).permute(0, 4, 1, 2, 3).float() / 127.5 - 1.0          # [B, 3, T, H, W] in [-1, 1]
             with torch.no_grad():
@@ -337,7 +346,7 @@ def train_pc2(cfg, out: Path, a):
             ts = (sig.view(B, 1, 1, 1) * n_train_t).expand(B, F, h // p[1], w // p[2]).clone()
             ts[:, 0] = 0
             with torch.autocast("cuda", dtype=bf16):
-                pred = tf(hidden_states=xt.to(bf16), timestep=ts.flatten(1), encoder_hidden_states=pe.expand(B, -1, -1),
+                pred = tf(hidden_states=xt.to(bf16), timestep=ts.flatten(1), encoder_hidden_states=pe[tid[idx]],
                           return_dict=False)[0]
             loss = ((pred.float() - (eps - x0))[:, :, 1:] ** 2).mean() / accum
             loss.backward()
@@ -373,13 +382,15 @@ def main():
     ap.add_argument("--out", default=None, help="default: the config's local_path")
     ap.add_argument("--steps", type=int, default=None, help="stop at this step (default train.steps)")
     ap.add_argument("--check", default=None, metavar="RESULTS_DIR",
-                    help="PC1: print pass/fail of results/<model>/f1/{l1,l2}.json against pass_criterion; no training")
+                    help="PC1: print pass/fail of results/<model>/{f1,f2,f7}/{l1,l2}.json against pass_criterion; no training")
+    ap.add_argument("--untrained", default=None, metavar="RESULTS_DIR",
+                    help="with --check: the untrained control's results/<model>/ (its energy kink CI must contain 0)")
     ap.add_argument("--force", action="store_true", help="start over even if train_state.pt exists")
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
     cfg = load_config(a.config, a.set)
     if a.check:
-        res = PC.pass_check(a.check, cfg["pass_criterion"])
+        res = PC.pass_check(a.check, cfg["pass_criterion"], a.untrained)
         print(PC.format_pass(res))
         sys.exit(0 if res["verdict"] == "PASS" else 1)
     out = Path(a.out or cfg["local_path"])

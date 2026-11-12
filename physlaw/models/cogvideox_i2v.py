@@ -1,7 +1,7 @@
 """CogVideoX1.5-5B-I2V as an output track B generator (spec §6.3): frame 0 + prompt -> clip through the official
 diffusers ``CogVideoXImageToVideoPipeline`` call (no latent replacement). Stage 4 keeps using
 physlaw.models.cogvideox.CogVideoX15I2VAdapter; stage 07 loads this class through the config's
-``track_b_adapter``. Settings: configs/models/cogvideox15_5b_i2v.yaml (1360 x 768, 81 frames at 16 fps, 50 steps,
+``track_b_adapter``; its internals (encode / forecast / surprise) are that stage-4 adapter's own. Settings: configs/models/cogvideox15_5b_i2v.yaml (1360 x 768, 81 frames at 16 fps, 50 steps,
 guidance 6, CogVideoXDPMScheduler trailing, dynamic CFG).
 """
 from __future__ import annotations
@@ -29,8 +29,3 @@ class CogVideoX15I2VPipelineAdapter(CogVideoX15I2VAdapter):
                         use_dynamic_cfg=bool(self.dynamic_cfg),
                         generator=torch.Generator(self.device).manual_seed(seed), output_type="np").frames[0]
         return (np.clip(out, 0, 1) * 255).round().astype(np.uint8)
-
-    def encode(self, video, noise_level=None):
-        raise NotImplementedError(f"{self.name}: track B generator here; stage 4 uses CogVideoX15I2VAdapter")
-
-    surprise = forecast = encode

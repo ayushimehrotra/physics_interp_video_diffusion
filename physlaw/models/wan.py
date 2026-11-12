@@ -195,7 +195,11 @@ class WanAdapter(DiTAdapter):
 
 
 class WanI2VAdapter(WanAdapter):
-    """Output track B generator (frame 0 + prompt -> clip): the official WanImageToVideoPipeline call."""
+    """Output track B generator (frame 0 + prompt -> clip): the official WanImageToVideoPipeline call. No internals:
+    the I2V transformers take image conditioning (CLIP image embeds / extra latent channels) that WanAdapter's
+    encode / forecast / surprise do not supply, so stages that need internals refuse this class."""
+
+    internals = False
 
     @classmethod
     def load(cls, cfg, device: str = "cuda") -> "WanI2VAdapter":
@@ -219,8 +223,3 @@ class WanI2VAdapter(WanAdapter):
                         guidance_scale=self.guidance if self._cfg_on() else 1.0,
                         generator=torch.Generator(self.device).manual_seed(seed), output_type="np").frames[0]
         return (np.clip(out, 0, 1) * 255).round().astype(np.uint8)
-
-    def encode(self, video, noise_level=None):
-        raise NotImplementedError(f"{self.name}: track B generator only (spec §4.2 group 5)")
-
-    surprise = forecast = encode

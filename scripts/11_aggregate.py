@@ -3,9 +3,10 @@
 
     /root/envs/physics_venv/bin/python scripts/11_aggregate.py [--results results]
 
-Reads every results/<model>/<family>/<level>.json; writes results/leaderboard.{json,md} (blank where a level has
-not been run; columns in physlaw/analysis/aggregate.py) and results/figures/fig*.png (each figure only when its
-inputs exist; list in physlaw/analysis/figures.py).
+Reads every results/<model>/<family>/<level>.json; writes results/leaderboard.{json,md} (one primary number per
+law x level beside its floor / baseline and 95% CI, blank where a level has not been run; sources in
+physlaw/analysis/aggregate.py) and results/figures/fig*.png (each figure only when its inputs exist; list in
+physlaw/analysis/figures.py). Figures need matplotlib (in /root/envs/kubric_venv; the leaderboard needs numpy only).
 """
 from __future__ import annotations
 
@@ -25,6 +26,11 @@ def main():
     res = Path(a.results)
     rows = aggregate.run(res)["rows"]
     print((res / "leaderboard.md").read_text())
+    try:
+        import matplotlib  # noqa: F401
+    except ImportError:
+        print("[11] figures skipped: matplotlib is not installed in this interpreter (use /root/envs/kubric_venv/bin/python)")
+        return
     figures.draw(rows, res, res / "figures")
 
 

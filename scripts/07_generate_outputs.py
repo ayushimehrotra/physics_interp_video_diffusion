@@ -21,8 +21,8 @@ Track A, into cache/<model>/<family>/<group>/gen_seed<s>.mp4 (stage 4 already wr
 Track B, into cache/<model>/<family>_trackB/<group>/gen_seed<s>.mp4 (+ _gen.jsonl): seeds track_b.seeds for the
   first track_b.n_groups groups, through the adapter's generate() from frame 0 (models with ``output_track: B``, e.g.
   physlaw.models.wan.WanI2VAdapter: the official I2V pipeline). Frame 0 is identical across a group's twins.
-Prompts: the model config's ``prompt_template`` (physlaw.models.dit.PROMPTS, from pre-event labels; track B default
-  minimal); without one, track A uses the adapter's own prompt.
+Prompts: the model config's ``prompt_template`` (physlaw.models.dit.PROMPTS, from pre-event labels, family-aware;
+  track B default minimal); without one, track A uses stage 4's prompt (physlaw.models.dit.clip_prompt).
 Resumable: existing videos are skipped. --out writes elsewhere (test runs).
 """
 from __future__ import annotations
@@ -81,7 +81,7 @@ def track_a(mcfg, data, out, cfg, force, mode="native", allow_hack=False):
             return 0
         if m is None:
             from physlaw.models.registry import load_adapter
-            m = load_adapter(mcfg)
+            m = load_adapter(mcfg, need="generator")
         c = load_clip(data / gid / O.legal_twins(data / gid)[0])
         fr = m.input_frames(c.labels)
         if mcfg.get("track_a"):                      # model-specific context: ends at the last pre-contact frame
@@ -90,9 +90,9 @@ def track_a(mcfg, data, out, cfg, force, mode="native", allow_hack=False):
         else:                                        # every whole pre-contact latent frame (stage-4 context)
             k = m.context_frames(c.labels)
             ctx = [int(f) for f in fr[:k]]
-        if mcfg.get("prompt_template"):              # per-clip prompt from pre-event labels (physlaw.models.dit)
-            from physlaw.models.dit import PROMPTS
-            m.set_prompt(PROMPTS[mcfg["prompt_template"]](c.labels))
+        from physlaw.models.dit import PROMPTS, clip_prompt   # per-clip prompt from pre-event labels
+        tpl = mcfg.get("prompt_template")
+        m.set_prompt(PROMPTS[tpl](c.labels) if tpl else clip_prompt(mcfg, c.labels))
         x = m.to_tensor(c.frames[fr])
         for s in todo:
             t1 = time.time()
@@ -129,7 +129,7 @@ def track_b(mcfg, data, out, seeds, n_groups, mode="n/a"):
         print("[07] track B: nothing to do")
         return
     t0 = time.time()
-    m = load_adapter(mcfg, role="track_b")
+    m = load_adapter(mcfg, role="track_b", need="generator")
     print(f"[07] track B: {mcfg.name} loaded in {time.time() - t0:.0f}s; {len(jobs)} clips", flush=True)
     for gid, seed in jobs:
         c = load_clip(data / gid / O.legal_twins(data / gid)[0], masks=False)

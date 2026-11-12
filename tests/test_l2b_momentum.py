@@ -40,10 +40,10 @@ def test_kinematic_baseline_separable_vs_not():
     from physlaw.eval.l2b_detection import cv_auc
     X, y, g = _kin_dataset(True)
     assert X.shape[1] == 6
-    a, _, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
+    a, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
     assert np.mean(a) > 0.9
     X, y, g = _kin_dataset(False)
-    a, _, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
+    a, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
     assert 0.25 < np.mean(a) < 0.75
 
 
@@ -96,17 +96,52 @@ def test_norm_route_beats_logistic_on_norm_label():
     ang = rng.uniform(0, 2 * np.pi, len(y))
     dp = y[:, None] * np.stack([np.cos(ang), np.sin(ang)], 1)          # violators: unit |Δp|, random direction
     X = np.hstack([dp @ rng.normal(size=(2, 10)), 0.05 * rng.normal(size=(len(y), 10))])
-    la, _, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
+    la, _, _ = cv_auc(X, y, g, LAMS, 5, 2)
     pr = fit_probe(X, dp, g, alphas=LAMS, k=5, fold_seeds=2)
     fn = np.mean([auc_score(y, np.linalg.norm(o, axis=1)) for o in pr.oof])
     assert np.mean(la) < 0.75 and fn > 0.95
 
 
-def test_null_diagnostics_moves():
-    from physlaw.eval.l2b_detection import null_diagnostics, swap_perms
-    g = np.repeat(np.arange(30), 2)
-    y = np.tile([1.0, 0.0], 30)
-    P = swap_perms(g, y, 200, seed=0)
-    d = null_diagnostics(P, y, np.random.default_rng(0).uniform(0.4, 0.6, 200))
-    assert d["share_differ_from_identity_and_flip"] == 1.0 and d["n_distinct"] == 200 and d["null_sd"] > 0
-    assert np.all(P.reshape(-1, 30, 2).sum(-1) == 1)            # still one violator per group
+def test_paired_auc_diff_and_speed_matched_stratum():
+    """The paired group bootstrap of model − kinematic AUC, overall and on a group subset (the speed-matched stratum)."""
+    from physlaw.eval.l2b_detection import ke_ratio_to_legal, paired_auc_diff
+    rng = np.random.default_rng(0)
+    G = 60
+    groups = np.repeat(np.arange(G), 2)
+    y = np.tile([1.0, 0.0], G)
+    model = np.stack([y + 0.5 * rng.normal(size=2 * G) for _ in range(2)])        # good everywhere
+    matched = np.arange(G) < 30                                                     # speed-matched groups
+    kin = np.stack([np.where(np.repeat(matched, 2), rng.normal(size=2 * G), y + 0.3 * rng.normal(size=2 * G))])
+    d = paired_auc_diff(y, groups, model, kin, n_boot=300)
+    assert d["n_groups"] == G and d["auc_b"] > 0.6 and "auc_a_ci95" in d
+    sm = paired_auc_diff(y, groups, model, kin, keep_groups=np.arange(30), n_boot=300)
+    assert sm["n_groups"] == 30 and abs(sm["auc_b"] - 0.5) < 0.2 and sm["diff_ci95"][0] > 0   # speed gone: model wins
+    assert sm["diff"] > d["diff"]
+    lo, hi = paired_auc_diff(y, groups, model, n_boot=300)["auc_a_ci95"]
+    assert lo <= paired_auc_diff(y, groups, model, n_boot=0)["auc_a"] <= hi
+    lab = lambda ke, r=None: {"physlaw": {"summary": {"ke_post": ke}, **({"ke_ratio_to_legal": r} if r else {})}}
+    assert ke_ratio_to_legal(lab(2.0), lab(1.0)) == 2.0 and ke_ratio_to_legal(lab(2.0, 1.01), lab(1.0)) == 1.01
+
+
+def test_window_kinematic_features_non_collision():
+    """Non-collision families: per non-aux object, mean speed / end speed / displacement / mean spin over the clean
+    window after the event (a viscous slide and a legal slide share the entry speed but not the window means)."""
+    from physlaw.eval.l2b_detection import kinematic_feature_names, kinematic_features
+
+    def labels(decel):
+        pf = []
+        for f in range(48):
+            t = f / 24
+            tau = max(0.0, t - 0.5)
+            v = 2.0 - decel(tau)
+            pf.append({"time_s": t, "A": {"position": [2.0 * min(t, 0.5) + 2.0 * tau - 0.5 * tau ** 2, 0, 0],
+                                          "velocity": [v, 0, 0], "angular_velocity": [0, 0, 0]},
+                       "P": {"position": [0, 0, 0], "velocity": [9, 9, 9], "angular_velocity": [0, 0, 0]}})
+        return {"scene_constants": {"frame_rate": 24}, "per_frame": pf,
+                "physlaw": {"family": "f6", "first_post_contact_frame": 12, "objects": {"A": {}, "P": {"aux": True}}}}
+    lab = labels(lambda tau: tau)
+    assert kinematic_feature_names(lab) == ["mean_speed_A", "end_speed_A", "displacement_A", "mean_spin_A"]
+    a, b = kinematic_features(lab, t_end=1.0), kinematic_features(labels(lambda tau: 2 * tau), t_end=1.0)
+    assert a.shape == (4,) and a[1] == pytest.approx(1.5) and b[1] == pytest.approx(1.0) and a[0] > b[0]
+    with pytest.raises(ValueError, match="per_frame"):
+        kinematic_features({**lab, "per_frame": []})

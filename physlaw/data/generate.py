@@ -16,7 +16,7 @@ Two scene sources, one renderer:
   little. Pass 2 rebuilds the accepted scene with the renderer attached. Twins are the
   simulated trajectory re-keyframed at the exact contact time (F4: Galilean-boosted
   as a whole, F3: per-twin masses).
-* **Closed-form families (f6-f10)**: ``physlaw/data/families/``. A family samples a
+* **Closed-form families (f6-f12)**: ``physlaw/data/families/``. A family samples a
   ``Scene`` carrying every twin's full trajectory; the same initial condition is run
   in PyBullet as a check (``physics_check``); the Kubric scene is built here.
 
@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import dataclasses
 import hashlib
 import json
 import logging
@@ -90,12 +91,27 @@ def subfamily_for(cfg, seed: int) -> str:
     raise AssertionError
 
 
+MASTER_SENSOR_WIDTH_MM = 41.6   # the master's field of view (832 px <-> 41.6 mm), the same at every resolution
+
+
 def master_fmt(cfg) -> dict:
+    """The master format: the ONE source of the camera sensor width and aspect (labels and every renderer)."""
     m = cfg.master
     return {"fps": int(m.fps), "num_frames": int(m.num_frames), "resolution": [int(m.width), int(m.height)],
-            "sensor_width_mm": float(m.get("sensor_width_mm", 36.0 * 832 / 720)),
+            "sensor_width_mm": float(m.get("sensor_width_mm", MASTER_SENSOR_WIDTH_MM)),
             "aspect": float(m.get("aspect", m.width / m.height)),
             "event_frame_range": list(m.contact_frame_range), "samples_per_pixel": int(m.samples_per_pixel)}
+
+
+def configure_kubric(cfg, fmt: dict, contact_frame: int) -> dict:
+    """Configure the two-sphere Kubric scene (F1-F4) from the master format, so its camera, its in-frame check and
+    the labels' camera (``collision_scene``: ``FAM.top_camera(fmt)``) share one sensor width and aspect."""
+    m = cfg.master
+    return KS.configure(num_frames=fmt["num_frames"], frame_rate=fmt["fps"], resolution=tuple(fmt["resolution"]),
+                        contact_frame=contact_frame, samples_per_pixel=fmt["samples_per_pixel"],
+                        contact_tolerance_frames=m.contact_tolerance_frames, sensor_width_mm=fmt["sensor_width_mm"],
+                        camera_distance=cfg.get("camera_distance"), aspect=fmt["aspect"],
+                        denoise=m.get("denoise", True))
 
 
 def inframe_until(animation, spheres, p, start: int) -> dict[str, int]:
@@ -217,18 +233,30 @@ def build_twins(family: str, cfg, p, geo, masses, animation, spheres, seed: int,
             if not tw[name].energy_physical:
                 return None, pre, e_sim, f"{name}_creates_energy"
     elif family == "f2":
-        tw = TW.f2_twins(pre, post["a"], post["b"], e_sim, tuple(t.levels),
-                         impossible_levels=tuple(float(x) for x in (t.get("impossible_levels") or [])))
         e_viol = list(t.get("violators") or [])
+        ladder_e = [float(x) for x in t.levels] + [float(x) for x in (t.get("impossible_levels") or [])]
+        tw = TW.f2_twins(pre, post["a"], post["b"], e_sim, tuple(t.levels),
+                         impossible_levels=tuple(float(x) for x in (t.get("impossible_levels") or [])),
+                         # a legal partner (e.g. e0.15) for every violator e off the ladder
+                         partner_levels=tuple(float(e) for e in e_viol
+                                              if not any(abs(float(e) - x) < 1e-9 for x in ladder_e)))
         if e_viol:
             # momentum violators sharing the ladder's pre-contact segment (F1's split edit, both drift signs).
             # Drawn from their own stream, so the ladder and the accepted attempt are those of violators: [].
             rng = np.random.default_rng([seed, attempt, 7927])
             rng_range = tuple(t.get("violator_split_delta_range", (0.10, 0.35)))
             mag = float(rng.uniform(*rng_range))
-            vt, _ = TW.f2_violators(pre, post["a"], post["b"], e_sim, tuple(float(x) for x in e_viol), mag,
-                                    margin=float(t.get("violator_split_margin", 0.05)), min_magnitude=float(rng_range[0]),
-                                    signs=tuple(t.get("violator_signs", ("pos", "neg"))))
+            vt, skipped = TW.f2_violators(pre, post["a"], post["b"], e_sim, tuple(float(x) for x in e_viol), mag,
+                                          margin=float(t.get("violator_split_margin", 0.05)),
+                                          min_magnitude=float(rng_range[0]),
+                                          signs=tuple(t.get("violator_signs", ("pos", "neg"))))
+            if t.get("violators_required"):
+                # speed-matched contrasts need BOTH drift signs at every listed e: a missing one rejects
+                # the attempt, and the violators get the same acceptance as the ladder (feasibility)
+                if skipped:
+                    return None, pre, e_sim, f"{sorted(skipped)[0]}_split_does_not_fit"
+                for v in vt.values():
+                    v.record["optional"] = False
             tw = {**tw, **vt}
     elif family == "f3":
         tw = TW.f3_twins(pre, float(t.e), tuple(t.ratios))
@@ -237,7 +265,8 @@ def build_twins(family: str, cfg, p, geo, masses, animation, spheres, seed: int,
         psi = float(rng.uniform(0, 2 * np.pi))
         d = np.array([np.cos(psi), np.sin(psi)])
         boosts = {"u0": np.zeros(2), "usmall": d * rng.uniform(*t.u_small), "ularge": d * rng.uniform(*t.u_large)}
-        tw = TW.f4_twins(pre, post["a"], post["b"], e_sim, boosts, e_low=t.e_low)
+        tw = TW.f4_twins(pre, post["a"], post["b"], e_sim, boosts, e_low=t.e_low,
+                         camera_boosts=tuple(t.get("camera_boosts") or ()))
     else:
         raise ValueError(family)
     return tw, pre, e_sim, None
@@ -276,7 +305,12 @@ def collision_scene(cfg, p, geo, masses, animation, spheres, contact: float, tw:
                                                                            "angular_velocity")))
                   for T_, t_ in (("A", "a"), ("B", "b"))}
         legal, law, mag = _law_of(family, name, twin, twin.pre(pre))
-        twins[name] = FAM.Twin(name, tracks, pre_segment=twin.pre_segment, legal=legal, violated_law=law,
+        cam_kw = {}
+        if twin.camera_boost is not None:     # F4 camera boost: the camera moves at -u, the collision is unboosted
+            cv = -_vec3(twin.camera_boost)
+            cam_kw = {"camera_velocity": cv, "camera_t_ref_s": contact / fps,
+                      "camera_shift": cv[None, :] * (times - contact / fps)[:, None]}
+        twins[name] = FAM.Twin(name, tracks, pre_segment=twin.pre_segment, legal=legal, violated_law=law, **cam_kw,
                                violation_magnitude=float(mag),
                                flags={"energy_physical": bool(twin.energy_physical),
                                       "momentum_conserved": bool(twin.momentum_conserved)},
@@ -285,8 +319,11 @@ def collision_scene(cfg, p, geo, masses, animation, spheres, contact: float, tw:
                                           **({"ref_twin": "u0_" + name.split("_")[-1]} if family == "f4" else {})},
                                record=twin.record,
                                masses=({"A": twin.masses[0], "B": twin.masses[1]} if twin.masses else None))
-    sc = FAM.Scene(family, "", bodies, [], cam, 0.0, contact / fps, "contact", twins, fps,
+    ladder = {float(t.e_target): {"A": _vec3(t.v_a), "B": _vec3(t.v_b)} for t in tw.values()
+              if t.record.get("kind") in ("simulator", "restitution", "energy_create") and t.record.get("ladder", True)}
+    sc = FAM.Scene(family, "", bodies, [], cam, 0.0, contact / fps, "collision", twins, fps,
                    constants={"g": 0.0, "contact_normal": _vec3(pre.n).tolist(), "e_sim": None},
+                   stop_dose=FAM.stop_dose(ladder) if family == "f2" else None,
                    inframe={"start": 0 if family == "f4" else int(math.ceil(contact)),
                             "stop": int(math.ceil(contact)) + int(round(cfg.acceptance.min_post_inframe_s * fps))},
                    first_post_frame=int(math.ceil(contact)))
@@ -368,7 +405,7 @@ def sample_collision(cfg, seed: int, scratch: str, fmt: dict):
 
 
 # --------------------------------------------------------------------------- #
-# closed-form families (f6-f10)
+# closed-form families (f6-f12)
 # --------------------------------------------------------------------------- #
 
 
@@ -392,13 +429,10 @@ def physics_check(sc: FAM.Scene, step_rate: int = 960) -> dict:
                                      splitImpulsePenetrationThreshold=0.0, physicsClientId=cid)
         mu = float(tw.constants.get("mu", 0.0))
         statics = [s for s in sc.statics if tw.statics is None or s.name in tw.statics]
-        # the rendered band sits 0.5 mm proud of the floor (no z-fighting); flush for the physics
-        boxes = [(s.half, (s.position[0], s.position[1], -s.half[2]) if s.name == "band" else s.position,
-                  s.quaternion, mu if s.name in ("band", "slab") and "mu" in tw.constants else s.friction)
-                 for s in statics]
-        # Coplanar floor + band split the contacts and halve the friction, and the check starts
-        # with the body wholly on the band: the band alone is the support there.
-        if sc.look.get("floor", True) and not any(s.name == "band" for s in statics):
+        # a static named "slab" is the friction surface (F6: the floor itself, with look.floor False)
+        boxes = [(half, pos, q, mu if s.name == "slab" and "mu" in tw.constants else s.friction)
+                 for s in statics for half, pos, q in FAM.static_boxes(s)]
+        if sc.look.get("floor", True):
             boxes.append(((40.0, 40.0, 0.5), (0.0, 0.0, -0.5), (1, 0, 0, 0), 0.0))
         e_floor = float(tw.constants.get("e_floor", 0.0))
         for half, pos, q, fr in boxes:
@@ -411,8 +445,9 @@ def physics_check(sc: FAM.Scene, step_rate: int = 960) -> dict:
             tr = tw.tracks[b.name]
             if b.shape == "sphere":
                 col = pb.createCollisionShape(pb.GEOM_SPHERE, radius=b.size, physicsClientId=cid)
-            elif b.shape == "cube":
-                col = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=[b.size] * 3, physicsClientId=cid)
+            elif b.shape in ("cube", "box"):
+                half = list(b.half) if b.shape == "box" else [b.size] * 3
+                col = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half, physicsClientId=cid)
             else:   # Bullet cylinders run along local z; ours along y: rotate by -90 deg about x
                 col = pb.createCollisionShape(pb.GEOM_CYLINDER, radius=b.size, height=2 * b.length, physicsClientId=cid)
             q = tr.q[f0]
@@ -487,8 +522,11 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
                                   position=sc.camera.position, quaternion=sc.camera.blender_quaternion())
     scene += camera
     scene.camera = camera
-    scene += kb.DirectionalLight(name="sun", position=(5.0, -4.0, 14.0) if top else (-6.0, -12.0, 14.0),
-                                 look_at=(0.0, 0.0, 0.0), intensity=3.0)
+    # Top views: sun at 45 deg elevation, so its mirror reflection on the glossy ice (F6 glide, F12) lands far outside
+    # the view (at 65 deg it sat in the bottom-right corner as a bright hotspot); intensity x sin65/sin45 keeps the
+    # floor's irradiance.
+    scene += kb.DirectionalLight(name="sun", position=(9.0, -7.2, 11.5) if top else (-6.0, -12.0, 14.0),
+                                 look_at=(0.0, 0.0, 0.0), intensity=3.85 if top else 3.0)
     floor = None
     if sc.look.get("floor", True):
         floor = kb.Cube(name="floor", scale=(40.0, 40.0, 0.5), position=(0.0, 0.0, -0.5),
@@ -497,10 +535,19 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
         scene += floor
     statics = {}
     for st in sc.statics:
-        o = kb.Cube(name=st.name, scale=st.half, position=st.position, quaternion=st.quaternion,
-                    material=_material(st.look), static=True, background=True, segmentation_id=0)
+        if st.profile is not None:                  # F8 ramps: one swept mesh per ramp
+            path = Path(scratch) / f"static_{st.name}.obj"
+            FAM.profile_mesh_obj(st, path)
+            o = kb.FileBasedObject(name=st.name, render_filename=str(path), simulation_filename=None,
+                                   render_import_kwargs={"forward_axis": "Y", "up_axis": "Z"}, position=st.position,
+                                   material=_material(st.look), static=True, background=True, segmentation_id=0)
+        else:
+            o = kb.Cube(name=st.name, scale=st.half, position=st.position, quaternion=st.quaternion,
+                        material=_material(st.look), static=True, background=True, segmentation_id=0)
         scene += o
         statics[st.name] = o
+        if st.look.get("texture"):                  # F6 floor: world-space grain, the same in every twin
+            surface_texture(o, renderer, st.look["color"], **st.look["texture"])
     objs = {}
     for b in sc.bodies:
         kw = dict(name=f"body_{b.name}", material=_material(b.look), mass=b.mass, segmentation_id=b.seg_id)
@@ -508,7 +555,9 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
             o = kb.Sphere(scale=b.size, **kw)
         elif b.shape == "cube":
             o = kb.Cube(scale=(b.size,) * 3, **kw)
-        else:                                       # cylinder / tube: generated mesh (F10)
+        elif b.shape == "box":                      # F9 rods, F11 block and prop, F12 bar
+            o = kb.Cube(scale=tuple(b.half), **kw)
+        else:                                    # cylinder / tube: generated mesh (F10)
             from physlaw.data.families.f10_rolling import mesh_obj
             path = Path(scratch) / f"mesh_{b.name}.obj"
             mesh_obj(b, path)
@@ -516,8 +565,8 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
                                    render_import_kwargs={"forward_axis": "Y", "up_axis": "Z"}, **kw)
         scene += o
         objs[b.name] = o
-        if sc.look.get("checker_bodies"):           # rotation must be visible (rolling)
-            checker(o, renderer, b.look["color"], 6.0, 0.45)
+        if sc.look.get("marked_bodies"):            # rotation must be visible (rolling)
+            marker(o, renderer, b.look["color"])
     return {"scene": scene, "renderer": renderer, "camera": camera, "objs": objs, "statics": statics, "floor": floor}
 
 
@@ -526,7 +575,17 @@ def build_family_kubric(sc: FAM.Scene, scratch: str, spp: int, denoise: bool = T
 # --------------------------------------------------------------------------- #
 
 
-def keyframe_twin(sc: FAM.Scene, tw: FAM.Twin, kb_objs: dict, kb_statics: dict) -> None:
+def keyframe_twin(sc: FAM.Scene, tw: FAM.Twin, kb_objs: dict, kb_statics: dict, kb_camera=None,
+                  cam: FAM.Camera | None = None) -> None:
+    """Keyframe the twin's bodies and statics. Scenes with a moving camera in any twin (F4 camera boosts) also
+    keyframe ``kb_camera`` at every frame: ``cam`` (the labels' camera) + the twin's ``camera_shift`` (zero for a
+    static-camera twin), so a static twin rendered after a moving one gets its camera back."""
+    if kb_camera is not None and cam is not None and any(t.camera_shift is not None for t in sc.twins.values()):
+        T = tw.tracks[sc.bodies[0].name].p.shape[0]
+        c0 = np.asarray(cam.position, float)
+        for f in range(T):
+            kb_camera.position = tuple(c0 + (tw.camera_shift[f] if tw.camera_shift is not None else 0.0))
+            kb_camera.keyframe_insert("position", f)
     for name, o in kb_objs.items():
         tr = tw.tracks[name]
         for f in range(tr.p.shape[0]):
@@ -557,8 +616,8 @@ def apply_look(h: dict, sc: FAM.Scene, look: dict) -> FAM.Camera:
         floor_texture(h["floor"], h["renderer"], look["floor"])
     for name, o in h["objs"].items():
         o.material.color = kb.Color(*look["bodies"][name], 1.0)
-        if sc.look.get("checker_bodies"):
-            checker(o, h["renderer"], look["bodies"][name], 6.0, 0.45)
+        if sc.look.get("marked_bodies"):
+            marker(o, h["renderer"], look["bodies"][name])
     return cam
 
 
@@ -567,21 +626,96 @@ def floor_texture(floor, renderer, fl: dict) -> None:
     if fl["checker"]:
         # object coords span [-1, 1] over the 80 m floor: scale = squares per 2 units
         checker(floor, renderer, fl["color"], 80.0 / fl["checker_scale"], fl["checker_contrast"])
+    elif _checker_node(floor, renderer) is not None:   # a base checker (F4 floor): keep it, in the look's colour
+        tex = _checker_node(floor, renderer)
+        checker(floor, renderer, fl["color"], tex.inputs["Scale"].default_value,
+                1.0 - tex.inputs["Color2"].default_value[0] / max(tex.inputs["Color1"].default_value[0], 1e-6))
+
+
+def _checker_node(obj, renderer):
+    nt = obj.material.linked_objects[renderer].node_tree
+    return next((n for n in nt.nodes if n.type == "TEX_CHECKER"), None)
+
+
+def floor_checker(floor, renderer, color, square_m: float, contrast: float) -> None:
+    """A checker of ``square_m`` squares on a Kubric floor cube (the F4 floor, so a moving camera is visible:
+    camera-boost twins). Blender's checker squares are 1 / scale object units wide; a Cube's object units span
+    its half-extent ``floor.scale[0]``."""
+    checker(floor, renderer, color, float(floor.scale[0]) / float(square_m), float(contrast))
 
 
 def checker(obj, renderer, color, scale: float, contrast: float) -> None:
-    """Object-space checker on a Kubric object's material (moves and turns with the object)."""
+    """Object-space checker on a Kubric object's material (moves and turns with the object); a second call
+    updates the first checker instead of stacking another."""
     mat = obj.material.linked_objects[renderer]
     nt = mat.node_tree
     bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
-    tex = nt.nodes.new("ShaderNodeTexChecker")
-    coord = nt.nodes.new("ShaderNodeTexCoord")
-    nt.links.new(coord.outputs["Object"], tex.inputs["Vector"])
+    tex = _checker_node(obj, renderer)
+    if tex is None:
+        tex = nt.nodes.new("ShaderNodeTexChecker")
+        coord = nt.nodes.new("ShaderNodeTexCoord")
+        nt.links.new(coord.outputs["Object"], tex.inputs["Vector"])
     tex.inputs["Scale"].default_value = scale
     c = np.asarray(color, float)
     tex.inputs["Color1"].default_value = (*c, 1.0)
     tex.inputs["Color2"].default_value = (*(c * (1 - contrast)), 1.0)
     nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+
+
+def surface_texture(obj, renderer, color, scale: float, contrast: float) -> None:
+    """Concrete-like grain on a static's material: world-space noise at ``scale`` features per metre (fine grain)
+    times a coarser one (blotches, scale / 8), mapped between color x (1 - contrast) and color. World coordinates,
+    so the pattern does not depend on the object's size, and high-frequency, so motion over it reads."""
+    mat = obj.material.linked_objects[renderer]
+    nt = mat.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    fine, coarse = nt.nodes.new("ShaderNodeTexNoise"), nt.nodes.new("ShaderNodeTexNoise")
+    for node, sc_, detail in ((fine, scale, 8.0), (coarse, scale / 8.0, 4.0)):
+        nt.links.new(geo.outputs["Position"], node.inputs["Vector"])
+        node.inputs["Scale"].default_value = sc_
+        node.inputs["Detail"].default_value = detail
+    mul = nt.nodes.new("ShaderNodeMath")
+    mul.operation = "MULTIPLY"
+    nt.links.new(fine.outputs["Fac"], mul.inputs[0])
+    nt.links.new(coarse.outputs["Fac"], mul.inputs[1])
+    rng = nt.nodes.new("ShaderNodeMapRange")            # stretch the product (~0.1-0.4) over 0-1
+    rng.inputs["From Min"].default_value, rng.inputs["From Max"].default_value = 0.08, 0.40
+    nt.links.new(mul.outputs[0], rng.inputs["Value"])
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    c = np.asarray(color, float)
+    mix.inputs["Color1"].default_value = (*(c * (1 - contrast)), 1.0)
+    mix.inputs["Color2"].default_value = (*c, 1.0)
+    nt.links.new(rng.outputs["Result"], mix.inputs["Fac"])
+    nt.links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
+
+
+def marker(obj, renderer, color) -> None:
+    """Rotation marker for rolling bodies: a high-contrast quadrant wedge (object x > 0 and z > 0, i.e. a
+    90-degree sector about the body's local y axis, the rolling axis) over a mild object-space checker.
+    The wedge has no rotational symmetry, so the spin is readable on the end faces and on the curved
+    surface even at 8 fps (a fine checker aliases there)."""
+    checker(obj, renderer, color, 3.0, 0.25)
+    nt = obj.material.linked_objects[renderer].node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    tex = bsdf.inputs["Base Color"].links[0].from_node
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Object"], sep.inputs["Vector"])
+    gx, gz, both = (nt.nodes.new("ShaderNodeMath") for _ in range(3))
+    for node, axis in ((gx, "X"), (gz, "Z")):
+        node.operation = "GREATER_THAN"
+        nt.links.new(sep.outputs[axis], node.inputs[0])
+        node.inputs[1].default_value = 0.0
+    both.operation = "MULTIPLY"
+    nt.links.new(gx.outputs[0], both.inputs[0])
+    nt.links.new(gz.outputs[0], both.inputs[1])
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    nt.links.new(both.outputs[0], mix.inputs["Fac"])
+    nt.links.new(tex.outputs["Color"], mix.inputs["Color1"])
+    lum = float(np.dot(np.asarray(color, float), [0.2126, 0.7152, 0.0722]))
+    mix.inputs["Color2"].default_value = (0.02, 0.02, 0.02, 1.0) if lum > 0.3 else (0.95, 0.95, 0.95, 1.0)
+    nt.links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
 
 
 def state_at(sc: FAM.Scene, tw: FAM.Twin, f: int) -> dict:
@@ -625,17 +759,43 @@ def law_fields(sc: FAM.Scene, tw: FAM.Twin, cam: FAM.Camera) -> dict:
         "legal": bool(tw.legal), "violated_law": tw.violated_law, "violation_magnitude": float(tw.violation_magnitude),
         "flags": tw.flags, "energy_physical": bool(tw.flags.get("energy_physical", True)),
         "constants": consts, "pre_state": state_at(sc, tw, k - 1), "post_state": state_at(sc, tw, k),
-        "event_state": event_limits(sc, tw),
+        "event_state": tw.event_state or event_limits(sc, tw),
+        # energy-ladder labels (spec §5.0.2); collision families add theirs in render_twins
+        **({"epsilon": float(tw.epsilon)} if tw.epsilon is not None else {}),
+        **({"clean_until_s": float(tw.clean_until_s)} if tw.clean_until_s is not None else {}),
+        **({"stop_dose": sc.stop_dose} if sc.stop_dose is not None else {}),
+        **({"ke_ratio_to_legal": float(tw.record["ke_ratio_vs_legal"])} if "ke_ratio_vs_legal" in tw.record else {}),
         # F4: the unboosted twin with the same e, the reference of the Galilean invariants
         **({"ref_event_state": event_limits(sc, sc.twins[tw.constants["ref_twin"]])}
            if tw.constants.get("ref_twin") in sc.twins else {}),
+        # F4: ball | camera boost; frame of the primary states (camera: the camera's rest frame, camera_frame_fields)
+        **({"boost_kind": tw.record["boost_kind"], "frame": "world"} if "boost_kind" in tw.record else {}),
         "pre_velocity": {n: tw.tracks[n].v[k - 1].tolist() for n in tw.tracks},
         "post_velocity": {n: tw.tracks[n].v[k].tolist() for n in tw.tracks},
         "camera": cam.block(),
         "objects": {b.name: {"shape": b.shape, "size": b.size, "radius": b.size, "density": float(m[b.name] / b.volume),
                              "volume": b.volume, "mass": float(m[b.name]), "inertia": b.inertia / b.mass * m[b.name],
-                             "segmentation_id": b.seg_id, "color_rgb": list(b.look["color"])} for b in sc.bodies},
+                             "segmentation_id": b.seg_id, "color_rgb": list(b.look["color"]),
+                             **({"half_extents": list(b.half), "spin_axis": b.spin_axis} if b.shape == "box" else {}),
+                             **({"aux": True} if b.aux else {})} for b in sc.bodies},
     }
+
+
+def camera_frame_fields(sc: FAM.Scene, tw: FAM.Twin, cam: FAM.Camera) -> dict:
+    """Extra labels of a moving-camera twin (F4 camera boost), whose primary states are in the camera's rest frame
+    (``frame: camera``; :meth:`FAM.Twin.camera_frame`): the camera trajectory and the WORLD-frame states."""
+    k = sc.first_post
+    T = tw.tracks[sc.bodies[0].name].p.shape[0]
+    c0 = np.asarray(cam.position, float)
+    return {"frame": "camera",
+            "camera_trajectory": {"kind": "constant_velocity", "velocity_world": np.asarray(tw.camera_velocity).tolist(),
+                                  "t_ref_s": float(tw.camera_t_ref_s), "position_at_t_ref": c0.tolist(),
+                                  "position_world": (c0[None, :] + tw.camera_shift).tolist(),
+                                  "rotation": "fixed (camera.world_to_camera rotation at every frame)"},
+            "event_state_world": tw.event_state or event_limits(sc, tw),
+            "pre_velocity_world": {n: tw.tracks[n].v[k - 1].tolist() for n in tw.tracks},
+            "post_velocity_world": {n: tw.tracks[n].v[k].tolist() for n in tw.tracks},
+            "pre_state_world": state_at(sc, tw, k - 1), "post_state_world": state_at(sc, tw, k)}
 
 
 def per_frame_labels(sc: FAM.Scene, tw: FAM.Twin, cam: FAM.Camera, seg_stats) -> list:
@@ -686,7 +846,7 @@ def render_twins(cfg, sc: FAM.Scene, h: dict, gdir: Path, cam: FAM.Camera, rende
     writer, writes = ThreadPoolExecutor(2), []
     for i, (name, tw) in enumerate(sc.twins.items()):
         if render:
-            keyframe_twin(sc, tw, h["objs"], h["statics"])
+            keyframe_twin(sc, tw, h["objs"], h["statics"], h.get("camera"), cam)
         tdir = gdir / name
         tdir.mkdir(parents=True, exist_ok=True)
         rt0 = time.time()
@@ -706,14 +866,22 @@ def render_twins(cfg, sc: FAM.Scene, h: dict, gdir: Path, cam: FAM.Camera, rende
             stats = seg_stats_for(seg, sc.bodies)
             frame_sha = [hashlib.sha256(f.tobytes()).hexdigest()[:16] for f in rgb]
         render_s = time.time() - rt0
-        fields = law_fields(sc, tw, cam)
-        labels = legacy(name, tw, stats) if legacy else {
+        vt = tw.camera_frame()        # what the clip shows: the camera's rest frame (= tw for a static camera)
+        fields = law_fields(sc, vt, cam)
+        if vt is not tw:
+            fields.update(camera_frame_fields(sc, tw, cam))
+        labels = legacy(name, vt, stats) if legacy else {
             "schema_version": 2, "scene_id": f"{common['twin_group_id']}/{name}", "seed": common["seed"],
             "sampled_parameters": sc.params, "objects": fields["objects"],
             "scene_constants": {"num_frames": T, "frame_rate": sc.fps, "resolution": list(cam.resolution),
                                 "gravity": [0.0, 0.0, -sc.gravity], "samples_per_pixel": common["master_format"]["samples_per_pixel"],
                                 "render_device": common["render_device"], "camera_position": list(cam.position)}}
-        labels["per_frame"] = per_frame_labels(sc, tw, cam, stats)
+        labels["per_frame"] = per_frame_labels(sc, vt, cam, stats)
+        if vt is not tw:              # the world-frame states next to the primary (camera-frame) ones
+            for f, e in enumerate(labels["per_frame"]):
+                for b in sc.bodies:
+                    e[b.name]["position_world"] = tw.tracks[b.name].p[f].tolist()
+                    e[b.name]["velocity_world"] = tw.tracks[b.name].v[f].tolist()
         labels["sampling_attempts"] = common["sampling_attempts"]
         pl = labels.setdefault("physlaw", {})
         if legacy:   # F1 layout: planar 2-vectors of the twin (twins.py); identical numbers
@@ -725,6 +893,8 @@ def render_twins(cfg, sc: FAM.Scene, h: dict, gdir: Path, cam: FAM.Camera, rende
                    "edit": tw.record, "frame_sha256_16": frame_sha, "master_format": common["master_format"],
                    "render_seconds": render_s, "render_device": common["render_device"],
                    "physics_check": common.get("physics_check"), "config_hash": common["config_hash"]})
+        if legacy:   # collision families: event_kind, epsilon, clean_until_s from the twin's own labels
+            pl.update(FAM.collision_energy_labels(labels))
         summaries[name] = {"legal": tw.legal, "violated_law": tw.violated_law,
                            "violation_magnitude": tw.violation_magnitude, **tw.flags}
         writes.append(writer.submit(write_twin, tdir, rgb, seg, labels, name, cfg.master.crf, sc.fps,
@@ -772,11 +942,7 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
     try:
         if family in COLLISION_FAMILIES:
             contact_target = contact_frame_for(seed, *m.contact_frame_range)
-            mf = KS.configure(num_frames=m.num_frames, frame_rate=m.fps, resolution=(m.width, m.height),
-                              contact_frame=contact_target, samples_per_pixel=m.samples_per_pixel,
-                              contact_tolerance_frames=m.contact_tolerance_frames,
-                              sensor_width_mm=m.get("sensor_width_mm"), camera_distance=cfg.get("camera_distance"),
-                              aspect=m.get("aspect"), denoise=m.get("denoise", True))
+            mf = configure_kubric(cfg, fmt, contact_target)
             attempt, p, rejections = sample_collision(cfg, seed, scratch, fmt)
             geo, masses = KS.solve_geometry(p), KS.derive_masses(p)
             # Pass 2 with the renderer. Keep `sim2` referenced until the group is done: Kubric's
@@ -800,11 +966,16 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
             sc.constants["e_sim"] = float(e_sim)
             h = {"scene": kscene, "renderer": renderer, "camera": camera, "floor": floor,
                  "objs": {"A": spheres["a"], "B": spheres["b"]}, "statics": {}}
+            if render and cfg.get("floor_checker"):     # F4: a textured floor shows the camera boosts' motion
+                fc = cfg.floor_checker
+                floor_checker(floor, renderer, tuple(floor.material.color)[:3], fc.square_m, fc.contrast)
             physics = {"simulator": "pybullet (kubric)", "momentum_rel_error": meas["momentum_rel_error"], "e_sim": e_sim}
             honest = {k_: copy.deepcopy(v) for k_, v in animation.items()}
 
             def legacy(name, ftw, stats, contact=contact, pre=pre, tw=tw):
-                """The F1 label layout (KS.build_labels), with the twin written into the animation."""
+                """The F1 label layout (KS.build_labels), with the twin written into the animation. ``ftw`` is the
+                twin as the clip shows it (camera boost: the camera's rest frame), and so are every velocity and the
+                summary here; the world states of a camera-boost twin are added by render_twins (``*_world``)."""
                 anim = {k_: copy.deepcopy(v) for k_, v in honest.items()}
                 for T_, t_ in (("A", "a"), ("B", "b")):
                     anim[spheres[t_]]["position"] = list(ftw.tracks[T_].p)
@@ -813,7 +984,7 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
                 L = KS.build_labels(p, geo, masses, kscene, spheres, camera, anim, pair_ev, meas, seed,
                                     f"{gid}/{name}", seg_ab, gpu_desc)
                 twin = tw[name]
-                pre_t = twin.pre(pre)
+                pre_t, va_t, vb_t = twin.apparent(pre)
                 L["violates_momentum"] = not twin.momentum_conserved
                 L["momentum_conserved"] = twin.momentum_conserved
                 L["restitution"] = float(twin.e_target)
@@ -822,12 +993,13 @@ def run_group(cfg, seed: int, out_root: Path, render: bool = True, force: bool =
                     "contact_frame": contact_target, "contact_frame_actual": contact,
                     "contact_normal": pre.n.tolist(), "e_sim": float(e_sim), "e_target": float(twin.e_target),
                     "momentum_conserved": twin.momentum_conserved,
-                    "summary": {**TW.summarize(pre_t, twin), "com_frame_angle": TW.com_frame_angle(pre_t, twin.v_a, twin.v_b)},
+                    "summary": {**TW.summarize(pre_t, dataclasses.replace(twin, v_a=va_t, v_b=vb_t)),
+                                "com_frame_angle": TW.com_frame_angle(pre_t, va_t, vb_t)},
                     "inframe_until": inframe_until({spheres[t_]: {"position": ftw.tracks[T_].p}
                                                     for T_, t_ in (("A", "a"), ("B", "b"))}, spheres, p, sc.first_post),
                 }
                 L["physlaw"]["pre_velocity"] = {"A": pre_t.v_a.tolist(), "B": pre_t.v_b.tolist()}
-                L["physlaw"]["post_velocity"] = {"A": twin.v_a.tolist(), "B": twin.v_b.tolist()}
+                L["physlaw"]["post_velocity"] = {"A": va_t.tolist(), "B": vb_t.tolist()}
                 return L
         else:
             mf = fmt

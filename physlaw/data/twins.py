@@ -64,6 +64,7 @@ F1_TWINS = ("conserve_e1", "conserve_e015", "mom_violate_e1", "mom_violate_e015"
 F2_LEVELS = tuple(round(0.1 * i, 1) for i in range(11))
 F3_RATIOS = (0.33, 0.5, 1.0, 2.0, 3.0)
 F4_BOOSTS = ("u0", "usmall", "ularge")
+F4_CAMERA_BOOSTS = ("usmall", "ularge")    # twins cam_<level>_<e>
 
 
 @dataclass
@@ -76,14 +77,27 @@ class Twin:
     energy_physical: bool      # KE_post <= KE_pre
     record: dict[str, Any] = field(default_factory=dict)
     masses: tuple | None = None    # (m_A, m_B) when the twin's masses differ from the simulation's (F3)
-    boost: np.ndarray | None = None  # common velocity added to the whole clip (F4)
+    boost: np.ndarray | None = None  # common velocity added to the whole clip (F4 ball boost)
     pre_segment: str = "0"         # twins sharing it are identical before contact
+    camera_boost: np.ndarray | None = None  # F4 camera boost: the camera moves at -camera_boost, the balls are
+    #                                         unboosted (v_a, v_b, pre() are world states, equal to the u = 0 twin's)
 
     def pre(self, pre: PreState) -> PreState:
-        """The pre-contact state this twin's clip shows (its masses, its boost)."""
+        """The pre-contact WORLD state of this twin (its masses, its ball boost)."""
         m_a, m_b = self.masses or (pre.m_a, pre.m_b)
         u = np.zeros(2) if self.boost is None else np.asarray(self.boost, float)[:2]
         return PreState(m_a=m_a, m_b=m_b, v_a=pre.v_a + u, v_b=pre.v_b + u, n=pre.n)
+
+    def apparent(self, pre: PreState) -> tuple[PreState, np.ndarray, np.ndarray]:
+        """(pre state, v_a', v_b') in the camera's rest frame: what the clip shows. A camera boost adds
+        ``camera_boost`` to every velocity (the balls move relative to the camera exactly as in the ball-boost twin);
+        otherwise the world state."""
+        p = self.pre(pre)
+        if self.camera_boost is None:
+            return p, np.asarray(self.v_a, float), np.asarray(self.v_b, float)
+        u = np.asarray(self.camera_boost, float)[:2]
+        return (PreState(m_a=p.m_a, m_b=p.m_b, v_a=p.v_a + u, v_b=p.v_b + u, n=p.n),
+                np.asarray(self.v_a, float) + u, np.asarray(self.v_b, float) + u)
 
 
 # --------------------------------------------------------------------------- #
@@ -216,12 +230,17 @@ def f1_twins(pre: PreState, post_a, post_b, e_sim: float, delta_split: float, *,
     return {k: out[k] for k in F1_TWINS}
 
 
-def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS, impossible_levels=()) -> dict[str, Twin]:
+def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS, impossible_levels=(),
+             partner_levels=()) -> dict[str, Twin]:
     """F2: the legal outcome at each restitution level, identical pre-contact segments.
 
     ``impossible_levels`` (e > 1) continue the ladder past e = 1 with the same exact restitution edit:
     momentum conserved to round-off, KE_post - KE_pre = (1/2) mu (e^2 - 1) u_n^2 > 0 (energy created). Named like
-    the ladder (``e1.1`` ...), record kind ``energy_create``, energy_physical False."""
+    the ladder (``e1.1`` ...), record kind ``energy_create``, energy_physical False.
+
+    ``partner_levels``: legal arms at the momentum violators' e values that are not ladder levels (e.g. 0.15),
+    the violators' speed-matching partners. Same exact restitution edit, named ``e<e:g>`` (``e0.15``), record
+    ``ladder: False``: they are not rungs of the equal-step kink ladder."""
     pre.check()
     out = {}
     for e in levels:
@@ -232,6 +251,13 @@ def f2_twins(pre: PreState, post_a, post_b, e_sim: float, levels=F2_LEVELS, impo
             va, vb, rec = _restitution(pre, post_a, post_b, e_sim, e)
             rec = {"kind": "restitution", **rec}
         out[name] = Twin(name, va, vb, float(e), True, True, rec)
+    for e in partner_levels:
+        e = float(e)
+        name = level_name(e)
+        if any(abs(e - x) < 1e-9 for x in tuple(levels) + tuple(impossible_levels)) or not 0.0 <= e <= 1.0:
+            raise ValueError(f"partner level {e} must be a legal e that is not on the ladder")
+        va, vb, rec = _restitution(pre, post_a, post_b, e_sim, e)
+        out[name] = Twin(name, va, vb, e, True, True, {"kind": "restitution", "ladder": False, **rec})
     for e in impossible_levels:
         e = float(e)
         if e <= 1.0:
@@ -259,6 +285,11 @@ def momentum_eta(pre: PreState, v_a, v_b) -> float:
 def post_speed_norm(v_a, v_b) -> float:
     """Frobenius norm of both post velocities (the ``viol_slower`` statistic of L2's ideal observers)."""
     return float(np.linalg.norm(np.stack([np.asarray(v_a, float)[:2], np.asarray(v_b, float)[:2]])))
+
+
+def level_name(e: float) -> str:
+    """F2 legal / energy arm at restitution e: "e0.5", "e1.0", "e1.5" on the ladder, "e0.15" off it."""
+    return f"e{e:.1f}" if abs(round(e, 1) - e) < 1e-12 else f"e{e:g}"
 
 
 def violator_name(e: float, sign_tag: str) -> str:
@@ -309,7 +340,7 @@ def f2_violators(pre: PreState, post_a, post_b, e_sim: float, e_levels, magnitud
                 continue
             va2, vb2, srec = CP.split_edit(pre, va, vb, delta)
             ke = kinetic_energy(pre, va2, vb2)
-            rec = {"kind": "split", "base_e": e, "base": f"legal_e{e:g}", "drift_sign": tag,
+            rec = {"kind": "split", "base_e": e, "base": level_name(e), "drift_sign": tag,
                    "drift_along_vcm": tag == "pos", "delta_shrunk": bool(abs(delta) < abs(magnitude) - 1e-12),
                    "eta": momentum_eta(pre, va2, vb2),
                    "ke_ratio_vs_legal": ke / ke_legal if ke_legal > 0 else float("inf"),
@@ -340,25 +371,34 @@ def f3_twins(pre: PreState, e: float, ratios=F3_RATIOS, m_total: float | None = 
     return out
 
 
-def f4_twins(pre: PreState, post_a, post_b, e_sim: float, boosts: dict, e_low: float = 0.15) -> dict[str, Twin]:
+def f4_twins(pre: PreState, post_a, post_b, e_sim: float, boosts: dict, e_low: float = 0.15,
+             camera_boosts: tuple = ()) -> dict[str, Twin]:
     """F4: the F1 legal twins (e = 1 and e_low) under Galilean boosts ``{name: u (2-vector)}``.
 
-    A boost adds u to every velocity of the clip (positions gain u (t - t_contact)), so
-    restitution and the centre-of-mass-frame scattering angle are invariant exactly.
+    Ball boost (``<level>_<e>``): u is added to every velocity of the clip (positions gain u (t - t_contact)), the
+    camera is static, so restitution and the centre-of-mass-frame scattering angle are invariant exactly.
+    Camera boost (``cam_<level>_<e>`` for each level in ``camera_boosts``): the collision is the UNBOOSTED one (world
+    states = the u0 twin's) and the camera translates at -u, so relative to the camera the balls move exactly as in
+    the ball-boost twin ``<level>_<e>`` while the floor slides across the frame. pre_segment = the boost level
+    (``cam_<level>`` for camera boosts).
     """
     pre.check()
     out = {}
-    for bname, u in boosts.items():
-        u = np.asarray(u, float)[:2]
+    levels = [(b, np.asarray(u, float)[:2], "ball") for b, u in boosts.items()]
+    levels += [(f"cam_{b}", np.asarray(boosts[b], float)[:2], "camera") for b in camera_boosts]
+    for bname, u, kind in levels:
         for e, tag in ((1.0, "e1"), (e_low, "e015")):
             if abs(e - e_sim) < 1e-12:
                 va, vb = CP._xy(post_a), CP._xy(post_b)
             else:
                 va, vb, _ = _restitution(pre, post_a, post_b, e_sim, e)
             name = f"{bname}_{tag}"
-            out[name] = Twin(name, va + u, vb + u, e, True, True,
-                             {"kind": "boost", "boost": u.tolist(), "boost_level": bname, "e": e},
-                             boost=u, pre_segment=bname)
+            rec = {"kind": "boost", "boost_kind": kind, "boost": u.tolist(), "boost_level": bname, "e": e}
+            if kind == "ball":
+                out[name] = Twin(name, va + u, vb + u, e, True, True, rec, boost=u, pre_segment=bname)
+            else:
+                rec.update(camera_velocity=(-u).tolist(), ball_boost_twin=name[len("cam_"):])
+                out[name] = Twin(name, va, vb, e, True, True, rec, camera_boost=u, pre_segment=bname)
     return out
 
 

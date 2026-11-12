@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from physlaw.models.base import ModelAdapter, fit_frames, sample_frames, token_spec
+from physlaw.models.base import Adapter, fit_frames, sample_frames, token_spec
 from physlaw.models.dit import DEFAULT_PROMPT, source
 
 
@@ -31,7 +31,10 @@ def _diffusers(min_version: str):
     return diffusers
 
 
-class CosmosPredictAdapter(ModelAdapter):
+class CosmosPredictAdapter(Adapter):
+    """Generator only (no internals): the Video2World pipeline call."""
+
+    generator = True
 
     def __init__(self, cfg, pipe, device):
         super().__init__(cfg)
@@ -97,8 +100,3 @@ class CosmosPredictAdapter(ModelAdapter):
         gen = (np.clip(out, 0, 1) * 255).round().astype(np.uint8)
         real = ((x[0, :, : k - n_in].float().clamp(-1, 1) + 1) * 127.5).round().byte().permute(1, 2, 3, 0).cpu().numpy()
         return np.concatenate([real, gen])[: self.n_frames]
-
-    def encode(self, video, noise_level=None):
-        raise NotImplementedError(f"{self.name}: output track A generator only (spec §4.2 group 4)")
-
-    forecast = surprise = encode

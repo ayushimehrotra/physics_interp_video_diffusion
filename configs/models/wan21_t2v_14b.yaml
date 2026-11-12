@@ -1,5 +1,6 @@
-# Wan2.1-T2V-14B (spec §4.2 group 2, P1): same code path as wan21_t2v_1_3b.yaml (WanAdapter); weights NOT downloaded
-# on the 2026-11 machine (no disk; the sha256 pins are the Hub's LFS hashes at the pinned revision). OFFICIAL settings,
+# Wan2.1-T2V-14B (spec §4.2 group 2, P1): same code path as wan21_t2v_1_3b.yaml (WanAdapter); weights in
+# $PHYSLAW_MODELS/Wan2.1-T2V-14B-Diffusers at the pinned revision, all 18 pinned files sha256-verified 2026-11-12
+# (physlaw.models.registry.verify_weights; no unpinned weight files). OFFICIAL settings,
 # github.com/Wan-Video/Wan2.1 generate.py t2v defaults: 50 steps, sample_shift 5.0, sample_guide_scale 5.0, 81 frames;
 # shared_config: 16 fps, negative prompt, bf16. Size 832*480 (supported for t2v-14B; F1's native aspect and the 1.3B's
 # only size, so the two compare at equal input). Its own UMT5 text_encoder/ (download the full repo).
@@ -24,14 +25,14 @@ official:
 input:
   center_on_contact: false            # 5.0 s from frame 0; contact at input frames ~37-43
 token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}   # 21 latent frames x 30 x 52 tokens, 5120-d
-layers: [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 39]   # 40 blocks
+layers: [0, 4, 8, 10, 12, 16, 20, 24, 28, 30, 32, 36, 39]   # 40 blocks; + forecast_layers (L1 / L3 real rows)
 encode_snr_db: [-20, -8, 0, 8]
 # --- adapter settings (physlaw/models/wan.py) ---
 prompt: "A static camera looks straight down at a flat grey floor. Two balls roll across the floor, collide with each other and bounce apart."
 forecast_layers: [10, 20, 30]
 surprise: {n_draws: 2}
 noise_seed: 0
-# Weight pins (spec §4.3): Wan-AI/Wan2.1-T2V-14B-Diffusers@38ec498cb3208fb688890f8cc7e94ede2cbd7f68 (Hub LFS sha256, not downloaded); verified by physlaw.models.registry.
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-T2V-14B-Diffusers@38ec498cb3208fb688890f8cc7e94ede2cbd7f68 (Hub LFS sha256 = the local files, verified 2026-11-12); verified by physlaw.models.registry.
 sha256:
   text_encoder/model-00001-of-00005.safetensors: c0ef3a140898e228a3520c9adec60743d2e8e5b3d229651bb37f1a3921919f99
   text_encoder/model-00002-of-00005.safetensors: 481c7b2b39771c44df6dd8d13ee12ed072d731b4a650bd092885d4d52db229ad

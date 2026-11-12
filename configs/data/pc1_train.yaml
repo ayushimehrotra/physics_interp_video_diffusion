@@ -1,4 +1,4 @@
-# PC1 training render set (spec §4.4): legal clips only from F1, F2, F3, F4, F7, F8, >= 3,000 clips per
+# PC1 training render set (spec §4.4): legal clips only from F1, F2, F3, F4, F7, F8, F9, F11, F12, >= 3,000 clips per
 # family, rendered at 256 x 256 with lower samples per pixel. NEVER the benchmark's evaluation twins:
 # every family's seeds start at pc1_seed_base + 100000 * index, and scripts/01_generate_data.py asserts
 # that no PC1 seed range overlaps any benchmark config's [seed_offset, seed_offset + n_groups).
@@ -11,13 +11,16 @@
 mode: pc1_train
 out_dir: data/pc1
 pc1_seed_base: 5000000
-families:                       # groups x legal twins per group >= 3,000 clips
-  f1: {config: f1_collisions.yaml, n_groups: 1500}     # 2 legal (conserve_e1, conserve_e015)
-  f2: {config: f2_restitution.yaml, n_groups: 273}     # 11
-  f3: {config: f3_hidden_mass.yaml, n_groups: 600}     # 5
-  f4: {config: f4_galilean.yaml, n_groups: 500}        # 6
-  f7: {config: f7_freefall.yaml, n_groups: 1500}       # 2 per sub-family
-  f8: {config: f8_ramp.yaml, n_groups: 1000}           # 3 (slope A, slope B, kink)
+families:                       # groups x legal twins per group >= 3,000 clips (legal twins counted from the family code)
+  f1: {config: f1_collisions.yaml, n_groups: 1500}     # 2 legal (conserve_e1, conserve_e015) = 3000
+  f2: {config: f2_restitution.yaml, n_groups: 250}     # 12 (e0.0..e1.0 + the e0.15 violator partner) = 3000
+  f3: {config: f3_hidden_mass.yaml, n_groups: 600}     # 5 (ratio_0.33..ratio_3) = 3000
+  f4: {config: f4_galilean.yaml, n_groups: 300}        # 10 ({u0, usmall, ularge, cam_usmall, cam_ularge} x {e1, e015}) = 3000
+  f7: {config: f7_freefall.yaml, n_groups: 700}        # blocks 300 projectile x 2 + 200 drop x 2 + 200 bounce x 11 (eps0.5..eps1.0, step 0.05) = 3200
+  f8: {config: f8_ramp.yaml, n_groups: 273}            # 11 (eps0.5..eps1.0, step 0.05) = 3003
+  f9: {config: f9_pendulum.yaml, n_groups: 546}        # blocks of 150 pair x 1 (legal) / 150 swing x 11 (eps0.5..eps1.0): 300 x 1 + 246 x 11 = 3006
+  f11: {config: f11_support.yaml, n_groups: 3000}      # 1 (stay if x < 1, tip if x > 1) = 3000
+  f12: {config: f12_spin.yaml, n_groups: 1500}         # 2 (legal, legal_e04) = 3000
 overrides:                      # applied to every family config
   legal_only: true
   nuisance_frac: 0.0

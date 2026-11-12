@@ -1,0 +1,3 @@
+f2_restitution 200000 f2
+f3_hidden_mass 300000 f3
+f4_galilean 400000 f4

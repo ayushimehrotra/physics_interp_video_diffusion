@@ -281,16 +281,16 @@ SAMPLES_PER_PIXEL = 64
 
 def configure(*, num_frames: int, frame_rate: int, resolution: tuple[int, int],
               contact_frame: int, pre_post_offset_s: float = 0.25,
-              sensor_width_mm: float | None = None, samples_per_pixel: int | None = None,
+              sensor_width_mm: float, samples_per_pixel: int | None = None,
               contact_tolerance_frames: float | None = None, camera_distance: float | None = None,
               aspect: float | None = None, denoise: bool = True) -> dict:
   """Override the module's timing/resolution constants (PhysLaw master format).
 
   ``PRE_FRAME``/``POST_FRAME`` keep the old generator's +/-0.25 s offset from
   contact (frames 18/22 around 20 at 8 fps), converted to frames at the new rate.
-  ``sensor_width_mm`` defaults to keeping the old 50 px per world unit, so the
-  vertical field of view (the binding layout constraint) is unchanged at any
-  width: 720 px <-> 36 mm, so W px <-> 36 * W / 720 mm.
+  ``sensor_width_mm`` is required and comes from the master format
+  (``generate.master_fmt``, the one source of the field of view); it is never
+  recomputed here, so the render and the labels' camera always agree.
   ``aspect`` is the logical frame aspect (W/H by default); a different value means
   non-square pixels (the PC1 256x256 set shows the master's 832:480 view, squashed).
   ``camera_distance`` raises the camera (F4 widens the view for its boosts).
@@ -305,7 +305,7 @@ def configure(*, num_frames: int, frame_rate: int, resolution: tuple[int, int],
   NUM_FRAMES, FRAME_RATE, RESOLUTION = int(num_frames), int(frame_rate), tuple(resolution)
   TARGET_CONTACT_FRAME = int(contact_frame)
   PRE_FRAME, POST_FRAME = TARGET_CONTACT_FRAME - off, TARGET_CONTACT_FRAME + off
-  SENSOR_WIDTH = float(sensor_width_mm) if sensor_width_mm else 36.0 * RESOLUTION[0] / 720.0
+  SENSOR_WIDTH = float(sensor_width_mm)
   if samples_per_pixel:
     SAMPLES_PER_PIXEL = int(samples_per_pixel)
   if contact_tolerance_frames is not None:

@@ -21,8 +21,8 @@
                    "energy_physical", "master_format", "config_hash"],
       "properties": {
         "schema_version": {"enum": ["physlaw-labels-1", "physlaw-labels-2"]},
-        "family": {"enum": ["f1", "f2", "f3", "f4", "f6", "f7", "f8", "f9", "f10"]},
-        "subfamily": {"type": "string", "$comment": "f6: flat|incline|slides; f7: projectile|drop|bounce; f8: ramp; f9: pendulum; f10: rolling; '' for f1-f4"},
+        "family": {"enum": ["f1", "f2", "f3", "f4", "f6", "f7", "f8", "f9", "f10", "f11", "f12"]},
+        "subfamily": {"type": "string", "$comment": "f6: flat|incline|slides|glide; f7: projectile|drop|bounce; f8: ramp; f9: pair|swing; f10: rolling; f11: support; f12: spin; '' for f1-f4"},
         "split": {"enum": ["train", "val", "test"]},
         "seed": {"type": "integer"},
         "twin": {"type": "string"},
@@ -30,25 +30,37 @@
         "twin_group_id": {"type": "string", "$comment": "<family>_<seed>, or <family>_<seed>_nuisance for a nuisance variant"},
         "base_group_id": {"type": "string", "$comment": "the physics group (same as twin_group_id unless nuisance)"},
         "nuisance": {"enum": [0, 1]},
-        "event_kind": {"enum": ["contact", "branch", "release", "band"], "$comment": "contact: collision or floor bounce (between frames); branch: law changes mid-flight (on a frame); release: a held body starts moving (on a frame); band: a body crosses onto a friction band"},
+        "event_kind": {"enum": ["collision", "bounce", "pad", "swing", "branch", "release", "contact"], "$comment": "energy exchange events (spec 5.0.1): collision (f1-f4, two spheres touch, between frames); bounce (f7 bounce, first floor contact, between frames); pad (f8, the block's centre enters the dissipation pad, between frames); swing (f9 swing, the bob enters the damper zone at the bottom, between frames). Others: branch (the law changes invisibly mid-flight / mid-slide / mid-glide / at a pendulum apex, on a frame: f6 slide / pair / glide, f7, f9 pair); release (a held body starts moving: f7 drop, f10, f11 prop drops); contact (f12, puck meets bar, between frames; rigid bodies, not a sphere collision)"},
+        "epsilon": {"type": "number", "$comment": "f1-f4, f7 bounce, f8, f9 swing: this twin's realised generalised restitution of the exchange event. collision: -(v_A'-v_B').n / (v_A-v_B).n from the twin's velocities (n = contact_normal, A -> B); bounce: first-bounce floor restitution e = -v'_z/v_z; pad: speed leaving / entering the pad; swing: sqrt(apex height above the lowest point after / before the damper). <= 1 legal, > 1 creates energy"},
+        "clean_until_s": {"type": "number", "$comment": "every twin (required in physlaw-labels-2; the frozen F1 labels-1 compute it from per_frame): absolute time of this twin's first secondary event after the event; the analysis window of a group is [event_time_s, min over its twins of clean_until_s]. collision: time of the last frame before a sphere's silhouette leaves the image (inframe_until - 1), else of the last frame; bounce: the second floor contact (exact), else the last frame; f7 projectile / drop: the first floor contact (exact) or the last frame a ball is wholly in frame, whichever comes first; f8: the apex of the climb on ramp C (exact); f9 swing: the next damper entry (exact); f6 (slide, pair, glide), f9 pair, f10, f11: the last frame every body is wholly in frame (the clip end when nothing leaves: f6 slide / pair cameras hold every twin's whole path, pair bobs swing in place); f12: the last frame before the puck and the bar touch again or one leaves the frame. Every non-aux body is in frame up to it (closed-form families)"},
+        "stop_dose": {"type": "object", "additionalProperties": {"type": "number"}, "$comment": "f2, f7 bounce, f8, f9 swing (same in every twin of the group): {obj: epsilon at which |v_obj'| is minimal along the group's ladder}; post velocities are affine in epsilon, so it is computed from the two ladder ends. NaN (JSON NaN) when the minimum is at a ladder end"},
+        "ke_ratio_to_legal": {"type": "number", "$comment": "f2 momentum violators (and any twin whose edit records ke_ratio_vs_legal): KE_post of this twin / KE_post of the legal twin at the same e (its speed-matching partner; mom_violate_e<e>_pos > 1, _neg usually < 1)"},
         "event_time_s": {"type": "number", "$comment": "exact event time; frames are at k / fps"},
         "event_frame": {"type": "integer", "$comment": "last frame shared by every twin of the pre_segment = first_post_contact_frame - 1"},
         "first_post_contact_frame": {"type": "integer", "$comment": "first frame after the event (all families, despite the name)"},
         "pre_segment": {"type": "string", "$comment": "twins with the same value are byte-identical before first_post_contact_frame (F4: one per boost; F8: one per ramp geometry; otherwise '0')"},
         "legal": {"type": "boolean"},
-        "violated_law": {"type": ["string", "null"], "$comment": "momentum | energy | gravity | axis_independence | mass_independence | bounce | path_independence | pendulum_period | rolling; null when legal"},
-        "violation_magnitude": {"type": "number", "$comment": "f1 momentum: |dp|/|p|; f1 energy: KE_post/KE_pre; otherwise the edit factor (gravity x1.5, vx x0.6, accel x1.3, height ratio 1.3, speed x1.25, sqrt(sin th2/sin th1), period x0.8); 0 when legal"},
+        "violated_law": {"type": ["string", "null"], "$comment": "momentum (also f6 glide: Newton I) | energy | gravity (f7: gravity_x15 constant g, vx_x06 axis independence, drop heavy_x13 mass independence) | friction (f6 slides: viscous, heavy_x13 mass independence) | oscillation (f9 pair) | rolling | statics (f11) | angular_momentum (f12); null when legal (f7 bounce, f8 and f9 swing ladders: energy for epsilon > 1)"},
+        "violation_magnitude": {"type": "number", "$comment": "f1 momentum: |dp|/|p|; f1 energy: KE_post/KE_pre; f2 energy arms: KE_post/KE_pre; f7 bounce, f8, f9 swing: epsilon; f6 glide: speed factor (turn twin: turn angle / 180 deg); f6 viscous: exp(-1/2) (decel ratio over half the legal stop time); f9 pair: period factor; f11: |x - 1|; f12: spin factor; otherwise the edit factor (gravity x1.5, vx x0.6, accel x1.3); 0 when legal"},
         "flags": {"type": "object", "$comment": "side effects on laws other than the target: energy_physical (no energy created after the event), momentum_conserved (collision families)"},
         "energy_physical": {"type": "boolean"},
         "momentum_conserved": {"type": "boolean"},
         "constants": {
           "type": "object",
-          "$comment": "legal-world constants a law needs (never the twin's edit): g (m/s^2, 0 for f1-f4), fps, masses {obj: kg} and sizes {obj: radius or cube half-extent} OF THIS TWIN; collision: e, e_sim, contact_normal, boost_u [3]; f6: mu, a, theta_rad (incline), v0, band_normal; f7: e_floor (this twin's legal floor restitution), e_floor_lo, z_floor, release_time_s, drop_height, heavier; f8: h, theta1_rad, theta2_rad, kink_angles_rad, slope_angles_rad (this twin's path), v_bottom_legal = sqrt(2 g h), t_bottom_s, fillet_radius, mu = 0; f9: hinge_length, hinge_point, amplitude_rad, period_legal_s; f10: theta_rad, h, inertia_factors"
+          "$comment": "legal-world constants a law needs (never the twin's edit): g (m/s^2, 0 for f1-f4), fps, masses {obj: kg} and sizes {obj: radius or cube half-extent} OF THIS TWIN; collision: e, e_sim, contact_normal, boost_u [3]; f6 slide / pair: mu, a (legal deceleration), v0 (speed at t = 0), t_stop_s (the legal stop, shared by the group), t_stop_twin_s (this twin comes to rest; absent if it never does), direction, start {obj: p(0)}, half_size, heavier / mass_ratio_heavy_over_light / separation (pair); f7: e_floor (projectile/drop: this twin's floor restitution; bounce: this twin's first-bounce restitution = epsilon), e_floor_lo, e_floor_later (bounce: later bounces), z_floor, release_time_s, drop_height, heavier; f8: h, theta_a_rad, theta_c_rad, slope_angles_rad [theta_a, -theta_c], half_size, z_floor, fillet_radius, mu = 0, release_time_s, pad_length, pad_x_range, pad_entry_speed = sqrt(2 g h), direction; f6 glide: v0, mu = 0, branch_position; f9: pendulum_length, bob_radius, amplitude_rad, pivots {bob: [x,y,z]}, bobs, omega0, period_legal_s (exact large-angle), kappa = I_pivot/(m L^2), heavier (pair), p_bottom, damper_half_angle_rad, release_time_s (swing); f10: theta_rad, h, inertia_factors; f11: overhang_x, aspect_ba = b/a, half_length, half_height, edge_point, direction, inertia_over_mass, tip_axis, a0_legal_over_g; f12: e (this twin's legal-world restitution), contact_point, contact_normal, impact_parameter, inertias {obj: I_z}, bar_half_length, bar_half_width"
         },
         "pre_state": {"$ref": "#/$defs/state", "$comment": "state at event_frame (last shared frame)"},
         "post_state": {"$ref": "#/$defs/state", "$comment": "state at first_post_contact_frame"},
-        "event_state": {"type": "object", "required": ["pre", "post"], "$comment": "exact states at event_time_s, just before (pre) and just after (post); what io.law_inputs hands to physlaw.eval.laws"},
+        "event_state": {"type": "object", "required": ["pre", "post"], "$comment": "exact states at event_time_s, just before (pre) and just after (post); what io.law_inputs hands to physlaw.eval.laws. f8: pre = the block entering the pad (t_s = event_time_s), post = the block leaving it (t_s = edit.t_pad_exit_s); f9 swing: the bob (and rod) entering / leaving the damper (post t_s = edit.t_damper_exit_s); f11: also a [n,3], the exact CoM accelerations (post: the initial tipping acceleration)"},
         "ref_event_state": {"type": "object", "$comment": "f4: event_state of the unboosted twin with the same restitution (Galilean reference)"},
+        "boost_kind": {"enum": ["ball", "camera"], "$comment": "f4: ball = u added to both balls, camera static (twins u0_*, usmall_*, ularge_*); camera = the collision unboosted, the camera translating at -u (twins cam_usmall_*, cam_ularge_*: relative to the camera the balls move exactly as in the ball-boost twin of the same level, the floor slides across the frame)"},
+        "frame": {"enum": ["world", "camera"], "$comment": "f4: frame of the primary states (per_frame position / velocity / momentum / kinetic_energy, pre_velocity, post_velocity, event_state, pre_state, post_state). camera (camera-boost twins): the camera's rest frame = world axes with the origin moving with the camera (camera_trajectory.velocity_world), coincident with the world at camera_trajectory.t_ref_s; `camera` (the camera at t_ref) projects these to `pixel` at every frame; the world states are under *_world (io.world_view, io.law_inputs(frame='world')). world: static camera, the world is the camera's rest frame"},
+        "camera_trajectory": {"type": "object", "required": ["velocity_world", "t_ref_s", "position_world"], "$comment": "frame == camera: constant-velocity translation of the camera (no rotation): velocity_world [3] (= -edit.boost), t_ref_s (the contact instant: the camera is `camera` there), position_at_t_ref [3], position_world [T][3] per frame"},
+        "event_state_world": {"type": "object", "$comment": "frame == camera: event_state in the world frame (= the u0 twin's)"},
+        "pre_velocity_world": {"type": "object", "$comment": "frame == camera: pre_velocity in the world frame"},
+        "post_velocity_world": {"type": "object", "$comment": "frame == camera: post_velocity in the world frame"},
+        "pre_state_world": {"$ref": "#/$defs/state"},
+        "post_state_world": {"$ref": "#/$defs/state"},
         "contact_frame": {"type": "integer"},
         "contact_normal": {"$ref": "#/$defs/vec2"},
         "camera": {
@@ -63,9 +75,12 @@
           "additionalProperties": {
             "type": "object", "required": ["mass", "radius", "density", "segmentation_id"],
             "properties": {"mass": {"type": "number", "exclusiveMinimum": 0},
-                           "radius": {"type": "number", "exclusiveMinimum": 0, "$comment": "radius, or half-extent for a cube"},
+                           "radius": {"type": "number", "exclusiveMinimum": 0, "$comment": "radius, or half-extent for a cube, or half_extents[0] for a box"},
                            "density": {"type": "number", "exclusiveMinimum": 0},
-                           "shape": {"enum": ["sphere", "cube", "cylinder", "tube"]}}
+                           "shape": {"enum": ["sphere", "cube", "cylinder", "tube", "box"]},
+                           "half_extents": {"$ref": "#/$defs/vec3", "$comment": "box: half-extents along the body x, y, z"},
+                           "spin_axis": {"enum": [0, 1, 2], "$comment": "box: body axis that inertia is about"},
+                           "aux": {"const": true, "$comment": "visual-only attachment (f9 rods, f11 prop): not a physical object of the laws; io.law_inputs drops it"}}
           }
         },
         "pre_velocity": {"type": "object", "$comment": "{obj: velocity} at event_frame ([2] in f1-f4, [3] otherwise)"},
@@ -79,8 +94,14 @@
         {"if": {"properties": {"schema_version": {"const": "physlaw-labels-2"}}},
          "then": {"required": ["subfamily", "base_group_id", "nuisance", "event_kind", "event_time_s", "event_frame",
                                "pre_segment", "legal", "violated_law", "violation_magnitude", "flags", "constants",
-                               "pre_state", "post_state", "event_state", "render_device"],
+                               "pre_state", "post_state", "event_state", "render_device", "clean_until_s"],
                   "properties": {"constants": {"required": ["g", "fps", "masses", "sizes"]}}}},
+        {"if": {"properties": {"schema_version": {"const": "physlaw-labels-2"}, "event_kind": {"enum": ["collision", "bounce", "pad", "swing"]}},
+                "required": ["event_kind"]},
+         "then": {"required": ["epsilon", "clean_until_s"]}},
+        {"if": {"anyOf": [{"properties": {"family": {"enum": ["f2", "f8"]}, "schema_version": {"const": "physlaw-labels-2"}}, "required": ["family"]},
+                          {"properties": {"event_kind": {"enum": ["bounce", "swing"]}}, "required": ["event_kind"]}]},
+         "then": {"required": ["stop_dose"]}},
         {"if": {"properties": {"family": {"enum": ["f1", "f2", "f3", "f4"]}}},
          "then": {"required": ["contact_frame", "contact_frame_actual", "contact_normal", "momentum_conserved", "summary"]}}
       ]
@@ -102,7 +123,9 @@
         "position": {"$ref": "#/$defs/vec3"},
         "velocity": {"$ref": "#/$defs/vec3"},
         "angular_velocity": {"$ref": "#/$defs/vec3"},
-        "quaternion": {"type": "array", "minItems": 4, "maxItems": 4}
+        "quaternion": {"type": "array", "minItems": 4, "maxItems": 4},
+        "position_world": {"$ref": "#/$defs/vec3", "$comment": "frame == camera (f4 camera boost): the world position (position is camera-frame)"},
+        "velocity_world": {"$ref": "#/$defs/vec3"}
       }
     }
   }

@@ -1,0 +1,538 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\setlist{itemsep=2pt,topsep=3pt}
+
+% Standalone citation macros: print the bib key so this file compiles without references.bib.
+% Delete these three lines when moving text into the paper (natbib provides the real ones).
+\providecommand{\citet}[1]{\textsf{#1}}
+\providecommand{\citep}[1]{(\textsf{#1})}
+\providecommand{\citealp}[1]{\textsf{#1}}
+
+\newcommand{\eps}{\varepsilon}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ind}{\mathbb{1}}
+\newcommand{\ghat}{\hat{\mathbf g}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newtheorem{proposition}{Proposition}
+
+
+\title{PhysLaw: condensed Related Work and Methods}
+\date{}
+\begin{document}
+\sloppy
+\maketitle
+
+%=====================================================================
+\section{Related Work (condensed)}
+%=====================================================================
+
+\paragraph{Violation of expectation and outcome prediction.}
+Violation-of-expectation (VoE) benchmarks, borrowed from developmental psychology, test whether a model is more
+surprised by an implausible video than by a matched plausible one. The violations are of qualitative object concepts:
+objects disappearing (object permanence), changing shape (shape constancy, immutability), teleporting
+(spatio-temporal continuity), passing through each other (solidity), or floating unsupported (gravity, support)
+\citep{piloto2018probing,riochet2022intphys,bordes2025intphys2,weihs2022inflevel,jassim2024grasp}.
+Physion \citep{bear2021physion} and Physion++ \citep{tung2023physionpp} instead train a readout to predict a binary
+outcome (whether two cued objects make contact), where in Physion++ the outcome depends on latent mass, friction,
+elasticity or deformability. \citet{garrido2025intuitive} find V-JEPA reliably above chance on such benchmarks while
+pixel predictors and multimodal LLMs stay near chance. In every case the test is a yes/no judgement about whether an
+event is possible; none asks whether a quantitative law holds.
+
+\paragraph{Physical plausibility of generated videos.}
+Output benchmarks score generated videos in three ways. Some ask a human or a vision-language model to rate physical
+commonsense (VideoPhy \citep{bansal2024videophy}, PhyGenBench \citep{meng2024phygenbench}, VBench-2.0
+\citep{zheng2025vbench2} and others). Some compare the generation with a ground-truth
+continuation of the same conditioning frames: Physics-IQ \citep{motamed2025physicsiq} measures the overlap of motion
+masks with real footage (where, when and how much motion occurs) plus pixel MSE, and RigidBench
+\citep{jain2026rigidbench} measures the 3D trajectory error against a simulator. Others track objects in the generation
+and check a physical quantity: PISA \citep{li2025pisa} measures the trajectory error of a falling object against real
+drops, Morpheus \citep{tragoudaras2026morpheus} fits physics-informed models to the tracks and checks that conserved
+quantities stay constant, and PVBench \citep{chen2026pvbench} scores generations with object-level physical measurements.
+Measuring an absolute quantity (e.g.\ $g$ in m/s$^2$) from a generated video requires knowing its frame rate and
+metric scale, which generations do not reliably have. The closest work therefore uses \emph{unit-free relational
+tests}: two measurements of the same kind are taken in one video and compared as a ratio, so the unknown scale and
+frame rate cancel. \citet{thozhiyoor2025slower} drop two objects from heights $h_1,h_2$ and test
+$t_1^2/t_2^2=h_1/h_2$, where heights are in pixels and fall times in frames; Principia \citep{thozhiyoor2026principia}
+generalises this to pairs of objects across eight phenomena, and PhysWeep \citep{khanbayov2026physweep} recovers the
+physical parameter a generation realises. All of these evaluate only the generated output. None tests whether the
+model's internal representations follow the law, so output-level and representation-level evidence for the same law
+are never compared.
+
+\paragraph{Physical variables inside video models.}
+For encoders, \citet{joseph2026interpreting} find a ``Physics Emergence Zone'' at intermediate depth in V-JEPA~2 and
+VideoMAE-v2, \citet{alam2026steering} steer a probe's possible/impossible classification of IntPhys videos, and
+CALIPER \citep{mehta2026caliper} shows that in clean scenes even raw pixels predict how far a struck object slides. For diffusion transformers (DiTs), \citet{kneifl2026activations} decode
+and steer speed, momentum and gravity, \citet{esmati2026invisible} decode plausibility, and LikePhys
+\citep{yuan2026likephys} uses the denoising loss as a surprise score. This literature shows that individual physical variables (an object's speed, position or
+plausibility label) can be decoded and sometimes steered. It does not test whether the relations among them obey a
+law, for example whether decoded velocities before and after a collision conserve momentum. Outside video,
+\citet{vafa2025inductive} show that a transformer that accurately predicts planetary orbits, when fine-tuned to predict
+forces, implies a different and non-Newtonian law of gravitation on each slice of data: accurate prediction does not
+imply that a model has learned the law behind it.
+
+\paragraph{Physics post-training.}
+PISA, VideoREPA \citep{zhang2025videorepa}, PhysRVG \citep{zhang2026physrvg}, NewtonRewards \citep{le2025newtonrewards}
+and WROP \citep{zhang2026wrop} improve physics in generators and evaluate only outputs, so it is unknown whether
+their output gains come with any change in what the model represents.
+
+\paragraph{Interpretability benchmarks in other domains.}
+Work on language and vision models has developed controls for claims about what a model encodes. Because probe
+accuracy alone overstates what is represented \citep{belinkov2022probing}, probes are compared against control tasks
+that keep the data's structure but remove the property (\emph{selectivity}, \citealp{hewitt2019control}) and against
+the same architecture with random weights \citep{adebayo2018sanity}. Causal claims use interchange interventions,
+which swap a representation between two inputs and check that the output changes as the hypothesised variable
+predicts \citep{geiger2021causal}; RAVEL \citep{huang2024ravel}, CausalGym \citep{arora2024causalgym}
+and MIB \citep{mueller2025mib} score localisation methods this way. Steering vectors are
+known to vary in effect across inputs and sometimes push the wrong way \citep{tan2024steering,braun2025unreliability},
+and steering along a fitted activation manifold behaves more naturally than linear steering
+\citep{wurgaft2026manifold}. These benchmarks use language models, where the ground truth is a known circuit or a
+labelled concept; none applies these controls to physical laws in video models.
+
+%=====================================================================
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Overview}
+PhysLaw asks whether video models represent and forecast physical laws. We render synthetic videos of simple
+mechanical events (collisions, bounces, slides, swings, rolls and tips) in \emph{matched sets}: groups of
+videos that share every frame up to an \emph{event} and differ only in what happens after it. The event is the
+moment where the physics under test happens: two objects make contact, a ball hits the floor, an object is released,
+a block enters a pad or a pendulum enters a damper. In scenes with no such interaction (a projectile in flight, a
+pendulum at the top of its swing) it is a chosen frame where the videos branch. \emph{Plausible} videos obey
+the law; \emph{implausible} videos break it in a controlled way. A set can hold several plausible outcomes (for
+example, collisions that lose different amounts of energy). We pass these videos through video encoders and diffusion transformers and
+ask, at several levels, whether the laws hold in what the models compute.
+
+Each law is reduced to dimensionless ratios of one physical quantity measured twice in the same video (for example,
+an object's velocity just before and just after a collision). Because both measurements come from the same video and
+the same measuring instrument, the ratios do not depend on the video's spatial scale or frame rate
+(Section~\ref{sec:laws}). The same ratios are computed from ground-truth labels, from quantities decoded out of model
+activations, and from objects tracked in generated videos.
+
+The evaluation levels are:
+\begin{itemize}
+\item \textbf{L0, state decoding:} are the ingredients of each law (velocity, mass, momentum) linearly decodable from
+the model's activations?
+\item \textbf{L1, forecasts:} when the model predicts what happens after the event, do the decoded quantities of that
+prediction obey the law?
+\item \textbf{L2, sensitivity to implausible videos:} is the model's own prediction error larger for the
+implausible video than for the plausible one, does it change abruptly at the point where an event stops losing
+energy and starts creating it? Does the representation itself change abruptly there, and can a trained classifier
+tell implausible from plausible videos?
+\item \textbf{L3, invariance:} do the decoded quantities stay unchanged when every object is given the same extra
+velocity (Galilean invariance), and when only an object's mass changes in cases where the law says mass should not
+matter, such as two balls of different mass falling with the same acceleration (mass independence)?
+\item \textbf{L4, steering:} does moving the representation along the direction that encodes a law parameter change
+the model's forecast the way the law predicts?
+\item \textbf{Generated videos:} do the same ratios hold in videos the diffusion models generate?
+\end{itemize}
+Every level is reported beside controls that bound what a non-physical shortcut could achieve
+(Section~\ref{sec:controls}).
+
+\subsection{Models}
+
+We evaluate two video encoders, V-JEPA~2 ViT-L and VideoMAE-v2-g, and diffusion transformers
+(DiTs), including two base/post-trained pairs: CogVideoX-5B vs.\ VideoREPA and Wan2.2-TI2V-5B vs.\ PhysRVG.
+V-JEPA~2 sees 64 frames at 24\,fps at $256^2$ (32 temporal tokens of $16\times16$); VideoMAE-v2-g sees 16 frames at
+8\,fps at $224^2$; DiTs use their native resolution, frame count and rate. A temporal token is \emph{pre} if all its
+frames precede the event, \emph{post} if all follow, and is otherwise excluded. Controls include an untrained V-JEPA~2
+and two positive controls trained on plausible renders (Section~\ref{sec:controls}).
+
+\subsection{Videos}
+\label{sec:videos}
+Videos are rendered with Kubric at 48\,fps, 289 frames (6\,s), $832\times480$, with the event in frames 112--128. Collisions are simulated in PyBullet up to contact; every other scene
+is written in closed form. Each implausible video breaks exactly one law. All analyses
+of post-event motion use the \emph{analysis window} of a set: from the event to the first later event (an object
+leaving the frame, a second contact) in any of its videos. Table~\ref{tab:videos} lists the videos for
+each law; some laws are tested in more than one scene.
+
+\begin{table}[h]
+\centering\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Law & Scene & Plausible videos & Implausible videos \\
+\midrule
+Conservation of momentum & two spheres collide on a frictionless plane, seen from above &
+collisions at several restitutions; the same collision at five hidden mass ratios $m_A/m_B\in\{0.33,\dots,3\}$ (identical look) &
+a drift added to both balls along the contact normal, which changes total momentum but not restitution; in one
+comparison each is paired with the plausible video whose post-event kinetic energy is closest, with faster and
+slower implausible videos weighted equally, so that kinetic energy alone cannot tell them apart \\
+Newton's first law & puck gliding on ice & constant velocity & speed $\times0.7$--$1.3$, or a $20^\circ$ turn, with no
+force acting; the main comparison uses one slower and one faster video ($\times0.9$, $\times1.1$) so that speed alone
+cannot separate them \\
+No creation of energy & sphere collisions; a ball bouncing on the floor; a block crossing a pad between two ramps; a pendulum swinging
+through a damper & a \emph{restitution sweep}: videos that differ only in the restitution $\eps$ (the fraction of
+approach speed kept after the event), with $\eps\le1$ (energy lost or kept): $e\in\{0,0.1,\dots,1.0\}$ for the
+collisions, $\eps\in\{0.50,0.55,\dots,1.00\}$ for the bounce, pad and damper & the same sweep continued past $\eps=1$
+(energy created): $e\in\{1.1,\dots,1.5\}$ for the collisions, $\eps\in\{1.05,\dots,1.50\}$ for the bounce, pad and
+damper \\
+Galilean invariance & the sphere collisions with a common velocity added to both balls, or with the camera moving at the
+opposite velocity (on a faintly checkered floor) & collisions with the added velocity or the moving camera, compared
+with the same collision without it & none \\
+Uniform gravitational acceleration & projectile; dropped balls & falls at two restitutions & gravity $\times1.5$ after the event; horizontal
+velocity $\times0.6$; the heavier ball falling faster \\
+Coulomb friction & block already sliding on one uniform floor, branching mid-slide; two blocks sliding & constant
+deceleration to a stop & sliding back after stopping; deceleration proportional to speed; deceleration
+$\times0.7$, $0.85$, $1.15$ or $1.3$; the heavier block decelerating $1.3\times$ faster \\
+Rolling without slipping & solid and hollow cylinder released on one incline & the solid cylinder arriving first & the hollow cylinder
+arriving first; both arriving together; rolling with slip \\
+Torque balance & block resting on a ledge at overhang $x\in\{0.55,\dots,1.45\}$ & tipping iff $x>1$ & tipping when
+$x\le1$, or staying when $x>1$ \\
+Constant pendulum period & pair of pendulums & unchanged period & period $\times0.8$ or $\times1.25$; the heavier bob swinging
+faster \\
+Conservation of angular momentum & puck strikes a free bar off-centre & two restitutions & the bar's spin $\times0.8$ or $\times1.2$ with kinetic energy and linear momentum unchanged (the main
+comparison uses both together); the bar's spin $\times0.7$--$1.3$ \\
+\bottomrule
+\end{tabularx}
+\caption{Videos by law. All videos in a matched set share every frame before the event.}
+\label{tab:videos}
+\end{table}
+
+\subsection{Measuring physical laws}
+\label{sec:laws}
+
+We test nine laws of classical mechanics:
+\begin{itemize}
+\item \textbf{Conservation of momentum:} in a two-body collision, the momentum one body loses the other gains; with
+no force acting, velocity stays constant (Newton's first law).
+\item \textbf{No creation of energy:} a collision, bounce or other exchange cannot create mechanical energy.
+\item \textbf{Uniform gravitational acceleration:} gravity is a constant acceleration, independent of horizontal
+motion and of mass.
+\item \textbf{Coulomb friction:} kinetic friction slows a sliding body at a constant rate, independent of its speed and
+mass.
+\item \textbf{Rolling without slipping:} on one incline, a body's acceleration depends only on how its mass is
+distributed, so a solid cylinder beats a hollow one, and its spin matches its speed.
+\item \textbf{Torque balance:} a block on a ledge tips if and only if its centre of mass lies beyond the edge.
+\item \textbf{Constant pendulum period:} a pendulum keeps its period, and the period does not depend on the bob's mass.
+\item \textbf{Conservation of angular momentum:} a contact between free bodies conserves angular momentum about the
+centre of mass.
+\item \textbf{Galilean invariance:} adding a common velocity to every body changes neither the restitution nor the
+scattering angle in the centre-of-mass frame.
+\end{itemize}
+To test a law in a video, we compute a \emph{law statistic}: a single number calculated from the objects' measured
+motion (positions, velocities, accelerations) that takes a known value whenever the law holds. Each law statistic is a
+dimensionless ratio of one quantity measured twice in the same video, for example an object's velocity just before and
+just after a collision. Table~\ref{tab:laws} lists the statistics. For each one we give its \emph{physical} value,
+the value the law requires, and its \emph{null} value, the value it would take under a simple alternative that ignores
+the law (for example, giving both balls in a collision equal and opposite velocity changes regardless of their masses). Scores later place a model between
+these two values.
+
+The statistics use the following notation. Each video contains one or two objects, labelled $A$ and $B$, with masses
+$m_i$ and radii $r_i$; $k_i=I_i/(m_ir_i^2)$ is an object's inertia factor, which describes how its mass is distributed
+($I_i$ is its moment of inertia). Unprimed quantities describe the state just before the event and primed quantities
+the state just after it, so $\Delta\mathbf v_i=\mathbf v_i'-\mathbf v_i$ is the change in an object's velocity and
+$\mathbf q_i=m_i\Delta\mathbf v_i$ the change in its momentum. In a collision, $\mathbf n$ is the unit vector from
+$A$'s centre to $B$'s at contact and $u_n=(\mathbf v_A-\mathbf v_B)\cdot\mathbf n$ is the speed at which they
+approach. $M=m_A+m_B$ is the total mass, $\mu=m_Am_B/M$ the reduced mass, $\mathbf V$ the velocity of the centre of
+mass, $\ghat$ the direction of gravity and $\eps$ the restitution. Subscripts h and l mark the heavier and lighter
+object. Accelerations are obtained by fitting a quadratic, $\mathbf p(t)\approx\mathbf c_0+\mathbf c_1t+\mathbf
+c_2t^2$, to the positions over 0.1\,s on each side of the event and taking $\mathbf a=2\mathbf c_2$.
+
+\begin{table}[h]
+\centering\small
+\renewcommand{\arraystretch}{1.35}
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{3.0cm}@{}}
+\toprule
+Law & Statistic & Physical & Null \\
+\midrule
+Cons.\ of momentum & $\eta=\dfrac{\|\mathbf q_A+\mathbf q_B\|}{\|\mathbf q_A\|+\|\mathbf q_B\|}$;\
+antiparallel $=-\cos(\Delta\mathbf v_A,\Delta\mathbf v_B)$;\ normal$_i=\dfrac{|\Delta\mathbf v_i\cdot\mathbf n|}{\|\Delta\mathbf v_i\|}$
+& $0;\,1;\,1$ & mass-blind: $\eta_{\mathrm{blind}}=\frac{|m_A-m_B|}{m_A+m_B}$ \\
+Newton's first law & $\|\mathbf V'\|/\|\mathbf V\|$;\ $\frac1\pi\max_i\angle(\mathbf v_i,\mathbf v_i')$ & $1;\,0$ & stop: $0$ \\
+No energy creation & collision $\eps=-\dfrac{(\mathbf v_A'-\mathbf v_B')\cdot\mathbf n}{(\mathbf v_A-\mathbf v_B)\cdot\mathbf n}$;
+bounce $-\dfrac{\sum\mathbf v_i'\cdot\ghat}{\sum\mathbf v_i\cdot\ghat}$; pad $\dfrac{\|\mathbf V'\|}{\|\mathbf V\|}$;
+swing $\sqrt{h'/h}$ & $\eps\le1$ & pass-through \\
+Uniform gravity & $g_{\mathrm{ratio}}=\dfrac{\sum\mathbf a_i'\cdot\ghat}{\sum\mathbf a_i\cdot\ghat}$;
+axis $=\dfrac{\|H\mathbf V'\|}{\|H\mathbf V\|}$; mass $=\dfrac{\mathbf a_h'\cdot\ghat}{\mathbf a_l'\cdot\ghat}$ & $1;\,1;\,1$ & no gravity: $0;\,0;\,m_h/m_l$ \\
+Coulomb friction & decel $=\dfrac{\sum\mathbf a_i'\cdot\hat{\mathbf v}_i'}{\sum\mathbf a_i\cdot\hat{\mathbf v}_i}$ (after/before the event, while moving);
+stop $=\max_i\|\mathbf v_{i,\mathrm{stop}}\|/\|\mathbf v_i\|$; mass $=$ heavy/light deceleration & $1;\,0;\,1$ & Stokes drag \\
+Rolling w/o slipping & order $=\dfrac{\log(a_{\mathrm{solid}}/a_{\mathrm{hollow}})}{\log\big((1+k_h)/(1+k_s)\big)}$;
+slip $=\dfrac{\|\boldsymbol\omega'\|r}{\|\mathbf v'\|}$ & $1;\,1$ & inertia ignored: $0;\,0$ \\
+Torque balance & tip $=\ind[(\varphi>0.05)=(x>1)]$; $\alpha$-ratio $=\|\boldsymbol\alpha'\|/\alpha_{\mathrm{phys}}$,
+$\alpha_{\mathrm{phys}}=\frac{g_{\mathrm{clip}}}{a}\frac{d}{d^2+(1+\beta^2)/3}$ & $1;\,1$ & block stays: $\alpha$-ratio $0$ \\
+Pendulum period & $\exp(\mathrm{mean}_i\log T_i'/T_i)$;\ $T_h'/T_l'$ & $1;\,1$ & $T\propto m^{-1/2}$ \\
+Cons.\ of ang.\ mom. & $L_z'/L_z$, $L_z=\sum m_i(\mathbf p_i-\mathbf R)\times(\mathbf v_i-\mathbf V)+\sum I_i\omega_{z,i}$ & $1$ & spin ignored \\
+Galilean invariance & $d_\eps=|\eps-\eps_{\mathrm{ref}}|$;\ $d_\theta=|\mathrm{wrap}(\theta_{\mathrm{cm}}-\theta_{\mathrm{cm,ref}})|/\pi$ (vs.\ unboosted video) & $0;\,0$ & pass-through \\
+\bottomrule
+\end{tabularx}
+\caption{Law statistics, with the value each takes when the law holds (physical) and under the no-physics alternative (null).}
+\label{tab:laws}
+\end{table}
+
+\noindent For statics, $x$ is the overhang (tips iff $x>1$), $d=|x-1|$, $\beta$ the aspect ratio, $a$ the half-length, $\varphi$ the
+rotation over the tip window $T_w=\min\big(2\sqrt{a/g_{\mathrm{clip}}},\ \text{time until the block leaves the ledge}\big)$
+after release, and $g_{\mathrm{clip}}$ is measured in the same video (no metric $g$ is used).
+
+Because every law statistic is a ratio of two measurements of the same kind, the units of measurement cancel.
+This matters because the quantities are measured in pixels and frames, or decoded by a probe, and none of these
+share a common physical scale with the real scene. Proposition~\ref{prop:inv} makes this precise. It considers three
+changes: measuring lengths in different units (pixels instead of metres, a factor $s$), playing the video at a
+different speed (a factor $\tau$ on time), and a probe that systematically reads every velocity and acceleration too
+small or too large by the same factor $\gamma$.
+
+\begin{proposition}[Invariance]
+\label{prop:inv}
+Every law statistic is unchanged when lengths are rescaled by any $s>0$ or time by any $\tau>0$. When every measured
+velocity and acceleration is multiplied by a common factor $\gamma$, every statistic is unchanged except three, which
+compare quantities that a probe would read with different instruments: slip and $\alpha$-ratio (each multiplied by
+$\gamma^{-1}$) and $L_z'/L_z$ (which changes by an amount that depends on how the angular momentum is split between
+orbital motion and spin).
+\end{proposition}
+
+\noindent In practice, a probe with a uniform reading error cannot by itself make a model look as if it obeys or
+breaks a law, except for those three statistics. Because ridge probes do shrink their predictions, every probe is
+calibrated before use (Section~\ref{sec:probe}).
+
+
+
+\subsection{Features and forecasts}
+\paragraph{Pooling.} $\mathbf z=\sum_{t,u,v}w(t,u,v)\,\mathbf a(t,u,v,:)$ with $w$ a normalised binary mask over a
+time window (pre/post/all): \emph{frame} (all tokens), \emph{ROI} (tokens within $1.5$ equivalent radii of the
+object), \emph{object pair} (both objects), \emph{contact} (last pre-event ROIs dilated by 2 tokens, fixed in time). ROI
+masks use each video's true post-event object position, so every ROI result is reported with a \emph{mask-only
+baseline} (the same probe trained on the mask weights alone).
+
+\paragraph{Forecast and prediction error.}
+\begin{itemize}
+\item \textbf{V-JEPA~2:} the encoder sees the context frames only; the predictor fills the post tokens. Error (L1,
+MSE, $1-\cos$) is against the encoder's output on the full video.
+\item \textbf{VideoMAE-v2:} future tokens are masked; the decoder predicts normalised pixels. Error is the
+pre-training MSE and a de-normalised (raw-pixel) variant.
+\item \textbf{DiTs:} error is the training loss on post tokens, averaged over SNR $\in\{-20,-8,0,8\}$\,dB and two
+fixed noise draws: flow models $(\hat{\mathbf v}-(\boldsymbol\epsilon-\mathbf z_0))^2$, DDPM
+$(\hat{\mathbf z}_0-\mathbf z_0)^2/(1-\bar\alpha_t)$. It is computed with the context left clean and with the whole video noised.
+The forecast is a sampled continuation from a fixed seed.
+\end{itemize}
+
+\paragraph{Forecast probe.} Encoders: one probe on real pre-event features (encoder space) and a separate probe on the
+predictor's outputs for the real post-event frames; the forecast is read by the latter (laws read per timestep use one
+probe on real pre and post features of the encoder's final output, the predictor's target space). DiTs: one
+probe trained on real pre and post features of the same layer. No probe is ever trained on forecasts.
+
+\subsection{Probes}
+\label{sec:probe}
+\paragraph{Ridge regression.} Standardised features, centred targets,
+$\hat W(\lambda)=V\,\mathrm{diag}\big(\frac{\sigma_j}{\sigma_j^2+\lambda}\big)U^\top(Y-\bar Y)$,
+$\lambda\in\{10^{-2},\dots,10^5\}$ chosen by inner grouped 5-fold CV. Folds are split by matched set. Score:
+pooled out-of-fold $R^2=1-\sum(y-\hat y)^2/\sum(y-\bar y)^2$, averaged over outputs.
+
+\paragraph{Calibrated probe (R1).} Ridge shrinks predictions toward the mean, which biases ratios. A per-output affine
+map $f(\mathbf z)\approx c+d\,y$ is fit on inner out-of-fold predictions and inverted: $\mathrm{decode}(\mathbf z)=(f(\mathbf z)-c)/d$,
+applied only where $d$ is significant ($t\ge3$; otherwise the raw prediction is kept). The probe is
+cross-fitted (each video decoded by a probe that never saw its set), and, where pre and post features share a space,
+\emph{joint}: a video's pre and post rows go through the same map, so both terms of a ratio are read by the same probe.
+
+\paragraph{Selectivity.} Following \citet{hewitt2019control}, $\Delta_{\mathrm{sel}}=R^2_{\mathrm{real}}-
+R^2_{\mathrm{control}}$ with two control tasks: \emph{scene} (each set receives another set's targets) and
+\emph{object} (each object identity gets one fixed random target). For per-timestep rows, features and targets are
+first residualised within (video slot, timestep) strata, leaving out the row's own set.
+
+\subsection{Evaluation levels}
+
+\paragraph{L0: state decoding.}
+L0 asks whether the quantities that the law statistics are built from can be read linearly out of a model's
+activations. For every object, before and after the event, a ridge probe is trained to predict its velocity, speed,
+direction of motion, $\log m$, radius and momentum $m\mathbf v$. We also decode \emph{partial momentum}: the part of
+$m\mathbf v$ that no linear combination of $\mathbf v$, $m$ and $\log m$ explains, which tests whether the model
+combines mass and velocity instead of encoding them separately. Each law then adds the quantities its own statistics
+need: release and apex heights for the pad, the dropped balls and the bounce, the bob's angle and angular velocity for the
+pendulums, the cylinders' angular velocity for rolling, the block's acceleration and angular velocity for torque
+balance, and the bar's spin for angular momentum. For each target we report the best layer and pooling, chosen on
+held-out sets, beside the mask-only baseline, the untrained model, the noised input latents for DiTs, and the probe's
+selectivity. For laws with a collision or exchange, we also check whether restitution computed from the decoded
+velocities tracks the true restitution; L1 uses this check to decide whether energy can be measured at all.
+Mass-independence and rolling results are marked uninformative unless mass (for rolling, the inertia factor) is
+decodable before the event, above the untrained model and with positive selectivity.
+
+\paragraph{L1: does the forecast obey the law?}
+L1 asks whether the model's own prediction of what happens after the event obeys each law. For every law, the
+calibrated probe decodes the quantities that the law's statistics need from the forecast, and the same probe decodes
+them from the real post-event frames. The real frames show what the probe can read when the physics is correct, so
+every forecast score is reported beside this real-video reference. Each law's quantities are obtained in the way its
+statistic requires. For uniform gravity, rolling, Newton's first law and angular momentum, a line is fitted to the
+decoded velocity before and after the event, over the frames in which the objects move freely and are in view (at
+least three on each side), giving a velocity and an acceleration on each side. For the bounce, the two lines are
+extrapolated to the contact. For Coulomb friction, one line is fitted after the event while the block still moves, and
+the mean decoded velocity after the stop shows whether the block stays at rest. For the pendulum period, the period
+is read from the times at which the decoded horizontal offset of each bob crosses zero. For torque balance, the decoded
+spin is integrated over the tip window $T_w$ to give the tipping angle, and its slope gives the angular acceleration. For the
+pad and the pendulum damper, restitution is $\sqrt{h'/h}$ from the highest decoded height before and after the pad or damper.
+
+Each statistic $T$ is then scored on the scale from the law's null value to its physical value,
+\[
+S=1-\frac{|\log T-\log T_{\mathrm{phys}}|}{|\log T_{\mathrm{null}}-\log T_{\mathrm{phys}}|},
+\]
+so that $S=1$ when the forecast obeys the law and $S=0$ when it matches the no-physics alternative. When the null
+value is $0$, the same score is computed without logarithms, and when the null is undefined we use
+$1-|T-T_{\mathrm{phys}}|$. Each video's score is clipped to $[-1,1]$, and a video whose decoded statistic is undefined
+(or not positive in the logarithmic form) scores $-1$. The reported score is the median over plausible videos.
+
+Two laws need small changes to this recipe. For conservation of momentum, the imbalance $\eta$ is undefined when the
+objects exchange no momentum, so only videos in which both the real frames and the forecast show a real exchange are
+kept, and $\eta$ is pooled over those videos before scoring (velocity changes use decoded pre- and post-event
+velocities, read by the same probe; the hidden-mass sets, whose pre-event frames do not show the mass ratio, are not scored):
+\[
+S_{\mathrm{mom}}=\mathrm{clip}_{[-1,1]}\!\left(1-\frac{\eta^{\mathrm{fc}}-\eta^{\mathrm{real}}}{\eta^{\mathrm{blind}}-\eta^{\mathrm{real}}}\right),
+\]
+where $\eta^{\mathrm{blind}}$ is the mass-blind null. For no creation of energy, the law is a one-sided bound
+($\eps\le1$), so any forecast that loses energy satisfies it. We therefore report how often the forecast creates more
+energy than the probe's own error on real videos can explain, $P_{\mathrm{create}}=\Pr(\hat\eps>1+\tau)$ with $\tau$
+the 95th percentile of that error, and we treat energy as measurable only when restitution decoded from real videos
+tracks the true restitution ($R^2\ge0.5$). Where a filter depends on the forecast, we also report the share of videos
+that pass it and a score that counts filtered videos as failures. A law claim requires the forecast to beat three
+negative-control forecasts read by the same probe (the last context frame repeated, another set's forecast, and
+another set's real outcome) and, for ROI pools, the same score computed from the mask weights alone.
+
+\paragraph{L2: sensitivity to implausible videos.}
+L2 asks whether a model distinguishes implausible from plausible videos. It uses three signals: the model's own
+prediction error $\mathcal S$, averaged over the analysis window, which needs no training; the model's activations;
+and a trained classifier.
+
+For each law, a matched set gives a comparison between its implausible and plausible videos. Conservation of momentum
+compares collisions with and without the momentum drift, at the same restitution. Newton's first law compares the
+gliding puck that changes speed or turns with the one that keeps its velocity. Coulomb friction compares blocks that
+slide back after stopping, slow in proportion to their speed, decelerate at another rate, or whose heavier block
+decelerates faster, with the plausible slide. The pendulum period compares pendulums
+whose period changes, or whose heavier bob swings faster, with ones that keep their period. Conservation of angular
+momentum compares bars that spin too fast or too slow (in the main comparison with energy unchanged) with the plausible
+bar. Uniform gravity compares falls with stronger gravity, reduced horizontal velocity, or a heavier ball falling
+faster with the plausible fall. Rolling without slipping compares the hollow cylinder arriving first, a tie, or rolling
+with slip with the plausible race. Galilean invariance is tested in L3. For each comparison, $d=\mathcal
+S(\text{implausible})-\mathcal S(\text{plausible})$ is computed in every set, and the win rate
+$\mathrm{WR}=\frac1N\sum(\ind[d>0]+\frac12\ind[d=0])$ is the fraction of sets in which the implausible video is more
+surprising. Each comparison also reports every implausible video alone and flags implausible videos that also create
+energy. Because an implausible video may simply move differently, the same win rate is computed for two pixel
+baselines (repeating the last frame, and continuing each object at constant velocity), and we report the model's
+margin over them, $\Delta\mathrm{WR}=\mathrm{WR}_{\mathrm{model}}-\mathrm{WR}_{\mathrm{pixel}}$. Comparisons between two
+plausible videos that differ only in motion serve as controls where a family has two plausible outcomes.
+
+Two laws have a boundary instead of a single implausible video, so they are tested by whether the prediction error
+changes abruptly at that boundary. For no creation of energy, the boundary is $\eps=1$ along a restitution sweep. In
+each set the log prediction error is standardised to $s_g(\eps)$, its curvature is the second difference
+$D^2_g(\eps)=s_g(\eps+h)-2s_g(\eps)+s_g(\eps-h)$, and the boundary score is the curvature at $\eps=1$ above a smooth trend
+$p_g$ fitted away from the boundary,
+\[
+K_g=D^2_g(1)-p_g(1),\qquad \bar K=\mathrm{mean}_g K_g .
+\]
+A model that encodes the law changes its error abruptly at $\eps=1$, while any purely kinematic signal changes
+smoothly there. The trend excludes points near the model's own expected restitution (estimated with the set left out) and near points
+where a kinematic signal has a minimum, a stop or a speed match. The result counts as positive when $\bar K$ is above zero, above both pixel baselines and
+indistinguishable from zero for the untrained model, and as inconclusive when the model's expected restitution lies
+within $0.2$ of the boundary. For torque balance, the boundary is the overhang $x=1$: we compute $c_g=\log\mathcal
+S(\text{implausible})-\log\mathcal S(\text{plausible})$ at each overhang, which the law predicts is positive on both
+sides of $x=1$, and apply the same curvature test across overhangs.
+
+The same energy boundary test is also applied to the activations themselves. With $\mathbf a(\eps)$ the pooled
+post-event activation, the curvature is $N(\eps)=\|\mathbf a(\eps+h)-2\mathbf a(\eps)+\mathbf a(\eps-h)\|$ and the score
+is $K^{\mathrm{rep}}_g=\big(N(1)-p(1)\big)/\mathrm{median}\,N$, compared with the same score computed on pixels, on the
+true kinematics and on the untrained model.
+
+Finally, a logistic-regression classifier is trained on post-event activations to separate implausible from
+plausible videos, and scored by out-of-fold AUC. This applies to the laws whose violations are equalities
+(conservation of momentum, Newton's first law, uniform gravity, Coulomb friction, rolling without slipping, the
+pendulum period and conservation of angular momentum); energy and torque balance are covered by the boundary tests above. Each AUC is compared with the same
+classifier trained on the true post-event kinematics (speeds, velocity changes and kinetic energy), which shows how
+much the model separates beyond what the motion alone allows; a positive result must beat it and, for object-patch
+pools, the mask-only baseline.
+
+\paragraph{L3: invariance.}
+L3 asks whether the quantities a model represents respect the two invariance laws. For Galilean invariance, velocity
+probes trained on collisions at every added velocity decode each collision's restitution and centre-of-mass scattering
+angle from the forecast, and we measure how much these change ($d_\eps$, $d_\theta$) relative to the forecast of the same
+collision without the added velocity, and between a moving camera and the same velocity added to the balls; the same
+measurement on real videos is the floor. An added-velocity level is reported as unmeasurable when the probe's restitution error on real videos
+exceeds $0.25$. Mass independence is tested for three laws whose outcomes should not depend on mass: uniform gravity
+(dropped balls), Coulomb friction (two sliding cubes) and the pendulum period (pendulum pair). For each, one calibrated probe shared by both objects decodes
+the heavy-to-light ratio $t$ of the relevant quantity (acceleration, deceleration or period) from the forecast and from
+the real frames, and the score
+\[
+S=1-\frac{|\log t_{\mathrm{fc}}-\log t_{\mathrm{real}}|}{|\log t_{\mathrm{implaus}}-\log t_{\mathrm{real}}|}
+\]
+places the forecast between the real plausible videos and the real implausible ones; it must also beat the same score
+computed from the ROI mask weights alone. We also test whether probes
+transfer from clean to cluttered renders, using object size as a control target.
+
+\paragraph{L4: steering.}
+L4 asks whether a model uses what it represents. For each law we choose a parameter $\theta$ that the law ties to an
+observable outcome (Table~\ref{tab:steer}), find the direction in activation space along which $\theta$ is encoded,
+move the activations along it, rerun the model's forecast, and check whether the decoded outcome changes as the law
+predicts. The direction is a curve $\mathbf c(\theta)$ fitted to the activations of real videos; steering by $\delta$
+adds $\mathbf c(\theta_{\mathrm{ref}}+\delta)-\mathbf c(\theta_{\mathrm{ref}})$ to the activations. The curve is fitted
+where the shift is added: on the context tokens of an encoder layer, or, for energy, on the post-event tokens of an
+intermediate predictor or decoder block. For DiTs it is fitted separately at each noise level, and each sampling step
+uses the curve of the nearest noise level (or no shift if that curve failed). Steering is run only where the curve
+passes a precondition: it must predict held-out scenes (leave-one-scene-out $R^2$) and, where $\theta$ varies within a
+scene, each scene's offset along it must survive averaging over scenes, both better than with $\theta$ shuffled
+within scenes (across scenes where each scene has one $\theta$).
+
+\begin{table}[h]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Law & Steered parameter $\theta$ & Readout & Law's prediction \\
+\midrule
+Cons.\ of momentum & $\log(m_A/m_B)$ & log ratio of $B$'s to $A$'s velocity change along $\mathbf n$ & slope 1 \\
+No energy creation & restitution $\eps$ & decoded $\hat\eps$ & rises, then saturates at 1 \\
+Uniform gravity & $\log m_A$ & log heavy/light acceleration ratio & slope 0 \\
+Coulomb friction & $\log m_A$ & $\log$ of $A$'s deceleration & slope 0 \\
+Rolling w/o slipping & inertia factor $k_A$ & $\log$ of $A$'s acceleration & slope $-1/(1+k)$ \\
+Torque balance & overhang $x$ & whether the block tips & step at $x=1$ \\
+Pendulum period & $\log m_A$ & $\log$ of $A$'s period & slope 0 \\
+Cons.\ of ang.\ mom. & impact point on the bar & $L_z'/L_z$ & slope 0 \\
+Galilean invariance & added velocity & decoded $\hat\eps$ & slope 0 \\
+\bottomrule
+\end{tabularx}
+\caption{Steering tests. Laws with a predicted slope of $0$ are informative only when the push moves the model's
+readout of $\theta$ or a control direction does move the readout; otherwise the push is reported as inert.}
+\label{tab:steer}
+\end{table}
+
+We also run an interchange intervention: the component of one video's activations along the curve is replaced by
+that of another video with a different $\theta$. For laws that predict a change, we measure how often the readout moves
+closer to the law's predicted change than to no change (IIA) and the fraction of the required change it achieves. For
+laws that predict no change, we measure the change of the outcome relative to a reference (how much the readout
+differs between real videos that the law says do differ, or else its spread over real videos), and check that the
+model's own readout of $\theta$ did move (for DiTs, read from the activations at the swapped layer), so that an unchanged
+outcome is not simply a failed swap. For momentum we also
+patch the collision directly: object $A$'s pre-contact tokens are replaced by those of a donor video with the same
+contact normal and contact time step (for DiTs, the donor runs through the same denoising step and noise in a paired
+pass), and the change in $B$'s outcome is scored by the error ratio $|\text{required}-\text{observed}|/|\text{required}|$
+(1 for no change) with a sign-flip test. The ratio of the response slopes in high- and low-impulse pairs separates
+physics, which predicts their impulse ratio, from a constant leak, which predicts 1; the patch passes only if the
+change is significantly closer to the required one than to none, beats the controls, and this ratio excludes 1.
+
+Every steering result is compared with controls (passive propagation: the shifted activations read at the steered
+block without the model's downstream computation; one random direction of the same size; and a direction encoding
+object speed for energy or object size for the mass laws) and with the change produced by showing the same
+$\Delta\theta$ through a real video. We also report the per-scene effects, the share of scenes that move the wrong way,
+and how far the steered activations lie from real ones.
+
+For models that pass steering, the interchange test or the L2 boundary test, we localise the law: the swap IIA is
+computed by layer (and noise level), by token group (each object, the contact region, the background, the frames
+before or after the event) and by component (attention heads and MLPs: an attribution-patching pre-screen, exact
+patching, and knock-out by mean ablation; for energy, the knock-out also tests whether removing a component lets the
+forecast create energy), and a subspace learned by distributed alignment search is compared with the fitted curve. A
+layer or component counts as a location only when both the swap and the knock-out beat their controls (for the swap:
+a random direction, shuffled targets, a size direction, passive propagation and the untrained model; for the
+knock-out: random directions or components of the same size).
+
+\paragraph{Generated videos.}
+For the diffusion models, we also test the laws in the videos they generate. A colour tracker, with a marker-angle
+tracker for the rolling cylinders and the struck bar, follows each object, and the same law statistics are computed
+from the tracks without using any metric scale or frame rate. Each tracker is first validated on real plausible and
+implausible videos. Generations either continue the real frames up to the event or start from the first frame only;
+the first are compared with the real plausible video, and the second are scored for consistency with themselves.
+
+\subsection{Controls}
+\label{sec:controls}
+Untrained V-JEPA~2; positive controls (a small predictor and a fine-tuned DiT trained on plausible renders); real-video
+reference; mask-only baseline; selectivity; mass-blind rule; pixel baselines; speed-matched implausible videos;
+plausible-vs-plausible pairs; negative-control forecasts (L1); kinematic baseline (L2 trained detection); steering controls (L4).
+
+\end{document}

@@ -1,6 +1,7 @@
 # Wan2.1-I2V-14B-480P (spec §4.2 group 5, P1): output track B generator (frame 0 + minimal prompt -> clip), WanI2VAdapter.
-# Weights NOT downloaded on the 2026-11 machine (sha256 pins = the Hub's LFS hashes); the code path is exercised by
-# Wan2.2's WanImageToVideoPipeline. OFFICIAL settings, github.com/Wan-Video/Wan2.1: generate.py i2v defaults (40 steps,
+# Weights in $PHYSLAW_MODELS/Wan2.1-I2V-14B-480P-Diffusers at the pinned revision, all 21 pinned files sha256-verified
+# 2026-11-12 (physlaw.models.registry.verify_weights; no unpinned weight files); same WanImageToVideoPipeline as Wan2.2.
+# OFFICIAL settings, github.com/Wan-Video/Wan2.1: generate.py i2v defaults (40 steps,
 # sample_shift 3.0 for 832*480, 81 frames), shared_config (16 fps, guide_scale 5.0), wan/configs/wan_i2v_14B.py
 # (negative prompt = "镜头晃动，" + the shared one). 480P model: F1's 832 x 480 frame needs no resize.
 name: wan2.1-i2v-14b
@@ -25,7 +26,7 @@ input:
   center_on_contact: false
 token_grid: {patch: 2, vae_spatial: 8, vae_temporal: 4}
 prompt_template: minimal   # physlaw.models.dit.minimal_prompt
-# Weight pins (spec §4.3): Wan-AI/Wan2.1-I2V-14B-480P-Diffusers@b184e23a8a16b20f108f727c902e769e873ffc73 (Hub LFS sha256, not downloaded); verified by physlaw.models.registry.
+# Weight pins (spec §4.3): Wan-AI/Wan2.1-I2V-14B-480P-Diffusers@b184e23a8a16b20f108f727c902e769e873ffc73 (Hub LFS sha256 = the local files, verified 2026-11-12); verified by physlaw.models.registry.
 sha256:
   image_encoder/model.safetensors: f5c0bbf4f43f319a80335387d371742333807589c5bb4130a1a2a5d4abf6bf72
   text_encoder/model-00001-of-00005.safetensors: c0ef3a140898e228a3520c9adec60743d2e8e5b3d229651bb37f1a3921919f99

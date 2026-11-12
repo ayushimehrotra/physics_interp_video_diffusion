@@ -1,0 +1,14 @@
++ cd /workspace/meta/physlaw
++ export PHYSLAW_MODELS=/workspace/models HF_HUB_OFFLINE=1 OMP_NUM_THREADS=8
++ PHYSLAW_MODELS=/workspace/models
++ HF_HUB_OFFLINE=1
++ OMP_NUM_THREADS=8
++ P=/root/envs/physics_venv/bin/python
++ L=smoke/l4_momentum_validation/logs
++ for M in vjepa2_vitl untrained_vitl
++ date
+Thu Nov 12 04:18:57 UTC 2026
++ /root/envs/physics_venv/bin/python scripts/04_cache_activations.py --model configs/models/vjepa2_vitl.yaml --data data/f1 --force
++ date
+Thu Nov 12 04:42:59 UTC 2026
++ /root/envs/physics_venv/bin/python scripts/04_cache_activations.py --model configs/models/vjepa2_vitl.yaml --data data/f1 --force --pred-real

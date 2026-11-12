@@ -1,16 +1,26 @@
 # F4. Galilean boosts (spec §2.3): the F1 legal twins (e = 1, e = 0.15) under a common velocity
 # u in {0, small, large} (direction sampled per group). Restitution and the centre-of-mass-frame
-# scattering angle are invariant. The camera is raised from 20 to 30 m so the boosted clips stay
-# in frame ("enlarge the floor"; the 40 m floor already exceeds the 25 x 14 m view).
+# scattering angle are invariant. Camera at 13 m above the sphere plane (10.8 x 6.2 m view; spheres
+# r 0.30-0.60 are 46-92 px across at 832 x 480). It was at 30 m (spheres 20-40 px) to keep the boosted
+# clips in frame; the in-frame acceptance (every boost, frame 0 to 1 s after contact) still holds at
+# 13 m with ~1 rejected draw per group on average (render check 2026-11-11). The 40 m floor fills the view.
 # Twins with the same boost share every pre-contact frame (pre_segment = u0 / usmall / ularge).
+# Camera boosts (2026-11-12): twins cam_usmall_e1 / _e015, cam_ularge_e1 / _e015: the UNBOOSTED collision (world states =
+# the u0 twin's) filmed by a camera translating at -u (the same u as usmall / ularge), so relative to the camera the
+# balls move exactly as in the ball-boost twin (projected centres equal to ~1e-12 px) while the floor slides across the
+# frame; pre_segment cam_usmall / cam_ularge; labels boost_kind camera, frame camera (camera-frame primary states,
+# world states under *_world), camera_trajectory. The floor carries a mild checker so the camera motion is visible
+# (every F4 twin has it). 200 seeds x 2 e x 5 boosts = 2,000 clips.
 defaults: _master.yaml
 family: f4
 n_groups: 200
 seed_offset: 400000
 nuisance_frac: 0.2
-camera_distance: 30.0
+camera_distance: 13.0
 twins:
   e_sim: 1.0
   e_low: 0.15
   u_small: [0.15, 0.30]            # |u| in world units / s (sphere speeds are 0.35-1.55)
   u_large: [0.45, 0.70]
+  camera_boosts: [usmall, ularge]  # twins cam_<level>_<e>: the camera moves at -u of that level, the balls unboosted
+floor_checker: {square_m: 1.0, contrast: 0.25}   # 1 m squares (77 px at 13 m), Color2 = 0.75 x the floor grey

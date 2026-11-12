@@ -1,6 +1,7 @@
 # PC2 positive control (spec §4.4): Wan2.2-TI2V-5B + a rank-32 LoRA fine-tuned on the PC training render set.
 # Evaluation: the Wan2.2-TI2V-5B adapter at its OFFICIAL settings (inherited) with `lora` merged in.
-# Training uses the inherited `prompt` (the one the adapter evaluates with).
+# Training conditions each clip on the text stage 4 evaluates it with (physlaw.models.dit.clip_prompt: the inherited
+# `prompt` on F1-F4, the family's neutral description elsewhere).
 #   train: scripts/10_train_positive_control.py --config configs/models/pc2_wan22_ti2v_5b.yaml
 defaults: wan22_ti2v_5b.yaml
 name: pc2-wan2.2-ti2v-5b
@@ -46,8 +47,9 @@ train:
 data:                        # the PC training render set, as configs/models/positive_control.yaml
   root: data/pc1
   code_path_test: false
-  families: [f1, f2, f3, f4, f7, f8]
-  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10]
+  families: [f1, f2, f3, f4, f7, f8, f9, f11, f12]   # every family of configs/data/pc1_train.yaml
+  exclude_eval: [data/f1, data/f2, data/f3, data/f4, data/f6, data/f7, data/f8, data/f9, data/f10, data/f11,
+                 data/f12]
   train_splits: [train, test, val]
   jitter: 36                 # master frames: the event lands at input frames 6..42 of 49
   flip: true

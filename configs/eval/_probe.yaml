@@ -4,9 +4,7 @@ probe:
   alphas: [1.0e-2, 1.0e-1, 1.0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5]
   k_folds: 5
   fold_seeds: 12
-  n_permutations: 500
   standardize: true
-observers: [obs_vel, obs_speed, obs_quad, obs_normal]
 baselines: [untrained, mask_only_floor]   # mask-only floor added: old §20 pooling-mask leak
 pools: [roi_A, roi_B, roi_pair, frame]
 windows: [pre, post, all]

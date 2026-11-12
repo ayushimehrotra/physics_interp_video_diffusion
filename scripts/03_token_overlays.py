@@ -23,7 +23,7 @@ sys.path.insert(0, str(REPO))
 from physlaw.config import load_config, resolve_path  # noqa: E402
 from physlaw.data.io import list_clips, load_clip  # noqa: E402
 from physlaw.models.base import TokenGridSpec, fit_frames, sample_frames  # noqa: E402
-from physlaw.tokens.project import project_masks, token_frame_phase  # noqa: E402
+from physlaw.tokens.project import project_masks, roi_object_ids, token_frame_phase  # noqa: E402
 
 
 def main():
@@ -48,7 +48,7 @@ def main():
         fr = sample_frames(master_fps=sc["frame_rate"], n_master=sc["num_frames"], fps=int(src["fps"]),
                            n_frames=int(src["num_frames"]), contact_frame=pl["first_post_contact_frame"],
                            center_on_contact=bool(cfg.get("input", {}).get("center_on_contact", False)))
-        obj = project_masks(c.masks, fr, spec)
+        obj = project_masks(c.masks, fr, spec, roi_object_ids(c.labels))
         ph = token_frame_phase(fr, spec, pl["first_post_contact_frame"])
         pre = [j for j, p in enumerate(ph) if p == "pre"]
         post = [j for j, p in enumerate(ph) if p == "post"]

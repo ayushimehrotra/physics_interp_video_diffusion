@@ -1,4 +1,6 @@
-# F8. Ramp energy exchange (spec §2.3; physlaw/data/families/f8_ramp.py).
+# F8. Galileo's ramp (spec §5.0.2; physlaw/data/families/f8_ramp.py). 2026-11-12: camera fitted per group to the
+# release point .. the eps = 1.5 apex (85% of the binding dimension), every length scales with h, block >= 70 px;
+# fillets 4 x the block's half-diagonal with the block in exact two-corner contact (never enters the ramp).
 defaults: _master.yaml
 family: f8
 seed_offset: 800000
@@ -7,3 +9,9 @@ subfamilies: {ramp: 250}
 nuisance_frac: 0.2
 acceptance:
   physics_check_tol: 0.05
+  min_block_px: 70                  # block width at 832 px under the fitted camera (f8_ramp.sample)
+twins:
+  # One twin eps<e> per rung: the pad takes the speed s -> e s, the block climbs ramp C to e^2 h.
+  # e <= 1 legal (e = 1: frictionless pad), e > 1 creates energy. All rungs share every pre-event frame.
+  # 21 rungs, step 0.05 (user decision 2026-11-11); twin names eps0.5, eps0.55, ..., eps1.0, ..., eps1.5
+  epsilon_ladder: [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50]

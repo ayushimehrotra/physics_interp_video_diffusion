@@ -195,29 +195,93 @@ def test_law_inputs(group):
     for t in twins(group):
         L = labels(t)
         pre, post, ctx = law_inputs(L)
-        n = len(L["physlaw"]["objects"])
+        n = sum(not o.get("aux") for o in L["physlaw"]["objects"].values())     # aux rods / props are dropped
         assert pre["v"].shape == post["v"].shape == (n, 3) and ctx["m"].shape == (n,)
-        assert pre["t_s"] == pytest.approx(ctx["event_time_s"]) == pytest.approx(post["t_s"])
-        assert np.allclose(pre["p"], post["p"], atol=1e-9), t.name
+        if L["physlaw"].get("event_kind") != "swing":
+            assert pre["t_s"] == pytest.approx(ctx["event_time_s"])
+        if L["physlaw"].get("event_kind") == "pad":    # f8: post = the block leaving the pad
+            assert post["t_s"] == pytest.approx(L["physlaw"]["edit"]["t_pad_exit_s"])
+            assert np.linalg.norm(post["v"]) / np.linalg.norm(pre["v"]) == pytest.approx(L["physlaw"]["epsilon"], rel=1e-6)
+        elif L["physlaw"].get("event_kind") == "swing":    # f9 swing: the release apex and the next apex (v = 0)
+            from physlaw.eval.laws import epsilon
+            assert pre["t_s"] == pytest.approx(ctx["release_time_s"])
+            assert post["t_s"] == pytest.approx(L["physlaw"]["edit"]["t_apex_after_s"])
+            assert epsilon(pre, post, ctx) == pytest.approx(L["physlaw"]["epsilon"], rel=1e-6)
+            continue
+        else:
+            assert post["t_s"] == pytest.approx(ctx["event_time_s"])
+            assert np.allclose(pre["p"], post["p"], atol=1e-9), t.name
         if ctx.get("subfamily") == "bounce":
             e = -post["v"][0, 2] / pre["v"][0, 2]
-            want = math.sqrt(ctx["violation_magnitude"]) if not ctx["legal"] else ctx["e_floor"]
-            assert e == pytest.approx(want, rel=1e-6), t.name
+            assert e == pytest.approx(L["physlaw"]["epsilon"], rel=1e-6), t.name
         _, post2, ctx2 = law_inputs(L, dt=0.25)
         assert ctx2["dt"] == pytest.approx(0.25, abs=0.6 / ctx["fps"])
 
 
-def test_f8_slope_twins_share_h(group):
-    if family(group) != "f8":
-        pytest.skip("f8 only")
-    ls = [labels(t) for t in twins(group)]
-    hs = {l["physlaw"]["constants"]["h"] for l in ls}
-    z0 = {l["physlaw"]["pre_state"]["p"][0][2] for l in ls}
-    assert len(hs) == 1 and len(z0) == 1, (hs, z0)
-    for l in ls:
-        if l["physlaw"]["legal"]:
-            c = l["physlaw"]["constants"]
-            assert l["physlaw"]["edit"]["v_bottom"] == pytest.approx(math.sqrt(2 * c["g"] * c["h"]), rel=1e-6)
+def test_new_law_statistics(group):
+    """F6 glide / slide / pair, F9, F11, F12 (labels -> io.law_inputs -> physlaw.eval.laws): legal twins at the legal value of
+    their law's statistics, each violator off it in its own statistic, every other statistic legal."""
+    from physlaw.data.io import law_inputs
+    from physlaw.eval import laws as L
+    pl0 = labels(twins(group)[0])["physlaw"]
+    fam, sub = pl0["family"], pl0.get("subfamily", "")              # labels-1 F1 has no sub-family
+    if not (fam in ("f9", "f11", "f12") or fam == "f6"):
+        pytest.skip("no new-law statistics")
+    for t in twins(group):
+        lab = labels(t)
+        pl = lab["physlaw"]
+        if fam == "f6" and sub in ("slide", "pair"):
+            pre, post, ctx = law_inputs(lab)
+            st, law, tw = L.friction.stats(pre, post, ctx), "friction", pl["twin"]
+            viol = {"reverse": {"stop_hold"}, "viscous": {"decel_const", "stop_hold"},
+                    "heavy_x13": {"mass_ratio", "decel_const"}}.get(tw, set())
+            if tw.startswith("decel_x"):
+                viol = {"decel_const"} | ({"stop_hold"} if float(tw[7:]) < 1 else set())
+        else:
+            pre, post, ctx = law_inputs(lab)
+            law = {"f6": "momentum", "f12": "angular_momentum", "f11": "statics"}.get(fam) or (
+                "oscillation" if sub == "pair" else "energy")
+            st = L.LAWS[law].stats(pre, post, ctx)
+            viol = {"momentum": {"inertia_turn" if pl["twin"].startswith("turn") else "inertia_speed"},
+                    "angular_momentum": {"L_ratio"}, "statics": {"tip_consistency", "alpha_ratio"},
+                    "energy": {"epsilon"},
+                    "oscillation": {"mass_period_ratio", "period_ratio"} if pl["twin"].startswith("heavy")
+                    else {"period_ratio"}}[law]
+            if pl["legal"]:
+                viol = set()
+        for k, (op, v) in L.LAWS[law].legal.items():
+            x = st[k]
+            if not np.isfinite(x):
+                continue
+            ok = abs(x - v) < 1e-5 if op == "eq" else x <= v + 1e-6
+            assert ok == (k not in viol), (t.name, k, x)
+
+
+def test_energy_ladder_labels(group):
+    """Exchange families (spec §5.0.2): every twin carries event_kind, epsilon and clean_until_s (after the
+    event); F2 / F7 bounce / F8 carry one stop_dose per group; F8 ladder twins share h and the release."""
+    from physlaw.data import families as FAM
+    ls = []
+    for t in twins(group):
+        L = labels(t)
+        if L["physlaw"]["schema_version"] == "physlaw-labels-1":     # frozen F1: derived offline
+            L["physlaw"].update(event_time_s=L["physlaw"]["contact_frame_actual"] / L["scene_constants"]["frame_rate"],
+                                **FAM.collision_energy_labels(L))
+        ls.append(L["physlaw"])
+    if ls[0].get("event_kind") not in ("collision", "bounce", "pad"):
+        pytest.skip("no energy exchange event")
+    for pl in ls:
+        assert pl["clean_until_s"] > pl["event_time_s"] and math.isfinite(pl["epsilon"])
+        if pl["event_kind"] != "collision":
+            assert pl["legal"] == (pl["epsilon"] <= 1.0)
+    if ls[0]["family"] in ("f2", "f8") or ls[0]["event_kind"] in ("bounce", "swing"):
+        assert len({json.dumps(pl["stop_dose"]) for pl in ls}) == 1
+    if ls[0]["family"] == "f8":
+        assert len({pl["constants"]["h"] for pl in ls}) == 1 and len({json.dumps(pl["pre_state"]) for pl in ls}) == 1
+        for pl in ls:
+            es = pl["event_state"]
+            ratio = np.linalg.norm(es["post"]["v"][0]) / np.linalg.norm(es["pre"]["v"][0])
+            assert ratio == pytest.approx(pl["epsilon"], rel=1e-6)
 
 
 def test_f4_invariance_across_boosts(group):
@@ -229,9 +293,67 @@ def test_f4_invariance_across_boosts(group):
         s = labels(t)["physlaw"]["summary"]
         by_e[t.name.split("_")[-1]].append((s["restitution_realised"], s["com_frame_angle"]))
     for e, vals in by_e.items():
-        assert len(vals) == 3, e
+        assert len(vals) in (3, 5), e            # u0, usmall, ularge (+ cam_usmall, cam_ularge)
         for r, ang in vals[1:]:
             assert abs(r - vals[0][0]) < 1e-6 and abs(ang - vals[0][1]) < 1e-6, (e, vals)
+
+
+def test_f4_camera_boost_matches_ball_boost(group):
+    """F4 camera boosts (cam_<level>_<e>): world states = the u0 twin's; camera-frame (primary) states = the ball-boost
+    twin's; projected ball centres equal the ball-boost twin's to < 0.5 px in every frame up to clean_until_s (and
+    the rendered masks' centroids agree to < 1 px where both balls are wholly inside); the world positions projected
+    through the labelled camera trajectory give the same pixels; boost_kind / frame labels; law_inputs in both frames."""
+    from physlaw.data.io import law_inputs
+    if family(group) != "f4":
+        pytest.skip("f4 only")
+    by = {t.name: t for t in twins(group)}
+    cams = [n for n in by if n.startswith("cam_")]
+    if not cams:
+        pytest.skip("no camera-boost twins (rendered before 2026-11-12)")
+    for n in cams:
+        Lc, Lb, L0 = labels(by[n]), labels(by[n[len("cam_"):]]), labels(by["u0_" + n.split("_")[-1]])
+        pc, pb = Lc["physlaw"], Lb["physlaw"]
+        assert (pc["boost_kind"], pc["frame"], pb["boost_kind"], pb["frame"]) == ("camera", "camera", "ball", "world")
+        assert pc["edit"]["boost"] == pb["edit"]["boost"]
+        assert np.allclose(pc["camera_trajectory"]["velocity_world"][:2], -np.asarray(pb["edit"]["boost"]), atol=1e-12)
+        fps = Lc["scene_constants"]["frame_rate"]
+        stop = int(math.floor(min(pc["clean_until_s"], pb["clean_until_s"]) * fps + 1e-9)) + 1
+        assert pc["clean_until_s"] == pytest.approx(pb["clean_until_s"])
+        K, E = np.array(pc["camera"]["K"]), np.array(pc["camera"]["world_to_camera"])
+        traj = np.array(pc["camera_trajectory"]["position_world"])
+        c0 = np.array(pc["camera_trajectory"]["position_at_t_ref"])
+        for f in range(stop):
+            fc, fb, f0 = Lc["per_frame"][f], Lb["per_frame"][f], L0["per_frame"][f]
+            for o in "AB":
+                assert np.abs(np.subtract(fc[o]["pixel"], fb[o]["pixel"])).max() < 0.5, (n, f, o)
+                assert np.allclose(fc[o]["position"], fb[o]["position"], atol=1e-9), (n, f, o)
+                assert np.allclose(fc[o]["velocity"], fb[o]["velocity"], atol=1e-9), (n, f, o)
+                assert np.allclose(fc[o]["position_world"], f0[o]["position"], atol=1e-12), (n, f, o)
+                x = K @ (E @ np.r_[np.asarray(fc[o]["position_world"]) - (traj[f] - c0), 1.0])[:3]
+                assert np.allclose(x[:2] / x[2], fc[o]["pixel"], atol=1e-6), (n, f, o)
+        for k_ in ("pre_velocity", "post_velocity"):
+            for o in "AB":
+                assert np.allclose(pc[k_][o], pb[k_][o], atol=1e-9)
+                assert np.allclose(pc[f"{k_}_world"][o][:2], L0["physlaw"][k_][o][:2], atol=1e-9)
+        pre, post, ctx = law_inputs(Lc)
+        preb, postb, _ = law_inputs(Lb)
+        prew, postw, ctxw = law_inputs(Lc, frame="world")
+        pre0, post0, _ = law_inputs(L0)
+        assert ctx["frame"] == "camera" and ctxw["frame"] == "world" and ctx["boost_kind"] == "camera"
+        assert np.allclose(pre["v"], preb["v"], atol=1e-9) and np.allclose(post["v"], postb["v"], atol=1e-9)
+        assert np.allclose(prew["v"], pre0["v"], atol=1e-9) and np.allclose(postw["v"], post0["v"], atol=1e-9)
+        if (by[n] / "masks.npz").exists():
+            mc, mb = np.load(by[n] / "masks.npz")["instance"], np.load(by[n[len("cam_"):]] / "masks.npz")["instance"]
+            for f in range(0, stop, 4):
+                for o in "AB":
+                    sid = pc["objects"][o]["segmentation_id"]
+                    yc, xc = np.nonzero(mc[f] == sid)
+                    yb, xb = np.nonzero(mb[f] == sid)
+                    if not xc.size or not xb.size or min(xc.min(), yc.min(), xb.min(), yb.min()) == 0 or \
+                            xc.max() == mc.shape[2] - 1 or xb.max() == mb.shape[2] - 1 or \
+                            yc.max() == mc.shape[1] - 1 or yb.max() == mb.shape[1] - 1:
+                        continue
+                    assert abs(xc.mean() - xb.mean()) < 1.0 and abs(yc.mean() - yb.mean()) < 1.0, (n, f, o)
 
 
 def test_identical_look_mean_rgb(group):
@@ -276,11 +398,13 @@ def test_masks_match_labels(group):
 
 
 def test_camera_projects_to_pixel_labels(group):
-    t = twins(group)[0]
-    L = labels(t)
-    cam = L["physlaw"]["camera"]
-    K, E = np.array(cam["K"]), np.array(cam["world_to_camera"])
-    for f in (0, len(L["per_frame"]) // 2):
-        X = np.array(L["per_frame"][f]["A"]["position"] + [1.0])
-        x = K @ (E @ X)[:3]
-        assert np.allclose(x[:2] / x[2], L["per_frame"][f]["A"]["pixel"][:2], atol=0.5)
+    """The labelled camera projects the primary positions to the pixel labels (a moving camera, F4 camera boosts:
+    primary positions are camera-frame, so the camera at t_ref serves every frame)."""
+    for t in twins(group)[:1] + [t for t in twins(group) if t.name.startswith("cam_")]:
+        L = labels(t)
+        cam = L["physlaw"]["camera"]
+        K, E = np.array(cam["K"]), np.array(cam["world_to_camera"])
+        for f in (0, len(L["per_frame"]) // 2):
+            X = np.array(L["per_frame"][f]["A"]["position"] + [1.0])
+            x = K @ (E @ X)[:3]
+            assert np.allclose(x[:2] / x[2], L["per_frame"][f]["A"]["pixel"][:2], atol=0.5), (t.name, f)

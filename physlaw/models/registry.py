@@ -25,6 +25,7 @@ ADAPTERS_BY_HF_ID = {
     "facebook/vjepa2-vitl-fpc64-256": "vjepa2:VJEPA2Adapter",
     "facebook/vjepa2-vitg-fpc64-256": "vjepa2:VJEPA2Adapter",
     "OpenGVLab/VideoMAE2": "videomae2:VideoMAEv2Adapter",
+    "OpenGVLab/VideoMAEv2-Base": "videomae2:VideoMAEv2Adapter",
     "zai-org/CogVideoX-2b": "cogvideox:CogVideoXAdapter",
     "zai-org/CogVideoX-5b": "cogvideox:CogVideoXAdapter",
     "zai-org/CogVideoX1.5-5B-I2V": "cogvideox:CogVideoX15I2VAdapter",
@@ -44,16 +45,22 @@ def adapter_class(cfg, role: str | None = None):
     ref = ((cfg.get("track_b_adapter") if role == "track_b" else None) or cfg.get("adapter")
            or ADAPTERS_BY_KIND.get(cfg.get("kind")) or ADAPTERS_BY_HF_ID.get(cfg.get("hf_id")))
     if ref is None:
-        raise NotImplementedError(f"no adapter for {cfg['name']} (kind={cfg.get('kind')}, hf_id={cfg.get('hf_id')}); "
-                                  "see docs/RESUME.md")
+        raise KeyError(f"no adapter for {cfg['name']} (kind={cfg.get('kind')}, hf_id={cfg.get('hf_id')}): set "
+                       "`adapter: module:Class` in its config or add the hf_id to ADAPTERS_BY_HF_ID")
     mod, cls = ref.split(":")
     return getattr(importlib.import_module(f"physlaw.models.{mod}"), cls)
 
 
-def load_adapter(cfg, device: str = "cuda", verify: bool = True, role: str | None = None):
+def load_adapter(cfg, device: str = "cuda", verify: bool = True, role: str | None = None, need: str | None = None):
+    """Load the config's adapter. ``need``: a capability the caller uses ("internals": encode / forecast / surprise;
+    "generator": generate(); physlaw.models.base.Adapter), checked on the class before any weights are touched."""
+    cls = adapter_class(cfg, role)
+    if need is not None and not getattr(cls, need):
+        raise ValueError(f"{cfg['name']}: {cls.__name__} has no {need} (physlaw.models.base.Adapter capabilities: "
+                         f"internals={cls.internals}, generator={cls.generator})")
     if verify:
         verify_weights(cfg)
-    return adapter_class(cfg, role).load(cfg, device)
+    return cls.load(cfg, device)
 
 
 # --------------------------------------------------------------------------- pinning

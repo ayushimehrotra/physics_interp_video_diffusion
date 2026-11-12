@@ -1,0 +1,19 @@
+[04] model=vjepa2-vitl clips=320 groups=64 out=/workspace/meta/physlaw/cache/vjepa2-vitl/f1 hash=777a85aedd56
+`torch_dtype` is deprecated! Use `dtype` instead!
+[04] pred_real 20/320  7.44 s/clip
+[04] pred_real 40/320  6.12 s/clip
+[04] pred_real 60/320  5.88 s/clip
+[04] pred_real 80/320  5.82 s/clip
+[04] pred_real 100/320  6.27 s/clip
+[04] pred_real 120/320  6.90 s/clip
+[04] pred_real 140/320  7.47 s/clip
+[04] pred_real 160/320  7.89 s/clip
+[04] pred_real 180/320  8.21 s/clip
+[04] pred_real 200/320  8.47 s/clip
+[04] pred_real 220/320  8.70 s/clip
+[04] pred_real 240/320  8.89 s/clip
+[04] pred_real 260/320  8.94 s/clip
+[04] pred_real 280/320  8.77 s/clip
+[04] pred_real 300/320  8.63 s/clip
+[04] pred_real 320/320  8.51 s/clip
+[04] finished 320 clips in 45.4 min

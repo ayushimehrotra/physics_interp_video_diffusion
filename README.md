@@ -15,9 +15,8 @@ physlaw/data/                 generate.py (twin groups, every family), twins.py 
                               closed form), nuisance.py, io.py (law_inputs), splits.py, schema/
 physlaw/models/               base.py (ModelAdapter, TokenGridSpec, frame sampling) + adapters
 physlaw/tokens/               project.py (masks -> token ROIs), pool.py
-physlaw/probes/               ridge.py (grouped nested CV, grid-max nulls), observer.py
+physlaw/probes/               ridge.py (grouped nested CV, shared same-instrument probe, selectivity controls)
 physlaw/eval/ track/ analysis/   levels L0-L4, output-level eval, tracking, aggregation
-physlaw/_legacy/              old physics_interp package + scripts, kept as porting reference
 scripts/00..11_*              one CLI per stage, each reads/writes disk, resumable
 tests/                        twin identities, probes + tokens (pure), data acceptance (needs data)
 ```

@@ -1,12 +1,24 @@
 defaults: _probe.yaml
 level: l1
-families: [f1, f2, f3]
-laws: [energy, com, angular_momentum]   # residual laws (physlaw.eval.laws); momentum is scored as S_mom below
-momentum:                 # S_mom (l1_forecast_laws module docstring)
+families: [f1, f2, f3, f4, f6, f7, f8, f9, f10, f11, f12]
+momentum:                 # S_mom (l1_forecast_laws module docstring); collisions F1, F2, F4 (F3: not scored, one forecast per
+                          # set serves all five hidden mass ratios); dv from decoded pre AND post velocities
   gate_ref: floor         # forecast must move >= kappa x what the same probe reads from the real clip (d_min: absolute)
   kappa: 0.25             # gate fraction; the floor decode itself must move >= kappa * 2 mu u_n (weakest legal collision)
   kappa_sensitivity: [0.1, 0.25, 0.5]
   min_mass_ratio: 1.25    # below: mass-blind eta < 0.11, scene cannot show momentum (54/64 F1 groups pass)
   mass_ratio_bins: [1.25, 2.0, 4.0]
+energy:                   # eps of the exchange event: collisions (pooled; the momentum gate), F7 bounce (velocities extrapolated
+                          # to the contact), F8 pad / F9 swing (decoded apex heights); per-token-frame kinds for the last three
+  kappa: 0.25             # single-object gates: bounce |dv_fc| >= kappa |dv_floor|, |dv_floor| >= kappa |dv_true| (dv at the
+                          # contact); pad / swing the rise after the event, same form
+  tau_quantile: 0.95      # tau = this quantile of |eps_floor - eps_true| on the real legal clips (probe noise); lower tail:
+                          # eps_hat < (per set, the lowest floor-decoded legal eps) - tau
+  slope_r2_min: 0.5       # R2: floor eps-vs-eps_true R² below this (or slope CI containing 0) -> "unmeasurable"
+kinematics:               # per-token-frame kinds (l1_forecast_laws.KINDS): gravity F7, friction / inertia F6, oscillation /
+                          # swing F9, rolling F10, statics F11, angular momentum F12 (stage 4 pooled_frame_t)
+                          # fit windows: the FREE token-frames (after the release, every object in frame; labels)
+                          # before the event / from the event to the clean window's end, >= 3 each
+  stop_margin_s: 0.1      # friction: the moving window ends this long before the legal stop (t_stop_s), the stop window starts this long after it
 fold_seeds_l1: 4          # cross-fitting 5-fold x 4 seeds (spec §5: allowed below 100 groups)
 bootstrap: {n: 2000, ci: 0.95}

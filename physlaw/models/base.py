@@ -1,9 +1,9 @@
-"""ModelAdapter interface (spec §4.1) and the model-agnostic input geometry.
+"""Adapter interfaces (spec §4.1) and the model-agnostic input geometry.
 
-Concrete adapters (vjepa2.py, videomae.py, cogvideox.py, wan.py, untrained.py,
-positive_control.py) subclass :class:`ModelAdapter`. The working code they
-should wrap lives in ``physlaw/_legacy/physics_interp`` (encoders, CogVideoX
-inversion, hooks) — see docs/PORTING.md for what to keep and what to change.
+:class:`Adapter` is the common part (config, input window, capability flags); :class:`ModelAdapter` adds the internals
+interface (encode / forecast / surprise) that stage 4 and every probe level read. Models with internals (vjepa2.py,
+videomae2.py, untrained.py, positive_control.py, the DiTs in dit.py / cogvideox.py / wan.py) subclass ModelAdapter;
+the pipeline-only output generators (cosmos_predict.py, track_a.ContinuationAdapter) subclass Adapter.
 
 Frame sampling is fixed here, not in each adapter, so every model's view of a
 clip is recorded identically: a model with native rate ``fps`` gets every
@@ -54,6 +54,26 @@ class TokenGridSpec:
         return out
 
 
+def frame_means(err, mask=None) -> tuple[list[float], list[float]]:
+    """Per token-frame mean of a per-token error ``err`` [T, ...] (numpy or torch; NaN = not scored) over ``mask``
+    (bool, same shape; None = every position). Returns (values [T], NaN where empty; weights [T] = positions averaged),
+    so the weighted mean of the values is the clip-level mean over every scored position."""
+    to_np = lambda a: np.asarray(a.detach().float().cpu() if hasattr(a, "detach") else a, float)
+    e = to_np(err).reshape(len(err), -1)
+    m = np.isfinite(e) if mask is None else (to_np(mask).reshape(e.shape) > 0) & np.isfinite(e)
+    w = m.sum(1).astype(float)
+    with np.errstate(invalid="ignore"):
+        v = np.where(w > 0, np.where(m, e, 0.0).sum(1) / np.maximum(w, 1), np.nan)
+    return v.tolist(), w.tolist()
+
+
+def add_frame_means(res: dict, name: str, err, mask=None) -> None:
+    """res["per_frame"]["surprise" / "weight"][name] = frame_means(err, mask)."""
+    v, w = frame_means(err, mask)
+    pf = res.setdefault("per_frame", {"surprise": {}, "weight": {}})
+    pf["surprise"][name], pf["weight"][name] = v, w
+
+
 def sample_frames(*, master_fps: int, n_master: int, fps: int, n_frames: int,
                   contact_frame: int | None = None, center_on_contact: bool = False) -> list[int]:
     """Master-frame indices a model sees: every (master_fps/fps)-th frame, n_frames long.
@@ -94,9 +114,19 @@ def fit_frames(frames: np.ndarray, out_hw: tuple[int, int], fit: str = "squash")
     return np.stack([np.asarray(Image.fromarray(f).resize((w, h), Image.BILINEAR)) for f in frames])
 
 
-class ModelAdapter(ABC):
-    """Spec §4.1. Tensors are torch tensors; numpy is accepted for inputs."""
+class Adapter(ABC):
+    """Common part of every adapter. Capabilities are class attributes, checked by
+    ``physlaw.models.registry.load_adapter(cfg, need=...)`` before a model is loaded:
 
+    ``internals``  encode / forecast / surprise (:class:`ModelAdapter`): stage 4 and every probe level;
+    ``generator``  ``generate(video, context_end_frame, seed) -> uint8 [T, H, W, 3]``: stage 07 output tracks;
+    ``predicts``   (set per instance by adapters whose weights decide it) forecast / surprise are available, not
+                   just encode() (False: encoder-only VideoMAE-v2 base; stage 4 caches encode() alone, L0 only).
+    """
+
+    internals: bool = False
+    generator: bool = False
+    predicts: bool = False
     name: str
     layers: list[int]
     token_grid: TokenGridSpec
@@ -109,11 +139,17 @@ class ModelAdapter(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, cfg: dict[str, Any], device: str = "cuda") -> "ModelAdapter": ...
+    def load(cls, cfg: dict[str, Any], device: str = "cuda") -> "Adapter": ...
 
     @abstractmethod
     def input_frames(self, labels: dict) -> list[int]:
         """Master-frame indices this model is fed for a clip (via :func:`sample_frames`)."""
+
+
+class ModelAdapter(Adapter):
+    """Spec §4.1: an adapter with internals. Tensors are torch tensors; numpy is accepted for inputs."""
+
+    internals = predicts = True
 
     @abstractmethod
     def encode(self, video, noise_level=None) -> dict[int, Any]:
@@ -125,13 +161,11 @@ class ModelAdapter(ABC):
         """The model's own prediction of future token-frames from frames < context_end_frame."""
 
     @abstractmethod
-    def surprise(self, video, context_end_frame: int, object_masks) -> dict[str, float]:
+    def surprise(self, video, context_end_frame: int, object_masks) -> dict[str, Any]:
         """Zero-fit surprise on the post-context segment, restricted to object regions.
-        Returns a dict so encoders can report several distances (l1, mse, cosine)."""
-
-    def generate(self, video, context_end_frame: int, seed: int):
-        """Generators only: pixel continuation for output-level evaluation."""
-        raise NotImplementedError(f"{self.name} is not a generator")
+        Returns {metric: float} (several distances: l1, mse, cosine...) and ``per_frame``: {"surprise": {metric:
+        [T_post]}, "weight": {metric: [T_post]}}, the metric per post-context token-frame (:func:`frame_means`), so
+        L2 can restrict to the clean window (stage 4 adds the token-frame times)."""
 
 
 def token_spec(cfg) -> TokenGridSpec:
@@ -147,6 +181,9 @@ def token_spec(cfg) -> TokenGridSpec:
                              int(tg["vae_temporal"]) * int(tg.get("patch_t") or 1), fit, first_tubelet=1)
     R = int(cfg["input"]["resolution"])
     return TokenGridSpec((R, R), int(tg["patch"]), int(tg["tubelet"]), fit)
+
+
+PRED_LAYER = "pred/L{}"   # key of predictor (V-JEPA 2 / PC1) or pixel-decoder (VideoMAE) block i (pred_real, L4 sites)
 
 
 def spatial_mask_groups(n_spatial: int, n_masks: int, seed: int = 0) -> list[np.ndarray]:

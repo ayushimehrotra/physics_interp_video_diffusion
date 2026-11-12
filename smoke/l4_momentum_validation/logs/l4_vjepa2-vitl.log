@@ -1,0 +1,119 @@
+[L4 momentum] patch donors: 0 candidates excluded (contact in another token-frame) over 64 scenes; per scene {np.str_('f1_100010'): 0, np.str_('f1_100014'): 0, np.str_('f1_100016'): 0, np.str_('f1_100018'): 0, np.str_('f1_100023'): 0, np.str_('f1_100024'): 0, np.str_('f1_100025'): 0, np.str_('f1_100026'): 0, np.str_('f1_100028'): 0, np.str_('f1_100045'): 0, np.str_('f1_100047'): 0, np.str_('f1_100052'): 0, np.str_('f1_100056'): 0, np.str_('f1_100002'): 0, np.str_('f1_100011'): 0, np.str_('f1_100017'): 0, np.str_('f1_100033'): 0, np.str_('f1_100036'): 0, np.str_('f1_100039'): 0, np.str_('f1_100040'): 0, np.str_('f1_100043'): 0, np.str_('f1_100051'): 0, np.str_('f1_100053'): 0, np.str_('f1_100054'): 0, np.str_('f1_100055'): 0, np.str_('f1_100061'): 0, np.str_('f1_100000'): 0, np.str_('f1_100003'): 0, np.str_('f1_100004'): 0, np.str_('f1_100009'): 0, np.str_('f1_100013'): 0, np.str_('f1_100015'): 0, np.str_('f1_100027'): 0, np.str_('f1_100029'): 0, np.str_('f1_100042'): 0, np.str_('f1_100046'): 0, np.str_('f1_100048'): 0, np.str_('f1_100057'): 0, np.str_('f1_100063'): 0, np.str_('f1_100001'): 0, np.str_('f1_100005'): 0, np.str_('f1_100006'): 0, np.str_('f1_100008'): 0, np.str_('f1_100012'): 0, np.str_('f1_100021'): 0, np.str_('f1_100031'): 0, np.str_('f1_100034'): 0, np.str_('f1_100037'): 0, np.str_('f1_100038'): 0, np.str_('f1_100041'): 0, np.str_('f1_100058'): 0, np.str_('f1_100062'): 0, np.str_('f1_100007'): 0, np.str_('f1_100019'): 0, np.str_('f1_100020'): 0, np.str_('f1_100022'): 0, np.str_('f1_100030'): 0, np.str_('f1_100032'): 0, np.str_('f1_100035'): 0, np.str_('f1_100044'): 0, np.str_('f1_100049'): 0, np.str_('f1_100050'): 0, np.str_('f1_100059'): 0, np.str_('f1_100060'): 0}
+[L4 momentum] frame: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.01926465132179594}; frame_mm: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.0314220734055344}
+`torch_dtype` is deprecated! Use `dtype` instead!
+[L4 momentum] localization: peak 4, flagged [], localized layers [], components []
+## L4 manifold steering: momentum (f1), theta = log_mass_ratio (across), pool roi_A.pre; law prediction: 1.0
+
+Precondition (theta shuffled across scenes); layers passing: ['0', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '23']
+
+| layer | scenes | retention (null median, 1/sqrt S) | p retention | LOSO R² line (null median) | p line |
+|---|---|---|---|---|---|
+| 0 | 64 | - (-, -) | - | +0.132 (-0.018) | 0.005 |
+| 2 | 64 | - (-, -) | - | +0.199 (-0.019) | 0.005 |
+| 4 | 64 | - (-, -) | - | +0.220 (-0.020) | 0.005 |
+| 6 | 64 | - (-, -) | - | +0.216 (-0.019) | 0.005 |
+| 8 | 64 | - (-, -) | - | +0.225 (-0.020) | 0.005 |
+| 10 | 64 | - (-, -) | - | +0.208 (-0.020) | 0.005 |
+| 12 | 64 | - (-, -) | - | +0.178 (-0.018) | 0.005 |
+| 14 | 64 | - (-, -) | - | +0.153 (-0.018) | 0.005 |
+| 16 | 64 | - (-, -) | - | +0.130 (-0.017) | 0.005 |
+| 18 | 64 | - (-, -) | - | +0.100 (-0.017) | 0.005 |
+| 20 | 64 | - (-, -) | - | +0.105 (-0.017) | 0.005 |
+| 23 | 64 | - (-, -) | - | +0.081 (-0.017) | 0.005 |
+
+Injection layer 8 at roi_A tokens; dtheta [-1.0, -0.5, 0.5, 1.0]; 64 scenes; curve degree per fold [1, 1, 1, 1, 1]
+
+### frame (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.008 [-0.059, +0.008] | 20 | - |
+| random_dir | +0.005 [-0.015, +0.022] | 20 | -0.024 [-0.070, +0.030] |
+| input | +0.395 [-0.617, +0.989] | 41 | -0.487 [-1.294, +0.175] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.01926465132179594}
+
+Readout validity (real clips, readout on the true theta across scenes): slope +0.539 [+0.164, +1.173] (law +1; n 25/64), covers the law: True
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.218 | -0.008 | +0.947 | 0.70 |
+| random_dir | -0.078 | +0.005 | +0.309 | 0.45 |
+| input | -6.100 | +0.395 | +3.332 | 0.46 |
+
+Pairs swap: n 74, IIA 0.23, fraction achieved +0.00, error ratio 0.891 (p sign-flip 0.061), |change| 0.068, selectivity 2.18
+Pairs swap_random: n 79, IIA 0.14, fraction achieved +0.00, error ratio 0.968 (p sign-flip 0.159), |change| 0.030, selectivity 2.50
+Pairs patch: n 246, IIA 0.17, fraction achieved -, error ratio 1.111 (p sign-flip 0.009), |change| -, selectivity 1.14, slope ratio high/low k 1.15  [+0.431, +4.166] (physics 1.76, leak 1); closer to required than to none -0.394 [-0.477, -0.314] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak)
+Pairs patch_random: n 246, IIA 0.05, fraction achieved -, error ratio 1.009 (p sign-flip 0.000), |change| -, selectivity 0.94, slope ratio high/low k -0.02  [-10.236, +9.598] (physics 1.76, leak 1); closer to required than to none -0.538 [-0.623, -0.456] (p 0.000)
+
+### frame_mm (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.012 [-0.042, +0.056] | 22 | - |
+| random_dir | +0.004 [-0.017, +0.025] | 20 | -0.032 [-0.043, +0.034] |
+| input | +0.395 [-0.617, +0.989] | 41 | -0.532 [-1.393, +0.157] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.0314220734055344}
+
+Readout validity (real clips, readout on the true theta across scenes): slope +0.539 [+0.164, +1.173] (law +1; n 25/64), covers the law: True
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.531 | -0.012 | +0.225 | 0.68 |
+| random_dir | -0.106 | +0.004 | +0.247 | 0.45 |
+| input | -6.100 | +0.395 | +3.332 | 0.46 |
+
+Pairs swap: n 77, IIA 0.19, fraction achieved +0.00, error ratio 0.983 (p sign-flip 0.003), |change| 0.050, selectivity 1.33
+Pairs swap_random: n 80, IIA 0.11, fraction achieved +0.00, error ratio 0.969 (p sign-flip 0.010), |change| 0.036, selectivity 2.61
+Pairs patch: n 246, IIA 0.17, fraction achieved -, error ratio 1.131 (p sign-flip 0.003), |change| -, selectivity 1.16, slope ratio high/low k 1.15  [+0.438, +4.134] (physics 1.76, leak 1); closer to required than to none -0.383 [-0.469, -0.305] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak)
+Pairs patch_random: n 246, IIA 0.05, fraction achieved -, error ratio 1.010 (p sign-flip 0.000), |change| -, selectivity 0.95, slope ratio high/low k 0.03  [-9.693, +8.243] (physics 1.76, leak 1); closer to required than to none -0.535 [-0.620, -0.452] (p 0.000)
+
+Off-distribution (Mahalanobis distance of the steered pooled vector to the training rows; real held-out median 33.4, q95 56.2):
+
+| condition | key | median | share > real q95 |
+|---|---|---|---|
+| law | -1 | 33.4 | 0.03 |
+| law | -0.5 | 33.4 | 0.03 |
+| law | 0.5 | 33.4 | 0.06 |
+| law | 1 | 33.4 | 0.06 |
+| random_dir | -1 | 59.8 | 0.89 |
+| random_dir | -0.5 | 41.5 | 0.11 |
+| random_dir | 0.5 | 42.0 | 0.11 |
+| random_dir | 1 | 60.4 | 0.91 |
+| swap | 1 | 33.4 | 0.05 |
+| swap | 2 | 33.4 | 0.03 |
+| swap | 3 | 33.4 | 0.05 |
+| swap | 4 | 33.4 | 0.06 |
+| swap_random | 1 | 57.1 | 0.50 |
+| swap_random | 2 | 51.2 | 0.47 |
+| swap_random | 3 | 140.0 | 0.72 |
+| swap_random | 4 | 121.8 | 0.58 |
+
+## L4 localization (where the law is used)
+
+Gate: passed ['swap'] of ['steering', 'swap', 'l2_kink'] (tests {'steering': False, 'swap': True, 'l2_kink': False}; L2 verdicts none)
+
+Step 1, layers (iia per layer, group-bootstrap CI; controls ['random', 'shuffled', 'size', 'passive'], control quantity log_radius_ratio): peak 4, flagged (CI above every control's) []
+
+| layer | law | random | shuffled | size | passive | untrained | passes |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.50 [0.50, 0.50] | 0.14 [0.00, 0.50] | 0.18 [0.05, 0.33] | 0.50 [0.05, 0.88] | - | - | False |
+| 2 | 0.33 [0.00, 0.50] | 0.12 [0.00, 0.50] | 0.16 [0.03, 0.30] | 0.50 [0.14, 0.88] | - | - | False |
+| 4 | 0.57 [0.22, 0.88] | 0.12 [0.00, 0.50] | 0.24 [0.06, 0.46] | 0.38 [0.00, 0.83] | - | - | False |
+| 6 | 0.57 [0.22, 0.88] | 0.12 [0.00, 0.50] | 0.21 [0.05, 0.41] | 0.38 [0.00, 0.83] | - | - | False |
+| 8 | 0.57 [0.22, 0.88] | 0.12 [0.00, 0.50] | 0.20 [0.05, 0.41] | 0.25 [0.00, 0.50] | - | - | False |
+| 10 | 0.29 [0.00, 0.50] | 0.00 [0.00, 0.00] | 0.10 [0.05, 0.17] | 0.25 [0.00, 0.50] | - | - | False |
+| 12 | 0.29 [0.00, 0.50] | 0.00 [0.00, 0.00] | 0.09 [0.05, 0.15] | 0.25 [0.00, 0.50] | - | - | False |
+| 14 | 0.29 [0.00, 0.50] | 0.00 [0.00, 0.00] | 0.14 [0.06, 0.20] | 0.12 [0.00, 0.46] | - | - | False |
+| 16 | 0.14 [0.00, 0.48] | 0.00 [0.00, 0.00] | 0.07 [0.03, 0.14] | 0.12 [0.00, 0.46] | - | - | False |
+| 18 | 0.25 [0.00, 0.50] | 0.12 [0.00, 0.46] | 0.12 [0.05, 0.24] | 0.25 [0.00, 0.50] | - | - | False |
+| 20 | 0.12 [0.00, 0.46] | 0.00 [0.00, 0.00] | 0.03 [0.01, 0.05] | 0.12 [0.00, 0.46] | - | - | False |
+| 23 | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] | 0.04 [0.00, 0.10] | 0.12 [0.00, 0.50] | - | - | False |
+
+Steps 2-4: skipped: no layer's swap score lies above every control's (nothing to localize)
+
+Verdict (localized only if the swap / patch IIA AND the knock-out effect both pass their controls): localized layers [], components []; disagreements none
+[06] l4 done in 22.7 min -> smoke/l4_momentum_validation/vjepa2-vitl

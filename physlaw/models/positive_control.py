@@ -182,7 +182,7 @@ def read_frames(path: Path, idx: list[int]) -> np.ndarray:
 class ClipWindows:
     """Map-style dataset (a torch DataLoader accepts it) of model-input windows of training clips.
 
-    Item i: (uint8 [n_frames, H, W, 3] at ``hw`` by ``fit``, number of window frames before the event).
+    Item i: (uint8 [n_frames, H, W, 3] at ``hw`` by ``fit``, number of window frames before the event, i).
     The window is ``n_frames`` at ``fps``, from frame 0 or (``center``) centred on the event shifted by up to
     ±``jitter`` master frames (clamped to the clip); ``flip`` mirrors
     horizontally with p = 0.5 (both leave the physics legal). jitter 0 and no flip: deterministic."""
@@ -205,71 +205,124 @@ class ClipWindows:
         x = fit_frames(read_frames(p, fr), self.hw, self.fit)
         if self.flip and rng.random() < 0.5:
             x = np.ascontiguousarray(x[:, :, ::-1])
-        return x, int(sum(f < ev for f in fr))
+        return x, int(sum(f < ev for f in fr)), i
 
 
 # ---------------------------------------------------------------------------------------------- pass check
 
-def pass_check(results_dir, crit) -> dict:
-    """PC1 pass criterion (spec §4.4; values accepted by the user 2026-11-10) on results/<model>/f1/.
+def pass_check(results_dir, crit, untrained_dir=None) -> dict:
+    """PC1 pass criterion (spec §4.4, §5.0.5) on results/<model>/ (a family dir results/<model>/f1 is accepted too).
 
-    L1: the held-out-selected S_family (``selected.<option>.family.score`` in l1.json; legal twins, spec §5
-        selection rule) >= ``l1_s_family_min``, for the first of ``l1_options`` that L1 reports (P-pred-real
-        frame pool preferred, else P-real-mm frame pool; both leak-free).
-    L2: motion-adjusted win rate >= ``l2_adj_win_min`` for every momentum contrast, under the pre-registered
-        covariate set and distance (``motion_adjusted.contrasts.<cov>.<contrast>.<distance>.adj_win_rate``).
-        The legal-vs-legal control is reported; if its CI excludes 0.5 the adjustment is insufficient
-        (spec §5.3 item 4) and the verdict is INCONCLUSIVE rather than PASS.
-    Returns {"verdict": PASS | FAIL | INCONCLUSIVE | MISSING, "l1": ..., "l2": ..., "notes": [...]}."""
+    Momentum (on ``momentum_family``, F1):
+      L1: the held-out-selected S_mom (``selected["<law>|<pool>"].momentum.score`` in l1.json; F1's law key is
+          "energy", the collision variants carrying the momentum package) >= ``l1_s_mom_min``, for the first pool of
+          ``l1_pools`` that L1 reports (the instrument, pred_real or as_is, is the one L1 used: recorded).
+      L2: raw win rate >= ``l2_win_min`` for every momentum contrast at the pre-registered distance, AND the model −
+          pixel-baseline win rate (``vs_pixel``, paired CI) above 0 for every pixel baseline (the motion control).
+          The legal-vs-legal reference contrast is reported only.
+    Energy (``energy``): on at least one of ``energy.entries`` ({family: energy_kink entry}, F2 or F7 bounce), the raw
+      L2 kink (log surprise, no adjustment) at the pre-registered ``energy.distance`` has K CI > 0 beyond every baseline (l2.json verdict
+      "kink beyond baselines"), AND the untrained model's K CI on the same entry and distance contains 0
+      (``untrained_dir`` = results/<untrained model>/; missing -> MISSING).
+    Returns {"verdict": PASS | FAIL | MISSING, "l1", "l2", "energy", "notes", "criterion"}."""
     rd = Path(results_dir)
-    res = {"l1": {}, "l2": {}, "notes": []}
+    if (rd / "l1.json").exists() or (rd / "l2.json").exists():      # a family dir was given
+        rd = rd.parent
+    fam = crit.get("momentum_family", "f1")
+    res = {"l1": {}, "l2": {}, "energy": {}, "notes": []}
     ok, missing = True, False
-    f1, f2 = rd / "l1.json", rd / "l2.json"
+    f1, f2 = rd / fam / "l1.json", rd / fam / "l2.json"
     if f1.exists():
         sel = json.loads(f1.read_text()).get("selected", {})
-        opt = next((o for o in crit["l1_options"] if "score" in sel.get(o, {}).get("family", {})), None)
+        l1 = json.loads(f1.read_text())
+        sel = l1.get("selected", {})
+        opt = next((k for p_ in crit["l1_pools"] for k, v in sel.items()
+                    if k.split("|")[-1] == p_ and "score" in v.get("momentum", {})), None)
         if opt is None:
             missing = True
-            res["notes"].append(f"l1.json has no selected S_family for any of {list(crit['l1_options'])}")
+            res["notes"].append(f"l1.json has no selected S_mom for any pool of {list(crit['l1_pools'])}")
         else:
-            f = sel[opt]["family"]
-            res["l1"] = {"option": opt, "S_family": f["score"], "q95": [f.get("score_q025"), f.get("score_q975")],
-                         "n_variants": f.get("n_variants")}
-            ok &= bool(np.isfinite(f["score"]) and f["score"] >= crit["l1_s_family_min"])
+            m = sel[opt]["momentum"]
+            inst = l1.get("variants", {}).get(m.get("selected"), {}).get("instrument")
+            res["l1"] = {"option": opt, "instrument": inst, "S_mom": m["score"],
+                         "q95": [m.get("score_q025"), m.get("score_q975")], "n_variants": m.get("n_variants")}
+            ok &= bool(np.isfinite(m["score"]) and m["score"] >= crit["l1_s_mom_min"])
     else:
         missing = True
         res["notes"].append(f"{f1} missing")
     if f2.exists():
-        adj = json.loads(f2.read_text()).get("motion_adjusted", {}).get("contrasts", {}).get(crit["l2_covariates"], {})
+        con = json.loads(f2.read_text()).get("contrasts", {})
         for c in list(crit["l2_contrasts"]) + [crit["l2_control"]]:
-            r = adj.get(c, {}).get(crit["l2_distance"])
+            src = next((k for k in con.get(c, {}) if k != "pixel_baselines"), None)
+            r = con[c][src].get(crit["l2_distance"]) if src else None
             if r is None:
                 missing = True
-                res["notes"].append(f"l2.json: no {crit['l2_covariates']} / {c} / {crit['l2_distance']}")
+                res["notes"].append(f"l2.json: no {c} / {crit['l2_distance']}")
                 continue
-            res["l2"][c] = {"adj_win_rate": r["adj_win_rate"], "ci95": r.get("adj_win_rate_ci95")}
-            if c != crit["l2_control"]:
-                ok &= bool(r["adj_win_rate"] >= crit["l2_adj_win_min"])
-            elif r.get("adj_win_rate_ci95") and not (r["adj_win_rate_ci95"][0] <= 0.5 <= r["adj_win_rate_ci95"][1]):
-                res["notes"].append("legal-vs-legal control not at chance after adjustment (spec §5.3.4)")
-                res["control_off_chance"] = True
+            gaps = {b: g["model_minus_baseline_ci95"] for b, g in r.get("vs_pixel", {}).items()}
+            res["l2"][c] = {"win_rate": r["win_rate"], "ci95": r.get("win_rate_ci95"), "vs_pixel_ci95": gaps}
+            if c == crit["l2_control"]:
+                continue
+            if not gaps:
+                missing = True
+                res["notes"].append(f"l2.json: {c} has no pixel-baseline gap (run scripts/05_surprise.py)")
+            ok &= bool(r["win_rate"] >= crit["l2_win_min"] and all(ci[0] > 0 for ci in gaps.values()))
     else:
         missing = True
         res["notes"].append(f"{f2} missing")
-    res["verdict"] = ("MISSING" if missing else "FAIL" if not ok
-                      else "INCONCLUSIVE" if res.get("control_off_chance") else "PASS")
+    en = crit.get("energy")
+    if en:
+        e_ok, e_missing = energy_check(rd, en, untrained_dir, res)
+        ok &= e_ok or e_missing
+        missing |= e_missing and not e_ok
+    res["verdict"] = "MISSING" if missing else "FAIL" if not ok else "PASS"
     res["criterion"] = dict(crit)
     return res
 
 
+def _kink_rec(path: Path, entry: str, distance: str) -> dict | None:
+    if not path.exists():
+        return None
+    return (json.loads(path.read_text()).get("energy_kink", {}).get(entry, {}).get("distances", {})
+            .get(distance))
+
+
+def energy_check(rd: Path, en, untrained_dir, res: dict) -> tuple[bool, bool]:
+    """(passed on some entry, nothing decidable) for the energy criterion; fills res["energy"] and notes."""
+    passed, decidable = False, False
+    for fam, entry in dict(en["entries"]).items():
+        r = _kink_rec(rd / fam / "l2.json", entry, en["distance"])
+        if r is None:
+            res["notes"].append(f"{fam}/l2.json: no energy_kink {entry} / {en['distance']}")
+            continue
+        rec = {"K": r["model"]["K"], "K_ci95": r["model"]["K_ci95"], "verdict": r["verdict"]}
+        model_ok = r["verdict"] == "kink beyond baselines"
+        u = _kink_rec(Path(untrained_dir) / fam / "l2.json", entry, en["distance"]) if untrained_dir else None
+        if u is None:
+            res["notes"].append(f"{fam}: untrained energy kink missing (pass --untrained results/<untrained model>)")
+        else:
+            lo, hi = u["model"]["K_ci95"]
+            rec.update(untrained_K=u["model"]["K"], untrained_K_ci95=[lo, hi], untrained_contains_0=bool(lo <= 0 <= hi))
+            decidable = True
+            passed |= model_ok and rec["untrained_contains_0"]
+        res["energy"][f"{fam}/{entry}"] = rec
+    return passed, not decidable
+
+
 def format_pass(res: dict) -> str:
     c = res["criterion"]
-    lines = [f"PC1 pass check: {res['verdict']}  (L1 S_family >= {c['l1_s_family_min']}, "
-             f"L2 adjusted win >= {c['l2_adj_win_min']} [{c['l2_covariates']}, {c['l2_distance']}])"]
+    lines = [f"PC1 pass check: {res['verdict']}  (L1 S_mom >= {c['l1_s_mom_min']}, "
+             f"L2 win >= {c['l2_win_min']} and > every pixel baseline [{c['l2_distance']}]; energy kink)"]
     if res["l1"]:
-        lines.append(f"  L1 S_family ({res['l1']['option']}, held-out selected): {res['l1']['S_family']:+.3f}")
+        lines.append(f"  L1 S_mom ({res['l1']['option']}, {res['l1']['instrument']}, held-out selected): "
+                     f"{res['l1']['S_mom']:+.3f}")
     for k, r in res["l2"].items():
         ci = r["ci95"] or [float("nan")] * 2
-        lines.append(f"  L2 {k}: {r['adj_win_rate']:.2f} [{ci[0]:.2f}, {ci[1]:.2f}]")
+        gaps = ", ".join(f"{b} [{g[0]:+.2f}, {g[1]:+.2f}]" for b, g in r["vs_pixel_ci95"].items())
+        lines.append(f"  L2 {k}: {r['win_rate']:.2f} [{ci[0]:.2f}, {ci[1]:.2f}]; model − pixel: {gaps}")
+    for k, r in res.get("energy", {}).items():
+        u = (f"; untrained K {r['untrained_K']:+.2f} [{r['untrained_K_ci95'][0]:+.2f}, {r['untrained_K_ci95'][1]:+.2f}]"
+             if "untrained_K" in r else "; untrained missing")
+        lines.append(f"  energy kink {k}: K {r['K']:+.2f} [{r['K_ci95'][0]:+.2f}, {r['K_ci95'][1]:+.2f}] ({r['verdict']}){u}")
     lines += [f"  note: {n}" for n in res["notes"]]
     return "\n".join(lines)

@@ -1,8 +1,14 @@
 defaults: _probe.yaml
 level: l0
-families: [f1]
-targets: [velocity, speed, direction, log_mass, radius, momentum, momentum_partial]
+families: [f1, f2, f3, f4, f6, f7, f8, f9, f10, f11, f12]
+# height: F8; angular_velocity: F9 (w_y), F10 (w_y), F11 (w_y), F12 (bar w_z); angle: F9 (bob angle); acceleration: F11
+targets: [velocity, speed, direction, log_mass, radius, momentum, momentum_partial, height, angular_velocity, angle, acceleration,
+          inertia_factor]   # inertia_factor: F10 kappa per cylinder, pre-event (H1: solid vs hollow visible before the release)
 one_twin_refit_below: 200        # spec §5.1: post-event targets refit on one twin per group below this many groups
+# spec §5.0.3 R1: one velocity probe per object on real pre + post rows (affine-calibrated, cross-fitted), and its
+# eps_hat-vs-eps slope / R² on the real clips (the measurability gate L1 reads). Cells: the layers selected for the
+# pre / post velocity targets x these pool kinds.
+same_instrument: {enabled: true, fold_seeds: 1, pools: [roi_own, frame]}
 velocity_protocols:
   # spec §5.1 velocity protocol check (RigidBench: unregularised linear probe, Adam, 20 epochs, on
   # actor-mask-averaged tokens; here the own-ball ROI pool, the closest cached pool). Enable with

@@ -143,19 +143,43 @@ def test_impossible_arms_create_energy_and_conserve_momentum(seed):
         TW.f2_twins(pre, pa, pb, 1.0, impossible_levels=(1.0,))
 
 
+def test_partner_levels_are_legal_off_ladder_arms():
+    """A legal arm at every violator e off the ladder (e0.15): exact restitution edit, not a kink-ladder rung."""
+    rng = np.random.default_rng(11)
+    pre = random_pre(rng)
+    pa, pb = honest(pre)
+    tw = TW.f2_twins(pre, pa, pb, 1.0, impossible_levels=(1.1,), partner_levels=(0.15,))
+    t = tw["e0.15"]
+    la, lb = honest(pre, 0.15)
+    np.testing.assert_allclose(t.v_a, la, atol=1e-12)
+    np.testing.assert_allclose(t.v_b, lb, atol=1e-12)
+    assert t.momentum_conserved and t.energy_physical and t.record["ladder"] is False and t.e_target == 0.15
+    assert TW.level_name(0.15) == "e0.15" and TW.level_name(1.0) == "e1.0" and TW.level_name(0.5) == "e0.5"
+    vt, _ = TW.f2_violators(pre, pa, pb, 1.0, E_VIOL, 0.2)
+    assert {v.record["base"] for v in vt.values()} <= set(tw) | {"e0.5"}    # every violator names its partner
+    for bad in ((0.5,), (1.2,)):
+        with pytest.raises(ValueError):
+            TW.f2_twins(pre, pa, pb, 1.0, impossible_levels=(1.1,), partner_levels=bad)
+
+
 def test_f2_config_keys():
     from physlaw.config import load_config
     t = load_config(REPO / "configs" / "data" / "f2_restitution.yaml").twins
     assert list(t.violators) == [1.0, 0.5, 0.15] and list(t.violator_signs) == ["pos", "neg"]
     assert list(t.impossible_levels) == [1.1, 1.2, 1.3, 1.4, 1.5]
+    assert t.violators_required is True
 
 
 @pytest.mark.skipif(not KUBRIC_PY.exists(), reason="Kubric venv absent")
 def test_generate_no_render_ladder_backward_compatible(tmp_path):
-    """generate.py --no-render: with violators and impossible arms off, the ladder labels equal the full run's."""
+    """generate.py --no-render: with OPTIONAL violators and impossible arms off, the ladder labels equal the full
+    run's; with required violators (the config default) every listed e has both drift signs. Energy labels:
+    epsilon, clean_until_s, event_kind on every twin, stop_dose per group, ke_ratio_to_legal on violators."""
     seed = 200003
     out = {}
-    for tag, extra in (("full", []), ("off", ["--set", "twins.violators=[]", "twins.impossible_levels=[]"])):
+    for tag, extra in (("full", ["--set", "twins.violators_required=false"]),
+                       ("off", ["--set", "twins.violators=[]", "twins.impossible_levels=[]"]),
+                       ("req", [])):
         d = tmp_path / tag
         r = subprocess.run([str(KUBRIC_PY), str(REPO / "physlaw/data/generate.py"), "--config",
                             str(REPO / "configs/data/f2_restitution.yaml"), "--seed", str(seed), "--out", str(d),
@@ -166,7 +190,11 @@ def test_generate_no_render_ladder_backward_compatible(tmp_path):
     full, off = out["full"][0], out["off"][0]
     assert full["status"] == off["status"] == "ok" and full["accepted_attempt"] == off["accepted_attempt"]
     assert off["twins"] == [f"e{e:.1f}" for e in TW.F2_LEVELS]
-    skip = {"config_hash", "render_seconds", "sampling_attempts"}
+    req = out["req"][0]
+    assert req["status"] == "ok" and not req.get("dropped_twins") and "e0.15" in req["twins"]
+    assert "e0.15" in full["twins"] and "e0.15" not in off["twins"]
+    assert {TW.violator_name(e, s) for e in E_VIOL for s in ("pos", "neg")} <= set(req["twins"])
+    skip = {"config_hash", "render_seconds", "sampling_attempts", "stop_dose"}   # stop_dose: over the ladder's ends
     strip = lambda x: ({k: strip(v) for k, v in x.items() if k not in skip} if isinstance(x, dict)
                        else [strip(v) for v in x] if isinstance(x, list) else x)
     for t in off["twins"]:
@@ -174,9 +202,16 @@ def test_generate_no_render_ladder_backward_compatible(tmp_path):
         assert strip(a) == strip(b), t
     for t in full["twins"]:
         pl = json.loads((out["full"][1] / t / "labels.json").read_text())["physlaw"]
+        assert pl["event_kind"] == "collision" and pl["clean_until_s"] > pl["event_time_s"]
+        assert pl["epsilon"] == pytest.approx(pl["e_target"], abs=1e-4)      # realised (e1.0 = the simulator's)
+        assert set(pl["stop_dose"]) == {"A", "B"}
         if t.startswith("mom_violate"):
+            assert pl["edit"]["base"] in full["twins"]                       # its legal partner is rendered
             assert pl["legal"] is False and pl["violated_law"] == "momentum" and "eta" in pl["edit"]
             assert pl["edit"]["drift_sign"] == t.rsplit("_", 1)[1]
+            assert pl["ke_ratio_to_legal"] == pl["edit"]["ke_ratio_vs_legal"]
+            if pl["edit"]["drift_sign"] == "pos":      # along v_cm . n: always faster than its legal partner
+                assert pl["ke_ratio_to_legal"] > 1
         elif float(t[1:]) > 1:
             assert pl["legal"] is False and pl["violated_law"] == "energy" and pl["energy_physical"] is False
             assert pl["momentum_conserved"] is True and pl["summary"]["ke_ratio"] > 1 and pl["e_target"] == float(t[1:])

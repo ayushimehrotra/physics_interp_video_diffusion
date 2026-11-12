@@ -1,18 +1,190 @@
-# L4 causal propagation (spec §5.6). Stage 6 with this config loads the model (GPU) for the interventions.
+# L4 causal propagation (spec §5.0.4, §5.6): one manifold-steering routine (physlaw/eval/l4_causal.py), one block per
+# law; the evaluated family picks the law (law_of_family, else l4_causal.LAW_OF_FAMILY). Stage 6 loads the model (GPU)
+# for the interventions. Encoders: the steered forecast read with the R1 instrument; DiTs: the steered GENERATED video
+# read with the output track-B readout (the model's pinned settings only). The injection tokens follow from `pool`
+# (l4_causal.site_positions: roi_<obj>.pre -> that ROI's context tokens, frame.pre -> every context token, frame.post
+# -> every post-event token), and the curve is fitted in the space the hook acts on (encoders: forecast()'s
+# context-only encoder pass, or the predictor / VideoMAE-decoder blocks' pred-real activations for frame.post).
 defaults: _probe.yaml
 level: l4
-families: [f3]
-alphas_sd: [-2, -1, 0, 1, 2]       # shift along the mass-ratio direction, in sd of the activations' projection on it
-layer: auto                        # injection block: best grouped-CV R² for log(m_A/m_B) from roi_A.pre, or a layer key
-direction_data: f1                 # family the direction is fitted on (bare name -> data/<name>, or a path); null = the
-                                   # evaluated one (F3: identical look, mass invisible before contact -> ~noise direction)
-direction: generative              # generative: u ∝ cov(activations, target) (1-D readout); ridge: ridge weight vector
-direction_target: residual         # residual: log(m_A/m_B) residualised on log(r_A/r_B) (mass beyond size); raw: log(m_A/m_B)
-probe_data: null                   # family the post-velocity probes are trained on; null = this one, cross-fitted
-twins: null                        # evaluated twins (null: all; F3's twins are its mass ratios)
-e_ref: twin                        # restitution in the momentum prediction: the twin's own, or a number
-controls: {random_dir: 2, random_subspace: 2, pc_matched: 1}   # draws per control
-max_groups: null                   # first N groups only (test runs)
-generate_readout: true             # generators: read each steered video out with the track B readout (steering)
+families: [f1, f2, f4, f7, f8, f6, f9, f10, f11, f12]
+law_of_family: {f7: energy}        # F7: bounce ladder (energy); set to gravity for the drop pairs. F9: oscillation
+                                   # (pair); set f9: energy (with --set laws.energy.subfamily=swing) for the swing ladder
+layer: auto                        # the passing layer with the highest retention (across mode: LOSO R²), or a layer key
+max_p: 0.05                        # precondition: every p (retention, LOSO R² line) <= this
+null_draws: 200
+steer_without_precondition: false
+min_effect: 0.25                   # slope-0 laws: steering passes only if the push moved the model's theta readout by
+                                   # >= this fraction of its real-video change, or a control direction (size / speed)
+                                   # moved the outcome; else "inert push (uninformative)" (same rule for the swap test,
+                                   # with pairs.min_moved)
+laws:
+  energy:                          # theta = eps; law: eps_hat rises, then saturates at 1
+    theta: epsilon
+    mode: ladder
+    scene_keys: [physlaw.twin_group_id]
+    fit_max: 1.0                   # the curve from the legal rungs eps <= 1
+    pool: frame.post               # post-event site: encoders steer an intermediate predictor / decoder block's targets
+    deltas: [0.25, 0.5, 1.0, 2.0, 4.0]
+    readout: epsilon
+    predict: saturation
+    n_top: 2
+    sat_tol: 0.1
+    control: speed
+    controls: [passive, random_dir, speed]
+    control_theta: {speed: {theta: post_speed, centre_by: epsilon, mode: across}}   # aftermath speed at fixed eps
+  momentum:                        # theta = log(m_A / m_B) (varies across twin groups); law: slope 1
+    theta: log_mass_ratio
+    mode: across
+    nuisance: [log_radius_ratio]   # mass beyond size
+    pool: roi_A.pre
+    deltas: [-1.0, -0.5, 0.5, 1.0]
+    readout: log_deflection_ratio
+    predict: 1.0
+    tol: 0.25
+    controls: [passive, random_dir]
+    steer_twin: conserve_e1        # the legal e = 1 twin is each scene's clip (pre-event frames are shared)
+    patch: true                    # causal collision patch arm: A's pre-contact ROI from a matched donor (§41); pass
+                                   # rule l4_causal.patch_verdict (closer to required than to none, slope ratio, controls)
+  galilean:                        # theta = boost speed (F4 boost ladder per (scene, rung)); law: slope 0
+    theta: physlaw.edit.boost
+    boost_kind: ball               # ball-boost twins only (u0 incl.); camera boosts are L3's camera_vs_ball comparison
+    mode: ladder
+    scene_keys: [physlaw.twin_group_id, physlaw.edit.e]
+    pool: frame.pre
+    deltas: [-1.0, -0.5, 0.5, 1.0]
+    readout: epsilon
+    predict: 0.0
+    tol: 0.1
+    steer_twin: u0_e1
+    invariance_ref: [u0_e1, u0_e015] # swap-test reference: e DOES change eps_hat (law: boosts must not)
+    controls: [passive, random_dir]
+  gravity:                         # theta = log m_A (F7 drop pairs); law: a_heavy / a_light unchanged (slope 0)
+    subfamily: drop
+    theta: log_mass_A
+    mode: across
+    nuisance: [log_radius_A]
+    pool: roi_A.pre
+    deltas: [-1.0, -0.5, 0.5, 1.0]
+    readout: log_mass_ratio_accel  # encoders: per-token-frame decoded accelerations (stage 4 pooled_frame_t); DiTs: track-B mass_ratio
+    predict: 0.0
+    tol: 0.1
+    controls: [passive, random_dir, size]
+    control_theta: {size: {theta: log_radius_A, mode: across}}
+  friction:                        # theta = log m_A (F6 pair); law: Coulomb deceleration independent of mass (slope 0)
+    subfamily: pair
+    theta: log_mass_A
+    mode: across
+    nuisance: [log_radius_A]
+    pool: roi_A.pre
+    deltas: [-1.0, -0.5, 0.5, 1.0]
+    readout: log_decel_A           # A's deceleration while moving after the branch; DiTs: track-B accel
+    predict: 0.0
+    tol: 0.1
+    steer_twin: legal
+    controls: [passive, random_dir, size]
+    control_theta: {size: {theta: log_radius_A, mode: across}}
+  oscillation:                     # theta = log bob mass of A (F9 pair); law: the period does not depend on the mass (slope 0)
+    subfamily: pair
+    theta: log_mass_A
+    mode: across
+    nuisance: [log_radius_A]
+    pool: roi_A.pre
+    deltas: [-1.0, -0.5, 0.5, 1.0]
+    readout: log_period_A          # sinusoid fit to A's decoded velocity over the post window (>= a quarter period); DiTs: track-B period_post
+    predict: 0.0
+    tol: 0.1
+    steer_twin: legal
+    controls: [passive, random_dir, size]
+    control_theta: {size: {theta: log_radius_A, mode: across}}
+  statics:                         # theta = overhang x (F11 grid 0.55 .. 1.45); law: the block tips iff x > 1 (a step)
+    theta: physlaw.constants.overhang_x
+    mode: across
+    nuisance: [physlaw.constants.aspect_ba]
+    pool: roi_A.pre
+    deltas: [-0.4, -0.2, 0.2, 0.4] # multiples of the grid step: theta + dtheta lands on another group's x (input reference)
+    readout: tipped                # rotation of A over laws.incline.tip_window after the release > TIP_ANGLE (decoded w); DiTs: track-B tipped
+    predict: step
+    boundary: 1.0
+    control: random_dir
+    steer_twin: stay               # any twin: the pre-event frames are shared
+    controls: [passive, random_dir]
+  angular_momentum:                # theta = |impact parameter| / bar half-length (F12); law: L_ratio stays 1 (slope 0)
+    theta: impact_parameter_rel
+    mode: across
+    nuisance: [log_radius_B]       # the bar's half-length
+    pool: frame.pre
+    deltas: [-0.2, -0.1, 0.1, 0.2]
+    readout: L_ratio               # decoded puck / bar velocities and bar spin, contact positions from the labels; DiTs: track-B L_ratio
+    predict: 0.0
+    tol: 0.1
+    steer_twin: legal
+    controls: [passive, random_dir]
+  rolling:                         # theta = kappa of A (varies per group: solid 0.5 or a tube 0.68 .. 0.95); law:
+                                   # d log a / d kappa = -1 / (1 + kappa_ref); slip stays 1
+    theta: kappa_A
+    mode: across
+    pool: roi_A.pre
+    deltas: [-0.2, -0.1, 0.1, 0.2]
+    readout: log_accel             # log a_A along the incline: per-token-frame decoded kinematics; DiTs: track-B (outputs.readout_rolling)
+    predict: rolling
+    kappa_ref: auto                # the median kappa_A of the fitted scenes
+    tol: 0.1
+    steer_twin: legal
+    controls: [passive, random_dir]
+# Pair arms (every law): swap test = interchange of the theta-curve component with a donor's (IIA, fraction of the
+# required change, selectivity on the law's non-target quantity), random-direction and passive controls; laws whose
+# prediction is NO change (slope 0) score invariance instead: the theta readout must move by >= min_moved of the donor
+# difference and |outcome change| / reference (invariance_ref twins, else the outcome's sd over real clips) must stay
+# <= max_invariance. Momentum also the full-ROI collision patch. Donors: ladder -> other rungs of the scene, across ->
+# other scenes, |dtheta| >= min_dtheta_sd x sd(theta); patch donors with contact normals within acos(patch_cos_min).
+# input_tol_sd: the input-level reference (the real twin at theta + dtheta) must lie within this x sd(theta) of the
+# target.
+pairs: {swap: true, n_donors: 4, min_dtheta_sd: 0.25, input_tol_sd: 0.15, patch_cos_min: 0.94, min_moved: 0.25,
+        max_invariance: 0.25}
+max_groups: null                   # first N scenes only (test runs)
+# Localization (l4_causal.localize; json key `localization`): WHERE the law is used, run only for a model that passes
+# (gate: the law's steering or swap test, or the L2 / L2-rep kink verdict "kink beyond baselines" in
+# <results_root>/<model>/<family>/l2.json; skipped otherwise, with the reason). 1 layers (DiTs: every cached (SNR, layer)
+# space; DiT momentum also the live paired patch per block x SNR): swap IIA per layer with group-bootstrap CIs vs
+# random direction, control quantity (not the law's parameter), passive (post-event sites) and the untrained model's
+# curve (<results_root>/<untrained_model>/<family>/l4.json); 2 tokens at the top flagged layers; 3 components (attention
+# heads, MLP): attribution pre-screen -> exact patching on top_k (+ random control components), mean-ablation
+# knock-out re-scored on the law's behaviour; 4 DAS (k dims) at the top layer. Caps bound every sweep.
+localize:
+  enabled: true
+  gate: [steering, swap, l2_kink]
+  results_root: results
+  untrained_model: untrained-vitl
+  control_quantity: {default: log_radius_A, momentum: log_radius_ratio, angular_momentum: log_radius_B}
+  max_groups: 12                   # scenes (the base clips of the swap pairs)
+  n_donors: 2                      # donors per scene (as the main swap test's rule)
+  max_layers: 12                   # step-1 layers (DiTs: blocks), evenly spaced
+  max_snrs: 4                      # DiTs: cached SNRs per block
+  top_layers: 2                    # flagged layers taken to steps 2-3 (step 4: the best)
+  run_unflagged: false             # steps 2-4 at the peak even when no layer passes its controls
+  token_groups: [roi_A, roi_B, contact, background, pre, post]
+  component_layers: 1
+  max_heads: 16                    # heads per block (evenly spaced beyond); + the MLP
+  top_k: 4                         # exact patching / knock-out on the attribution top-k
+  n_control_components: 2          # random other components (patch and knock-out controls)
+  max_ko_clips: 48
+  creation_tau: 0.1                # energy knock-out: creation rate P(eps_hat > 1 + tau)
+  bootstrap: 500
+  attribution: {max_fd_dims: 4096, h: 1.0e-3}   # readout gradient by finite differences (PCs of the base forecasts beyond)
+  das:                             # objective auto: through the model (encoders), else the frozen theta decoder (DiTs)
+    {objective: auto, ks: [1, 4, 16], folds: 2, steps: 300, lr: 0.05, batch: 8, max_train_bases: 24, max_eval_pairs: 48,
+     hidden: 32, pcs: 32, decoder_steps: 3000, decoder_lr: 0.01, decoder_wd: 0.01, max_pairs: 400, max_model_pairs: 16,
+     tol: 0.05}
+  dit:                             # DiT overrides (every run is a full sampling run)
+    max_groups: 6
+    n_donors: 1
+    max_layers: 6
+    max_snrs: 2
+    top_layers: 1
+    max_heads: 8
+    top_k: 3
+    max_ko_clips: 12
+    das: {max_model_pairs: 6}
 bootstrap: {n: 1000}
 device: cuda
