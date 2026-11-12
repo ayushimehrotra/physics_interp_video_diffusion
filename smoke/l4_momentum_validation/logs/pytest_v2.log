@@ -1,0 +1,16 @@
+.......................................F...............s.....                                                                                                                                                          [100%]
+========================================================================================================== FAILURES ==========================================================================================================
+___________________________________________________________________________________ test_localize_gate_reads_steering_swap_and_the_l2_kink ___________________________________________________________________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-228/test_localize_gate_reads_steer0')
+
+>   ???
+E   AssertionError: assert [] == ['swap']
+E     
+E     Right contains one more item: 'swap'
+E     Use -v to get more diff
+
+tests/test_l4_causal.py:1239: AssertionError
+================================================================================================== short test summary info ===================================================================================================
+FAILED tests/test_l4_causal.py::test_localize_gate_reads_steering_swap_and_the_l2_kink - AssertionError: assert [] == ['swap']
+1 failed, 59 passed, 1 skipped in 164.35s (0:02:44)

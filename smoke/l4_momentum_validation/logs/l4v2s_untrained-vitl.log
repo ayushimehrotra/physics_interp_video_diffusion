@@ -1,0 +1,161 @@
+[L4 momentum] patch donors: 0 candidates excluded (contact in another token-frame) over 64 scenes; per scene {np.str_('f1_100010'): 0, np.str_('f1_100014'): 0, np.str_('f1_100016'): 0, np.str_('f1_100018'): 0, np.str_('f1_100023'): 0, np.str_('f1_100024'): 0, np.str_('f1_100025'): 0, np.str_('f1_100026'): 0, np.str_('f1_100028'): 0, np.str_('f1_100045'): 0, np.str_('f1_100047'): 0, np.str_('f1_100052'): 0, np.str_('f1_100056'): 0, np.str_('f1_100002'): 0, np.str_('f1_100011'): 0, np.str_('f1_100017'): 0, np.str_('f1_100033'): 0, np.str_('f1_100036'): 0, np.str_('f1_100039'): 0, np.str_('f1_100040'): 0, np.str_('f1_100043'): 0, np.str_('f1_100051'): 0, np.str_('f1_100053'): 0, np.str_('f1_100054'): 0, np.str_('f1_100055'): 0, np.str_('f1_100061'): 0, np.str_('f1_100000'): 0, np.str_('f1_100003'): 0, np.str_('f1_100004'): 0, np.str_('f1_100009'): 0, np.str_('f1_100013'): 0, np.str_('f1_100015'): 0, np.str_('f1_100027'): 0, np.str_('f1_100029'): 0, np.str_('f1_100042'): 0, np.str_('f1_100046'): 0, np.str_('f1_100048'): 0, np.str_('f1_100057'): 0, np.str_('f1_100063'): 0, np.str_('f1_100001'): 0, np.str_('f1_100005'): 0, np.str_('f1_100006'): 0, np.str_('f1_100008'): 0, np.str_('f1_100012'): 0, np.str_('f1_100021'): 0, np.str_('f1_100031'): 0, np.str_('f1_100034'): 0, np.str_('f1_100037'): 0, np.str_('f1_100038'): 0, np.str_('f1_100041'): 0, np.str_('f1_100058'): 0, np.str_('f1_100062'): 0, np.str_('f1_100007'): 0, np.str_('f1_100019'): 0, np.str_('f1_100020'): 0, np.str_('f1_100022'): 0, np.str_('f1_100030'): 0, np.str_('f1_100032'): 0, np.str_('f1_100035'): 0, np.str_('f1_100044'): 0, np.str_('f1_100049'): 0, np.str_('f1_100050'): 0, np.str_('f1_100059'): 0, np.str_('f1_100060'): 0}
+/workspace/meta/physlaw/physlaw/eval/l4_causal.py:738: RuntimeWarning: All-NaN slice encountered
+  return out
+/workspace/meta/physlaw/physlaw/eval/l4_causal.py:738: RuntimeWarning: All-NaN slice encountered
+  return out
+[L4 momentum] frame: {'matches_law': False, 'differs_from_controls': True, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.003498212733395078}; frame_mm: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': 0.01879945610398328}; contact: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': 0.003431849124909166}; roi: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.0006078260473256867}
+[L4 momentum] localization skipped: no gate passed (steering, swap, l2_kink): steering law-like in no variant, swap test passes in no variant, L2 kink verdicts absent
+## L4 manifold steering: momentum (f1), theta = log_mass_ratio (across), pool roi_A.pre; law prediction: 1.0
+
+Precondition (theta shuffled across scenes); layers passing: ['0', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '23']
+
+| layer | scenes | retention (null median, 1/sqrt S) | p retention | LOSO R² line (null median) | p line |
+|---|---|---|---|---|---|
+| 0 | 64 | - (-, -) | - | +0.154 (-0.018) | 0.005 |
+| 2 | 64 | - (-, -) | - | +0.148 (-0.018) | 0.005 |
+| 4 | 64 | - (-, -) | - | +0.149 (-0.018) | 0.005 |
+| 6 | 64 | - (-, -) | - | +0.152 (-0.018) | 0.005 |
+| 8 | 64 | - (-, -) | - | +0.157 (-0.018) | 0.005 |
+| 10 | 64 | - (-, -) | - | +0.155 (-0.018) | 0.005 |
+| 12 | 64 | - (-, -) | - | +0.158 (-0.018) | 0.005 |
+| 14 | 64 | - (-, -) | - | +0.159 (-0.018) | 0.005 |
+| 16 | 64 | - (-, -) | - | +0.160 (-0.018) | 0.005 |
+| 18 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+| 20 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+| 23 | 64 | - (-, -) | - | +0.161 (-0.018) | 0.005 |
+
+Injection layer 18 at roi_A tokens; dtheta [-1.0, -0.5, 0.5, 1.0]; 64 scenes; curve degree per fold [1, 1, 1, 1, 1]
+
+Readout pool (held-out selection on the readout point's R² {'contact': -1.989105690693917, 'roi': -2.864229248948742, 'roi_maskonly': -13.500939374270263}; candidates ['contact', 'roi']; roi vs its mask-only floor {'r2_minus_mask': 10.636710125321521, 'ci95': [7.461372590721763, 15.559873379214961], 'beats': True}): PRIMARY = contact; mask-only validity slope +4.231 [-1.809, +6.000]
+
+### frame (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.005 [-0.011, -0.000] | 64 | - |
+| random_dir | +0.006 [+0.002, +0.012] | 64 | -0.011 [-0.023, -0.003] |
+| input | +1.366 [+0.166, +3.435] | 64 | -1.371 [-3.445, -0.169] |
+Verdict: {'matches_law': False, 'differs_from_controls': True, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.003498212733395078}
+
+Readout validity (real clips, readout on the true theta across scenes; Deming fit log(b / a) = c + beta theta over the real clips): slope +2.148 [-6.000, +4.463] (law +1; n 64/64), covers the law: True, excludes 0: False, VALID: False
+
+Per-clip log(b / a) diagnostic (clips with a decoded a or b <= 0 discarded): usable real clips 33/64, validity slope -0.063 [-0.276, +0.143]; steering law -0.039 [-0.209, +0.135] (6 scenes), random_dir +0.023 [-0.215, +0.137] (6 scenes), input +0.101 [-0.639, +0.347] (48 scenes)
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.046 | -0.007 | +0.024 | 0.72 |
+| random_dir | -0.010 | +0.005 | +0.047 | 0.20 |
+| input | -6.000 | +1.275 | +6.000 | 0.31 |
+
+Pairs swap: n 256, IIA 0.17, fraction achieved -0.01, error ratio 18.965 (p sign-flip 0.000), |change| 0.040, selectivity 1.86
+Pairs swap_random: n 256, IIA 0.16, fraction achieved +0.00, error ratio 43.018 (p sign-flip 0.000), |change| 0.018, selectivity 0.95
+Pairs patch: n 246, IIA 0.02, fraction achieved -, error ratio 1.002 (p sign-flip 0.008), |change| -, selectivity 1.09, slope ratio high/low k 0.49  [-7.460, +7.852] (physics 1.76, leak 1); closer to required than to none -0.566 [-0.646, -0.484] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak, beats_controls)
+Pairs patch_random: n 246, IIA 0.02, fraction achieved -, error ratio 0.999 (p sign-flip 0.251), |change| -, selectivity 0.97, slope ratio high/low k 4.11  [-26.903, +57.477] (physics 1.76, leak 1); closer to required than to none -0.565 [-0.643, -0.483] (p 0.000)
+
+### frame_mm (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | +0.026 [-0.063, +0.086] | 64 | - |
+| random_dir | -0.068 [-0.143, +0.016] | 64 | +0.094 [-0.074, +0.225] |
+| input | +1.366 [+0.166, +3.435] | 64 | -1.340 [-3.382, -0.163] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': 0.01879945610398328}
+
+Readout validity (real clips, readout on the true theta across scenes; Deming fit log(b / a) = c + beta theta over the real clips): slope +2.148 [-6.000, +4.463] (law +1; n 64/64), covers the law: True, excludes 0: False, VALID: False
+
+Per-clip log(b / a) diagnostic (clips with a decoded a or b <= 0 discarded): usable real clips 33/64, validity slope -0.063 [-0.276, +0.143]; steering law -0.038 [-0.052, -0.015] (33 scenes), random_dir +0.012 [-0.001, +0.032] (33 scenes), input +0.101 [-0.639, +0.347] (48 scenes)
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.527 | +0.011 | +0.631 | 0.39 |
+| random_dir | -1.863 | -0.017 | +0.195 | 0.69 |
+| input | -6.000 | +1.275 | +6.000 | 0.31 |
+
+Pairs swap: n 256, IIA 0.34, fraction achieved +0.02, error ratio 2.463 (p sign-flip 0.000), |change| 0.090, selectivity 4.56
+Pairs swap_random: n 256, IIA 0.27, fraction achieved -0.03, error ratio 2.763 (p sign-flip 0.000), |change| 0.084, selectivity 5.01
+Pairs patch: n 246, IIA 0.02, fraction achieved -, error ratio 1.002 (p sign-flip 0.019), |change| -, selectivity 1.05, slope ratio high/low k 0.39  [-7.144, +7.327] (physics 1.76, leak 1); closer to required than to none -0.568 [-0.648, -0.486] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak, beats_controls)
+Pairs patch_random: n 246, IIA 0.01, fraction achieved -, error ratio 1.000 (p sign-flip 0.201), |change| -, selectivity 0.98, slope ratio high/low k 4.37  [-36.148, +31.962] (physics 1.76, leak 1); closer to required than to none -0.567 [-0.646, -0.486] (p 0.000)
+
+### contact (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.008 [-0.017, -0.002] | 64 | - |
+| random_dir | +0.002 [-0.004, +0.013] | 64 | -0.010 [-0.028, +0.001] |
+| input | -2.228 [-3.473, -1.824] | 64 | +2.220 [+1.811, +3.465] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': 0.003431849124909166}
+
+Readout validity (real clips, readout on the true theta across scenes; Deming fit log(b / a) = c + beta theta over the real clips): slope -6.000 [-6.000, +1.233] (law +1; n 64/64), covers the law: True, excludes 0: False, VALID: False
+
+Per-clip log(b / a) diagnostic (clips with a decoded a or b <= 0 discarded): usable real clips 34/64, validity slope -0.107 [-0.435, +0.171]; steering law -0.047 [-0.079, -0.020] (5 scenes), random_dir +0.023 [+0.011, +0.048] (5 scenes), input -0.042 [-0.436, +0.450] (52 scenes)
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.133 | +0.001 | +0.127 | 0.48 |
+| random_dir | -0.037 | +0.000 | +0.072 | 0.50 |
+| input | -6.000 | -5.506 | +6.000 | 0.73 |
+
+Pairs swap: n 256, IIA 0.36, fraction achieved -0.07, error ratio 1.225 (p sign-flip 0.000), |change| 1.077, selectivity 47.88
+Pairs swap_random: n 256, IIA 0.36, fraction achieved -0.06, error ratio 1.220 (p sign-flip 0.000), |change| 1.075, selectivity 54.56
+Pairs patch: n 246, IIA 0.01, fraction achieved -, error ratio 1.018 (p sign-flip 0.926), |change| -, selectivity 1.11, slope ratio high/low k 6.26  [-15.494, +15.867] (physics 1.76, leak 1); closer to required than to none -0.569 [-0.648, -0.488] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak)
+Pairs patch_random: n 246, IIA 0.01, fraction achieved -, error ratio 0.999 (p sign-flip 0.856), |change| -, selectivity 0.94, slope ratio high/low k 3.02  [-35.677, +26.346] (physics 1.76, leak 1); closer to required than to none -0.572 [-0.650, -0.490] (p 0.000)
+
+### roi (law slope +1.000)
+
+| condition | slope [95% CI] | scenes | law - this [95% CI] |
+|---|---|---|---|
+| law | -0.002 [-0.003, +0.000] | 64 | - |
+| random_dir | +0.003 [-0.002, +0.007] | 64 | -0.005 [-0.011, +0.002] |
+| input | +2.718 [+1.919, +3.109] | 64 | -2.720 [-3.112, -1.921] |
+Verdict: {'matches_law': False, 'differs_from_controls': False, 'tol': 0.25, 'law_like': False, 'null_prediction': False, 'steering_over_input': -0.0006078260473256867}
+
+Readout validity (real clips, readout on the true theta across scenes; Deming fit log(b / a) = c + beta theta over the real clips): slope +6.000 [-6.000, +6.000] (law +1; n 64/64), covers the law: True, excludes 0: False, VALID: False
+
+Per-clip log(b / a) diagnostic (clips with a decoded a or b <= 0 discarded): usable real clips 47/64, validity slope +0.033 [-0.213, +0.310]; steering law -0.001 [-0.002, +0.007] (16 scenes), random_dir -0.003 [-0.007, +0.013] (16 scenes), input -0.279 [-0.492, +0.249] (59 scenes)
+
+Reliability (per-scene quantiles q5 / q50 / q95; share moving the wrong way):
+
+| condition | q5 | q50 | q95 | wrong way |
+|---|---|---|---|---|
+| law | -0.016 | +0.000 | +0.028 | 0.48 |
+| random_dir | -0.058 | -0.001 | +0.062 | 0.58 |
+| input | -6.000 | +2.896 | +6.000 | 0.33 |
+
+Pairs swap: n 256, IIA 0.30, fraction achieved -0.05, error ratio 10.475 (p sign-flip 0.000), |change| 1.217, selectivity 41.25
+Pairs swap_random: n 256, IIA 0.32, fraction achieved -0.05, error ratio 10.532 (p sign-flip 0.000), |change| 1.208, selectivity 20.78
+Pairs patch: n 246, IIA 0.26, fraction achieved -, error ratio 1.509 (p sign-flip 0.000), |change| -, selectivity 1.07, slope ratio high/low k 3.60  [-30.559, +30.356] (physics 1.76, leak 1); closer to required than to none -0.368 [-0.461, -0.277] (p 0.000); verdict fail (closer_to_required, slope_ratio_excludes_leak, beats_controls)
+Pairs patch_random: n 246, IIA 0.28, fraction achieved -, error ratio 1.556 (p sign-flip 0.000), |change| -, selectivity 0.97, slope ratio high/low k 0.53  [-10.989, +18.879] (physics 1.76, leak 1); closer to required than to none -0.332 [-0.415, -0.245] (p 0.000)
+
+Off-distribution (Mahalanobis distance of the steered pooled vector to the training rows; real held-out median 27.3, q95 58.0):
+
+| condition | key | median | share > real q95 |
+|---|---|---|---|
+| law | -1 | 27.3 | 0.05 |
+| law | -0.5 | 27.3 | 0.05 |
+| law | 0.5 | 27.3 | 0.06 |
+| law | 1 | 27.3 | 0.06 |
+| random_dir | -1 | 51.9 | 0.19 |
+| random_dir | -0.5 | 35.1 | 0.08 |
+| random_dir | 0.5 | 34.8 | 0.08 |
+| random_dir | 1 | 52.0 | 0.20 |
+| swap | 1 | 27.4 | 0.05 |
+| swap | 2 | 27.4 | 0.05 |
+| swap | 3 | 27.3 | 0.05 |
+| swap | 4 | 27.3 | 0.06 |
+| swap_random | 1 | 59.7 | 0.50 |
+| swap_random | 2 | 59.5 | 0.52 |
+| swap_random | 3 | 102.6 | 0.75 |
+| swap_random | 4 | 88.9 | 0.59 |
+
+## L4 localization (where the law is used)
+
+Gate: passed [] of ['steering', 'swap', 'l2_kink'] (tests {'steering': False, 'swap': False, 'l2_kink': False}; L2 verdicts none)
+
+Skipped: no gate passed (steering, swap, l2_kink): steering law-like in no variant, swap test passes in no variant, L2 kink verdicts absent
+[06] l4 done in 26.7 min -> smoke/l4_momentum_validation/untrained-vitl

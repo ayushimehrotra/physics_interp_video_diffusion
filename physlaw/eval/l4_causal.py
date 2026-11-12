@@ -43,7 +43,12 @@ elasticity_manifold.py (old docs §56i):
 4. Score vs the LAW's prediction (:func:`score_response`):
      energy    theta = eps (F2 / F7 bounce / F8 / F9 swing ladders) -> eps_hat; law: rises, then SATURATES AT 1
                (:func:`saturation_scores`)
-     momentum  theta = log(m_A / m_B) (F1, across, nuisance log(r_A / r_B)) -> log(dv_B.n / -dv_A.n); law slope 1
+     momentum  theta = log(m_A / m_B) (F1, across, nuisance log(r_A / r_B)) -> log(dv_B.n / -dv_A.n); law slope 1;
+               scored as a FITTED ratio (:func:`fit_log_ratio`: Deming fit of b = r a over the decoded points
+               (a, b) = (-dv_A.n, dv_B.n), inverse-calibrated (:func:`point_calibration`), no clip discarded; the
+               per-clip log ratio is the ``per_clip`` diagnostic), read through the frame, contact and object-patch
+               pools, the PRIMARY pool held-out-selected (:func:`select_readout_pool`: contact, or roi when it beats
+               its mask-only floor); ``readout_validity`` must cover 1 and exclude 0
      gravity   theta = log m_A (F7 drops) -> log a_heavy / a_light; law slope 0 (a predicted NULL)
      friction  theta = log m_A (F6 pair, across) -> log deceleration of A along its motion while it moves (the
                post window ends at io.friction_windows' move_end); law slope 0 (mu g)
@@ -697,9 +702,15 @@ def saturation_scores(curves: dict, alphas, groups, n_top: int = 2, sat_tol: flo
                 out[law][f"minus_{c}"] = {"median": med(d), "ci95": ci(d)}
         e = out[law]
         cd = e.get(f"minus_{control}", {}).get("ci95")
+        ep = None
+        if passive in out:                   # |rise| beyond passive propagation's: paired scene-bootstrap CI > 0
+            Yl, Yp = (np.asarray(curves[c], float)[:, order] for c in (law, passive))
+            dr = np.abs(plateau[law] - Yl[:, z]) - np.abs(plateau[passive] - Yp[:, z])
+            ep = ci(dr)
+            e["rise_minus_passive"] = {"median": med(dr), "ci95": ep}
         out["verdict"] = {"saturates_at_1": abs(e["saturation_minus_1"]) <= sat_tol,
                           "differs_from_control": bool(cd and (cd[0] > 0 or cd[1] < 0)),
-                          "exceeds_passive": bool(passive in out and abs(e["rise"]) > abs(out[passive]["rise"])),
+                          "exceeds_passive": bool(ep and ep[0] > 0),
                           "sat_tol": sat_tol, "control": control}
         out["verdict"]["law_like"] = all(out["verdict"][k] for k in ("saturates_at_1", "differs_from_control", "exceeds_passive"))
     out["steps"] = alphas.tolist()
@@ -806,7 +817,7 @@ def step_scores(curves: dict, deltas, groups, theta0, boundary: float = 1.0, con
         out["verdict"] = {"steps_at_boundary": bool(sc and sc[0] > 0) if B is not None else bool(L["step"] > 0),
                           "differs_from_control": bool(cd and cd[0] > 0),
                           "exceeds_passive": bool(passive not in out or not np.isfinite(out[passive]["step"])
-                                                  or L["step"] > out[passive]["step"]),
+                                                  or ((L.get(f"minus_{passive}") or {}).get("ci95") or [0])[0] > 0),
                           "control": control}
         out["verdict"]["law_like"] = all(out["verdict"][k] for k in ("steps_at_boundary", "differs_from_control",
                                                                      "exceeds_passive"))
@@ -948,9 +959,10 @@ def deflection_ab(vp, vq, ctx) -> tuple[float, float]:
     return -float((vq[0] - vp[0]) @ n), float((vq[1] - vp[1]) @ n)
 
 
-def fit_log_ratio(a, b, x=None, unit=None, noise=(1.0, 1.0)) -> dict:
+def fit_log_ratio(a, b, x=None, unit=None, noise=(1.0, 1.0), init=None) -> dict:
     """Deming fit of b = r a, log r = c_unit + beta x (``x`` None: no beta, one ratio per unit; ``unit`` None: one
     intercept). ``noise`` (s_a^2, s_b^2). Non-finite points are dropped (decoding failures only: no sign rule).
+    ``init`` (c per point [n], beta): a warm start (bootstrap draws start from the full fit).
     Returns {"beta", "c" {unit: c}, "n_points", "units" [unique units]}."""
     from scipy.optimize import least_squares
     a, b = np.asarray(a, float).ravel(), np.asarray(b, float).ravel()
@@ -972,8 +984,12 @@ def fit_log_ratio(a, b, x=None, unit=None, noise=(1.0, 1.0)) -> dict:
         return (b - r * a) / np.sqrt(sb2 + r * r * sa2)
     # start: each unit's TLS-free moment ratio sum|b| / sum|a| (positive), beta 0
     c0 = np.array([np.log(max(np.abs(b[ui == k]).sum(), 1e-9) / max(np.abs(a[ui == k]).sum(), 1e-9)) for k in range(U)])
-    p0 = np.r_[np.clip(c0, -RATIO_BOUND + 1e-3, RATIO_BOUND - 1e-3), 0.0] if has_beta else \
-        np.clip(c0, -RATIO_BOUND + 1e-3, RATIO_BOUND - 1e-3)
+    b0 = 0.0
+    if init is not None:
+        ci_, b0 = np.asarray(init[0], float).ravel()[ok], float(init[1]) if np.isfinite(init[1]) else 0.0
+        c0 = np.array([np.nanmean(ci_[ui == k]) if np.isfinite(ci_[ui == k]).any() else c0[k] for k in range(U)])
+    p0 = np.r_[np.clip(c0, -RATIO_BOUND + 1e-3, RATIO_BOUND - 1e-3), np.clip(b0, -RATIO_BOUND + 1e-3, RATIO_BOUND - 1e-3)] \
+        if has_beta else np.clip(c0, -RATIO_BOUND + 1e-3, RATIO_BOUND - 1e-3)
     lb, ub = np.full(len(p0), -RATIO_BOUND), np.full(len(p0), RATIO_BOUND)
 
     def jac(p):                                        # analytic: d res / d log r, sparse in the unit intercepts
@@ -1012,17 +1028,49 @@ def ratio_noise(dec_ab, true_ab) -> tuple[float, float]:
     return float(max(v[0], 1e-12)), float(max(v[1], 1e-12))
 
 
+def point_calibration(dec_ab, true_ab, grp):
+    """R1-style INVERSE calibration of the readout point itself. Each velocity is decoded calibrated, but the point
+    (a, b) projects pre / post differences on each clip's own contact normal, where the decoding errors are not
+    classical (decoded a on true a has slope < 1 on real clips): per coordinate dec = c + d true is fitted on the real
+    clips' out-of-fold decodes, leave-one-group-out (a clip of group g is calibrated by the fit without g), and a point
+    is mapped to (dec - c) / d. Returns (i, (a, b)) -> calibrated (a, b) and the fits (c, d per coordinate, all rows)."""
+    D, T, grp = np.asarray(dec_ab, float).reshape(-1, 2), np.asarray(true_ab, float).reshape(-1, 2), np.asarray(grp)
+    ok = np.isfinite(D).all(1) & np.isfinite(T).all(1)
+    fits = {}
+
+    def fit(rows):
+        out = []
+        for k in range(2):
+            x, y = T[rows, k], D[rows, k]
+            d, c = np.polyfit(x, y, 1) if len(x) >= 3 and np.ptp(x) > 0 else (1.0, 0.0)
+            out.append((float(c), float(d) if abs(d) > 1e-6 else 1.0))
+        return out
+    for g in np.unique(grp):
+        fits[g] = fit(np.flatnonzero(ok & (grp != g)))
+    allf = fit(np.flatnonzero(ok))
+
+    def cal(i, ab):
+        f = fits.get(grp[i], allf)
+        return tuple((float(ab[k]) - f[k][0]) / f[k][1] for k in range(2))
+    return cal, {"a": {"c": allf[0][0], "d": allf[0][1]}, "b": {"c": allf[1][0], "d": allf[1][1]}}
+
+
 def _scene_draws(G: int, n_boot: int, seed: int = 0):
     return np.random.default_rng(seed).integers(0, G, (n_boot, G)) if n_boot and G > 1 else None
 
 
-def _ratio_beta(P: np.ndarray, x, scenes, noise) -> float:
+def _ratio_beta(P: np.ndarray, x, scenes, noise, full=None) -> float | dict:
     """Joint fit over the scenes ``scenes`` (indices into P [G, n_steps, 2], repeats = distinct units) of
-    log r = c_scene + beta x."""
+    log r = c_scene + beta x; ``full`` (the fit over every scene) warm-starts a bootstrap draw. Without ``full`` the
+    whole fit is returned."""
+    scenes = np.asarray(scenes)
     pts = P[scenes]                                     # [g, n, 2]
     unit = np.repeat(np.arange(len(scenes)), pts.shape[1])
     xx = np.tile(np.asarray(x, float), len(scenes))
-    return fit_log_ratio(pts[..., 0], pts[..., 1], xx, unit, noise)["beta"]
+    if full is None:
+        return fit_log_ratio(pts[..., 0], pts[..., 1], xx, unit, noise)
+    cs = np.array([full["c"].get(int(g), np.nan) for g in scenes])
+    return fit_log_ratio(pts[..., 0], pts[..., 1], xx, unit, noise, (np.repeat(cs, pts.shape[1]), full["beta"]))["beta"]
 
 
 def ratio_slope_scores(curves: dict, deltas, groups, law_value: float, tol: float = 0.25, n_boot: int = 1000,
@@ -1036,13 +1084,16 @@ def ratio_slope_scores(curves: dict, deltas, groups, law_value: float, tol: floa
     G = len(groups)
     B = _scene_draws(G, n_boot, seed)
     P = {c: np.asarray(Y, float).reshape(G, len(x), 2) for c, Y in curves.items()}
-    full = {c: _ratio_beta(p, x, np.arange(G), noise) for c, p in P.items()}
-    boot = {c: (np.array([_ratio_beta(p, x, r, noise) for r in B]) if B is not None else None) for c, p in P.items()}
+    fits = {c: _ratio_beta(p, x, np.arange(G), noise) for c, p in P.items()}
+    full = {c: f["beta"] for c, f in fits.items()}
+    boot = {c: (np.array([_ratio_beta(p, x, r, noise, fits[c]) for r in B]) if B is not None else None)
+            for c, p in P.items()}
     ci = lambda v: ([float(np.nanquantile(v, 0.025)), float(np.nanquantile(v, 0.975))]
                     if v is not None and np.isfinite(v).any() else None)
     out = {}
     for c, p in P.items():
-        per = np.array([_ratio_beta(p, x, [g], noise) for g in range(G)])
+        per = np.array([_ratio_beta(p, x, [g], noise, {"c": {0: fits[c]["c"].get(g, np.nan)}, "beta": full[c]})
+                        for g in range(G)])
         fin = np.isfinite(per)
         out[c] = {"slope": full[c], "slope_ci95": ci(boot[c]), "n_scenes": int(np.isfinite(p).all(-1).any(-1).sum()),
                   "n_points": int(np.isfinite(p).all(-1).sum()), "per_scene": _quantiles(per),
@@ -1270,6 +1321,12 @@ READOUTS = {
     "tipped": (lambda p, q, c: _tipped(q), lambda r: float(r["tipped"]) if "tipped" in r else float("nan"), ("v", "w")),
     "L_ratio": (_L_ratio, lambda r: r.get("L_ratio", float("nan")), ("v", "w")),
 }
+# readouts scored as a FITTED ratio (module comment above fit_log_ratio): readout -> (decoded (pre, post, ctx) -> (a, b),
+# track-B row -> (a, b)); READOUTS keeps the per-clip log(b / a) as the diagnostic
+RATIO_READOUTS = {
+    "log_deflection_ratio": (lambda p, q, c: deflection_ab(p["v"], q["v"], c), lambda r: deflection_ab(
+        r["velocity_pre"], r["velocity_post"], {"n": r["contact_normal"]}) if "contact_normal" in r and r.get("measurable")
+        and "velocity_pre" in r and "velocity_post" in r else (float("nan"), float("nan")))}
 # non-target quantity per law (selectivity of the swap / patch arms): what the law says the intervention must NOT move
 NONTARGET = {"momentum": _tangential_B,                          # impulse along n: B's tangential velocity is kept
              "energy": _cm_speed,                                 # eps leaves the CoM velocity (bounce: v_horizontal)
@@ -1316,24 +1373,27 @@ def theta_probe(Xq, theta, grp, k: int, alphas):
 
 
 def pooled_reader(real: dict, fc: dict, Vp, Vq, grp, k: int, alphas, mm: bool = False, post_rows=None, site=None,
-                  theta=None) -> dict:
+                  theta=None, pre_pools=("frame.pre",), post_pools=("frame.post",)) -> dict:
     """Velocity readouts from the frame.post pool, one instrument per object, cross-fitted by group (a clip is read
     by a fold that never saw its group). Post rows: ``post_rows`` (the model's pred-real FINAL outputs for the real
     post frames: the forecast's own space; then separate pre / post probes, as L1's pred_real instrument) or the real
     frame.post pool (R1 joint with frame.pre). ``mm``: the forecast moment-matched onto the real post rows first
     (diagnostic). ``site`` [n, D]: the real clips' activations at a post-event steering site -> "site_post" (passive
     propagation: the shifted unsteered site read in its own space); ``theta`` [n] -> "theta" (theta_probe).
+    ``pre_pools`` / ``post_pools``: the pools read (several: concatenated, e.g. the two object patches); ``fc`` None:
+    a real-clip-only reader (mask-only floors).
     {"pre": i -> {"v"}, "post": (i, z [D]) -> {"v"}, "floor": i -> {"v"}, ...}."""
     from physlaw.probes.ridge import moment_match
-    Xa = real["frame.pre"]
-    Xq = real["frame.post"] if post_rows is None else np.asarray(post_rows, float)
+    cat = lambda d, ps: np.concatenate([np.asarray(d[q], float) for q in ps], 1)
+    Xa = cat(real, pre_pools)
+    Xq = cat(real, post_pools) if post_rows is None else np.asarray(post_rows, float)
     n_obj = Vp.shape[1]
     fit = lambda X, Y: instrument_folds({"x": X}, Y, grp, None, k, 1, alphas)
     if post_rows is None:
         pre_f = post_f = [fit((Xa, Xq), (Vp[:, o], Vq[:, o])) for o in range(n_obj)]
     else:
         pre_f, post_f = [fit(Xa, Vp[:, o]) for o in range(n_obj)], [fit(Xq, Vq[:, o]) for o in range(n_obj)]
-    tf = moment_match(fc["frame.post"], Xq, grp) if mm else None
+    tf = moment_match(cat(fc, post_pools), Xq, grp) if mm else None
     dec = lambda F, Z, i, t=None: np.stack([_dec(f, Z, grp[i], t)[0] for f in F])
     out = {"pre": lambda i: {"v": dec(pre_f, Xa[i], i)}, "post": lambda i, z: {"v": dec(post_f, z, i, tf)},
            "floor": lambda i: {"v": dec(post_f, Xq[i], i)}, "field": ""}
@@ -1412,17 +1472,33 @@ def decoders(cache_dir, data_dir, recs, labels, mcfg, states, grp, readout: str,
         return out
     Vp = np.stack([s[0]["v"] for s in states])
     Vq = np.stack([s[1]["v"] for s in states])
-    if site_final is None:
-        prf = [Path(cache_dir) / r["file"].replace(".npz", ".pred_real.npz") for r in recs]
-        if prf and all(f.exists() for f in prf):
-            zp = [np.load(f) for f in prf]
-            pp = [str(x) for x in zp[0]["pools"]]
-            site_final = np.stack([z["pooled"][pp.index("frame.post")] for z in zp]) if "frame.post" in pp else None
-    for name, (real, fc) in forecast_spaces(cache_dir, data_dir, recs, mcfg, list(POOLS)).items():
-        pr = site_final if name == "final" else None
-        for mm in (False, True):
-            out[name + ("_mm" if mm else "")] = {**pooled_reader(real, fc, Vp, Vq, grp, k, alphas, mm, pr, site, theta),
-                                                 "space": name}
+    side = {}                                   # stage 4's pred-real sidecars: {post pool: [n, D]}
+    prf = [Path(cache_dir) / r["file"].replace(".npz", ".pred_real.npz") for r in recs]
+    if prf and all(f.exists() for f in prf):
+        zp = [np.load(f) for f in prf]
+        pp = [str(x) for x in zp[0]["pools"]]
+        side = {q: np.stack([z["pooled"][pp.index(q)] for z in zp]).astype(np.float64) for q in pp}
+    if site_final is not None:
+        side["frame.post"] = np.asarray(site_final, float)
+    want = {v: pools for v, pools in READOUT_POOLS.items() if v == "frame" or readout in RATIO_READOUTS}
+    names = sorted({q for pr_, po_ in want.values() for q in (*pr_, *po_)})
+    for name, (real, fc) in forecast_spaces(cache_dir, data_dir, recs, mcfg, names).items():
+        for v, (pre_p, post_p) in want.items():
+            rows = (np.concatenate([side[q] for q in post_p], 1) if name == "final" and all(q in side for q in post_p)
+                    else None)
+            for mm in ((False, True) if v == "frame" else (False,)):
+                rd = pooled_reader(real, fc, Vp, Vq, grp, k, alphas, mm, rows, site if v == "frame" else None, theta,
+                                   pre_p, post_p)
+                out[(name if v == "frame" else f"{v}") + ("_mm" if mm else "")] = {
+                    **rd, "space": name, "pool": v, "field": "" if v == "frame" else f"@{v}.post"}
+        if readout in RATIO_READOUTS and name == "final":       # the ROI patches' mask-only floor (placement alone)
+            from physlaw.eval.l3_invariance import _mask_weights
+            mf = _mask_weights(cache_dir, data_dir, recs, mcfg)
+            pre_p, post_p = READOUT_POOLS["roi"]
+            real_w = {q: mf[f"w.{q}"] for q in (*pre_p, *post_p)}
+            out["roi_maskonly"] = {**pooled_reader(real_w, None, Vp, Vq, grp, k, alphas, False, None, None, None,
+                                                   pre_p, post_p), "space": name, "pool": "roi_maskonly",
+                                   "floor_only": True}
     return out
 
 
@@ -1492,17 +1568,21 @@ def sign_flip_p(d, n: int = 10000, seed: int = 0) -> float:
     return float((1 + np.sum(np.abs((s * d).mean(1)) >= abs(d.mean()))) / (n + 1))
 
 
-def interchange_scores(obs, req, nt=None, sd_t: float = 1.0, sd_nt: float = 1.0) -> dict:
+def interchange_scores(obs, req, nt=None, sd_t: float = 1.0, sd_nt: float = 1.0, groups=None, n_boot: int = 1000) -> dict:
     """Swap-test scores from per-pair readout changes ``obs`` = r(swapped) - r(base) and the law's required change
     ``req`` = pred(theta') - pred(theta): IIA = share of pairs closer to the law's outcome at theta' than at theta
     (|obs - req| < |obs|), fraction of the required change achieved (median obs / req), error ratio median|req - obs|
     / median|req| with the paired sign-flip p of |req - obs| - |req| (the do-nothing baseline); selectivity: median
-    |target change| / sd over median |non-target change| / sd (``nt``: per-pair non-target changes)."""
+    |target change| / sd over median |non-target change| / sd (``nt``: per-pair non-target changes). ``groups`` (each
+    pair's base scene): ``iia_ci95``, the group-bootstrap CI of IIA (the localization gate compares CIs)."""
     obs, req = np.asarray(obs, float), np.asarray(req, float)
     ok = np.isfinite(obs) & np.isfinite(req) & (np.abs(req) > 1e-12)
     out = {"n_pairs": int(ok.sum())}
     if ok.any():
         em, en = np.abs(req[ok] - obs[ok]), np.abs(req[ok])
+        hit = np.where(ok, (np.abs(req - obs) < np.abs(obs)).astype(float), np.nan)
+        if groups is not None:
+            out["iia_ci95"] = _boot_ci(lambda ix: _nan_guard(np.nanmean, hit[ix]), np.asarray(groups), n_boot)
         out.update(iia=float(np.mean(em < np.abs(obs[ok]))), fraction_achieved=float(np.median(obs[ok] / req[ok])),
                    error_ratio=float(np.median(em) / np.median(en)), p_sign_flip=sign_flip_p(em - en),
                    beats_do_nothing=float(np.mean(em < en)))
@@ -1715,23 +1795,44 @@ def off_distribution(dist: dict, real: np.ndarray) -> dict:
 
 
 POOLS = ("frame.pre", "frame.post")
+# readout pools of the pooled (velocity) readouts: frame (every token), contact (the contact region: local and leak-free,
+# the momentum primary), roi (the two object patches at their TRUE positions: placement leaks the outcome, so it is a
+# secondary check against its mask-only floor). Forecast features of a pool other than frame are stored by
+# run_interventions as "<space>@<pool>.post" (pooled with the clip's own weights, as forecast_spaces).
+READOUT_POOLS = {"frame": (("frame.pre",), ("frame.post",)), "contact": (("contact.pre",), ("contact.post",)),
+                 "roi": (("roi_A.pre", "roi_B.pre"), ("roi_A.post", "roi_B.post"))}
 
 
-def _pool_forecast(acts: dict) -> dict:
+def _pool_forecast(acts: dict, pw: dict | None = None, kt: int = 0) -> dict:
     """forecast tokens {key: [T_post, gh, gw, D]} -> {space: frame.post mean [D], "<space>|t": frame mean per
-    forecast token-frame [T_post, D] (kinematic readouts)}."""
+    forecast token-frame [T_post, D] (kinematic readouts)}; ``pw`` {pool: (flat weights per object [n_tf * gh * gw],
+    post mask [n_tf])} (the clip's own pooling weights, L0's _maskfeat_v2.npz) -> "<space>@<pool>.post": the forecast
+    tokens pooled with them, objects concatenated (as forecast_spaces pools the unsteered forecast); ``kt`` = the
+    context token-frames (the forecast's first token-frame in the clip's grid)."""
     out = {}
     for key, F in acts.items():
         F = F.float().cpu().numpy() if hasattr(F, "cpu") else np.asarray(F, np.float32)
         sp = "final" if str(key) == "-1" else str(key)
         out[sp] = F.reshape(-1, F.shape[-1]).mean(0)
         out[f"{sp}|t"] = F.reshape(len(F), -1, F.shape[-1]).mean(1)
+        if pw and F.ndim == 4:
+            T, gh, gw = F.shape[:3]
+            Ff = F.reshape(-1, F.shape[-1])
+            for pool, (ws, post) in pw.items():
+                vs = []
+                for w in ws:
+                    n_tf = len(post)
+                    W = np.asarray(w, float)[: n_tf * gh * gw].reshape(n_tf, gh, gw)[kt: kt + T]
+                    W = W * np.asarray(post, bool)[kt: kt + T, None, None]
+                    W = np.pad(W, ((0, T - len(W)), (0, 0), (0, 0)))
+                    vs.append((W.reshape(-1) / max(W.sum(), 1e-12)) @ Ff)
+                out[f"{sp}@{pool}.post"] = np.concatenate(vs).astype(np.float32)
     return out
 
 
 def run_interventions(m, mcfg, data_dir: Path, scenes: dict, plans: dict, layer: str, work: Path,
                       positions: str = "roi_A", force: bool = False, real_clips: dict | None = None, log=print,
-                      snrs=None):
+                      snrs=None, pool_w: dict | None = None):
     """For each scene {name: clip dir}: forecast() unsteered and under every {condition: {key: shift}} of plans[scene]
     (key: dtheta for the steering curves, the pair number for swap / patch pairs), the shift added at the site's
     tokens (:func:`site_index`) of block ``layer``. Pooled forecasts -> work/<scene>.npz (keys "<cond>|<key>|<space>"
@@ -1741,7 +1842,9 @@ def run_interventions(m, mcfg, data_dir: Path, scenes: dict, plans: dict, layer:
     shift is {snr_db: [D]} (one per fitted SNR space), injected per sampling step at the nearest of ``snrs`` (every
     SNR the cache provides at the block; :func:`steer_steps`); a DiT patch entry is a :class:`LivePatch` (the donor's
     live ROI from a paired pass per step, :func:`patch_live`); the per-step record of every run (which SNR curve,
-    "skipped", or "patch") -> work/<scene>_steps.json {"<cond>|<key>": [step records]}."""
+    "skipped", or "patch") -> work/<scene>_steps.json {"<cond>|<key>": [step records]}. ``pool_w`` {scene: {pool:
+    (weights per object, post mask)}}: encoders also store every forecast pooled with the clip's own pool weights
+    ("<space>@<pool>.post", :func:`_pool_forecast`; the contact / object-patch readouts)."""
     from contextlib import ExitStack
 
     import torch
@@ -1773,7 +1876,8 @@ def run_interventions(m, mcfg, data_dir: Path, scenes: dict, plans: dict, layer:
                 if not diffusion:
                     st.enter_context(capture(m, layer, idx, site))
                 acts, vid = m.forecast(x, k, seed=0, return_video=True) if diffusion else (m.forecast(x, k), None)
-            for sp, z in _pool_forecast(acts).items():
+            kt = m.n_context_tokens(k) if hasattr(m, "n_context_tokens") else k // m.token_grid.tubelet
+            for sp, z in _pool_forecast(acts, (pool_w or {}).get(sc), kt).items():
                 key = sp.split("|")
                 rec["|".join([cond, f"{d:g}", *key])] = z.astype(np.float32)
             if site:
@@ -2074,8 +2178,12 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
         f = wdir / f"{safe(s)}.npz"
         if not f.exists() or (diffusion and not (wdir / f"{safe(s)}_steps.json").exists()):   # per-SNR runs record steps
             return False
-        have = {"|".join(k.split("|")[:2]) for k in np.load(f).files}
-        return all(f"{c}|{d:g}" in have for c, dd in plans[s].items() for d in dd if d != 0)
+        files = np.load(f).files
+        have = {"|".join(k.split("|")[:2]) for k in files}
+        return all(f"{c}|{d:g}" in have for c, dd in plans[s].items() for d in dd if d != 0) and \
+            all(f"base|0|final@{q}.post" in files for q in pool_names)
+    # fitted-ratio readouts (encoders) also read the forecasts through the contact / object-patch pools
+    pool_names = [q for q in READOUT_POOLS if q != "frame"] if lc["readout"] in RATIO_READOUTS and not diffusion else []
     missing = {safe(s): data_dir / recs[clip_of[s]]["clip"] for s in scenes if force or not complete(s)}
     if missing:
         wdir.mkdir(parents=True, exist_ok=True)
@@ -2083,8 +2191,18 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
                                 for j in [*(np.where(scene == s)[0] if lc["mode"] == "ladder" else [clip_of[s]]),
                                           *refp.get(s, ())]}
                       for s in scenes}
+        pool_w = None
+        if pool_names:
+            from physlaw.eval.l3_invariance import _mask_weights
+            mf = _mask_weights(cache_dir, data_dir, recs, mcfg)
+            pool_w = {}
+            for s in scenes:
+                i = clip_of[s]
+                post = np.array([str(x) for x in np.load(cache_dir / recs[i]["file"])["phases"]]) == "post"
+                pool_w[safe(s)] = {q: ([mf[f"w.{o}"][i] for o in READOUT_POOLS[q][1]], post) for q in pool_names}
         run_interventions(model(), mcfg, data_dir, missing, {safe(s): plans[s] for s in scenes if safe(s) in missing},
-                          layer, wdir, positions, True, real_clips, log, **({"snrs": cached} if diffusion else {}))
+                          layer, wdir, positions, True, real_clips, log, **({"snrs": cached} if diffusion else {}),
+                          **({"pool_w": pool_w} if pool_w else {}))
     held.clear()
     Z = {s: dict(np.load(wdir / f"{safe(s)}.npz")) for s in scenes}
     if diffusion:        # the per-step injection record (identical schedule in every scene): first run per condition
@@ -2132,11 +2250,25 @@ def run(cache_dir: Path, data_dir: Path, cfg, mcfg, work: Path, force: bool = Fa
         readers = decoders(cache_dir, data_dir, recs, labels, mcfg, states, grp, lc["readout"],
                            int(cfg["probe"]["k_folds"]), tuple(float(a) for a in cfg["probe"]["alphas"]), theta_c,
                            Xs[None] if positions == "post" and not diffusion else None, site_final)
+        mask_rd = readers.pop("roi_maskonly", None)
         single = len({r.get("space", n) for n, r in readers.items()}) == 1
         for name, rd in readers.items():
             sp = rd.get("space", name)
-            tag = ("frame_t" if rd["field"] else "frame") + ("_mm" if name.endswith("_mm") else "")
+            tag = ("frame_t" if rd["field"] == "|t" else rd.get("pool", "frame")) + ("_mm" if name.endswith("_mm") else "")
             out["variants"][tag if single else f"{sp}|{tag}"] = _score_decoded(rd, sp, Z, **ctx)
+        if lc["readout"] in RATIO_READOUTS and single:     # primary readout pool: contact, or roi if it beats its floor
+            out["readout_selection"] = select_readout_pool(readers, mask_rd, states, grp, lc["readout"],
+                                                           out["variants"], n_boot)
+            out["primary_variant"] = out["readout_selection"]["selected"]
+            if mask_rd is not None:              # the ROI patches' placement alone, read the same way (the ROI floor)
+                fx = sorted({clip_of[s] for s in scenes})
+                fn = RATIO_READOUTS[lc["readout"]][0]
+                dm = [fn(mask_rd["pre"](j), mask_rd["floor"](j), states[j][2]) for j in range(len(theta))]
+                tm = [fn(*states[j]) for j in range(len(theta))]
+                cal, _ = point_calibration(dm, tm, grp)            # read exactly as the pooled readouts
+                dm = [cal(j, x) for j, x in enumerate(dm)]
+                out["readout_selection"]["mask_only_validity"] = ratio_validity(
+                    [dm[j] for j in fx], theta[fx], law_value(lc), n_boot, ratio_noise(dm, tm))
     log(f"[L4 {law}] " + "; ".join(f"{v}: {d.get('verdict')}" for v, d in out["variants"].items()))
     lcfg = loc_config(cfg, diffusion)
     if lcfg.get("enabled", True):          # WHERE the law is used (gated: only for a model that passes)
@@ -2332,8 +2464,10 @@ def _score_decoded(rd, sp, Z, *, law, lc, scenes, clip_of, plans, pairs, theta, 
     f = rd["field"]
     key = lambda c, d: f"{'base' if d == 0 else c}|{d:g}|{sp}{f}"
     val = lambda i, post: dec_fn(rd["pre"](i), post, states[i][2])
-    curves = {c: [[val(clip_of[s], rd["post"](clip_of[s], Z[s][key(c, d)])) for d in deltas] for s in scenes]
-              for c in conds}
+    ratio = RATIO_READOUTS.get(lc["readout"], (None,))[0]
+    abv = (lambda i, post: ratio(rd["pre"](i), post, states[i][2])) if ratio else None
+    posts = {c: [[rd["post"](clip_of[s], Z[s][key(c, d)]) for d in deltas] for s in scenes] for c in conds}
+    curves = {c: [[val(clip_of[s], q) for q, d in zip(row, deltas)] for s, row in zip(scenes, posts[c])] for c in conds}
     pas = None
     same_site = sp == layer or (snr_of(sp) is not None and snr_of(layer) is not None
                                 and block_index(sp) == block_index(layer))       # DiTs: any SNR space of the block
@@ -2343,24 +2477,52 @@ def _score_decoded(rd, sp, Z, *, law, lc, scenes, clip_of, plans, pairs, theta, 
         elif same_site and all(_site_shift(v, sp) is not None for v in plans[scenes[0]]["law"].values()):
             pas = lambda s, v: rd["post"](clip_of[s], Z[s][key("base", 0)].astype(np.float64) + _site_shift(v, sp))
     if pas is not None:
-        curves["passive"] = [[val(clip_of[s], pas(s, 0.0 if d == 0 else plans[s]["law"][d])) for d in deltas]
-                             for s in scenes]
+        posts["passive"] = [[pas(s, 0.0 if d == 0 else plans[s]["law"][d]) for d in deltas] for s in scenes]
+        curves["passive"] = [[val(clip_of[s], q) for q in row] for s, row in zip(scenes, posts["passive"])]
     tol = float(pc["input_tol_sd"]) * float(np.std(theta[fit_rows]))
-    floor = {}
+    floor, floor_post = {}, {}
+
+    def fpost(j):
+        if j not in floor_post:
+            floor_post[j] = rd["floor"](j)
+        return floor_post[j]
 
     def fl(j):
         if j not in floor:
-            floor[j] = dec_fn(rd["pre"](j), rd["floor"](j), states[j][2])
+            floor[j] = dec_fn(rd["pre"](j), fpost(j), states[j][2])
         return floor[j]
+    nan2 = (float("nan"), float("nan"))
+    flab = lambda j: ratio(rd["pre"](j), fpost(j), states[j][2])
 
-    def inp(s, d):                      # input-level reference: the same dtheta shown through the input
+    def inp(s, d, fn=fl, miss=float("nan")):     # input-level reference: the same dtheta shown through the input
         j = _nearest(clip_of[s], d, theta, scene, _input_cands(clip_of[s], s, scene, clip_of, lc), tol)
-        return float("nan") if j is None else fl(j)
+        return miss if j is None else fn(j)
     curves["input"] = [[inp(s, d) for d in deltas] for s in scenes]
     res = score_response(curves, deltas, scenes, lc, n_boot, [theta[clip_of[s]] for s in scenes])
     floor_ix = sorted({clip_of[s] for s in scenes})
     if lc["predict"] not in ("saturation", "step"):
         res["readout_validity"] = readout_validity([fl(j) for j in floor_ix], theta[floor_ix], law_value(lc), n_boot)
+    noise = None
+    if ratio:            # the fitted ratio is the score; the per-clip log(b / a) above becomes the diagnostic
+        grp_ = np.array([r["group"] for r in recs])
+        true_ab = [ratio(states[j][0], states[j][1], states[j][2]) for j in range(len(theta))]
+        cal, cal_fit = point_calibration([flab(j) for j in range(len(theta))], true_ab, grp_)
+        abv0, flab0 = abv, flab
+        abv = lambda i, post: cal(i, abv0(i, post))
+        flab = lambda j: cal(j, flab0(j))
+        noise = ratio_noise([flab(j) for j in range(len(theta))], true_ab)
+        ab = {c: [[abv(clip_of[s], q) for q in row] for s, row in zip(scenes, P_)] for c, P_ in posts.items()}
+        ab["input"] = [[inp(s, d, flab, nan2) for d in deltas] for s in scenes]
+        per_clip = {"steering": {c: {k_: res[c][k_] for k_ in ("slope", "slope_ci95", "n_scenes")}
+                                 for c in res if isinstance(res[c], dict) and "slope" in res[c] and "n_scenes" in res[c]},
+                    "readout_validity": res.get("readout_validity"),
+                    "usable_real_clips": int(np.isfinite([fl(j) for j in floor_ix]).sum()), "n_real_clips": len(floor_ix),
+                    "what": "per-clip log(b / a): a clip with a decoded a or b <= 0 is discarded"}
+        res = ratio_slope_scores(ab, deltas, scenes, law_value(lc), float(lc.get("tol", 0.25)), n_boot, noise)
+        res["readout_validity"] = ratio_validity([flab(j) for j in floor_ix], theta[floor_ix], law_value(lc), n_boot,
+                                                 noise)
+        res["readout_validity"]["point_calibration"] = cal_fit
+        res["per_clip"] = per_clip
     ref = invariance_reference(refp, fl, [fl(j) for j in floor_ix], lc) if null_prediction(lc) else None
     th_slope = float("nan")
     if null_prediction(lc) and "theta" in rd:      # did the push move the model's own theta readout?
@@ -2381,8 +2543,54 @@ def _score_decoded(rd, sp, Z, *, law, lc, scenes, clip_of, plans, pairs, theta, 
         return rd["post"](clip_of[s], z), z
     res["pairs"] = _pair_arms(get, rd, law=law, lc=lc, clip_of=clip_of, pairs=pairs, theta=theta, theta_c=theta_c,
                               states=states, labels=labels, val=val, floor_ix=floor_ix, ref=ref, pc=pc, n_boot=n_boot,
-                              th_slope=th_slope, control_moved=_control_moved(res))
+                              th_slope=th_slope, control_moved=_control_moved(res), abv=abv, noise=noise)
     return res
+
+
+def select_readout_pool(readers: dict, mask_rd, states, grp, readout: str, variants: dict, n_boot: int = 1000,
+                        candidates=("contact", "roi")) -> dict:
+    """The primary readout pool of a fitted-ratio law (momentum), chosen by the held-out rule (probes/select.py
+    heldout_select: picked on one half of the groups, scored on the other) on a law-agnostic score, the instrument's
+    R² of the readout point (a, b) on the real clips (decoded vs label truth; out-of-fold decodes). Candidates: contact
+    (the contact region: local, leak-free), and roi (the object patches) only if it beats its mask-only floor (the
+    same instrument on the patches' placement weights alone; group-bootstrap CI of R²_roi - R²_mask > 0). Returns
+    {selected, candidates, r2, roi_vs_mask, heldout}; ``selected`` falls back to contact when nothing else is eligible."""
+    from physlaw.probes.select import heldout_select
+    fn = RATIO_READOUTS[readout][0]
+    n = len(states)
+    truth = np.array([fn(states[i][0], states[i][1], states[i][2]) for i in range(n)], float)
+    dec = lambda rd: np.array([fn(rd["pre"](i), rd["floor"](i), states[i][2]) for i in range(n)], float)
+    E = {v: dec(readers[v]) for v in candidates if v in readers}
+    if mask_rd is not None:
+        E["roi_maskonly"] = dec(mask_rd)
+    grp = np.asarray(grp)
+
+    def r2(v, rows):
+        rows = np.asarray(rows)
+        d, t = E[v][rows], truth[rows]
+        ok = np.isfinite(d).all(1) & np.isfinite(t).all(1)
+        if ok.sum() < 3:
+            return float("nan")
+        return float(1 - ((d[ok] - t[ok]) ** 2).sum() / ((t[ok] - t[ok].mean(0)) ** 2).sum())
+    rows_of = lambda gs: np.flatnonzero(np.isin(grp, list(gs)))
+    allr = np.arange(n)
+    out = {"score": "R² of the readout point (a, b) on real clips (out-of-fold decodes vs label truth)",
+           "r2": {v: r2(v, allr) for v in E}}
+    elig = [v for v in candidates if v in E and v != "roi"]
+    if "roi" in E and "roi_maskonly" in E:
+        ci = _boot_ci(lambda ix: r2("roi", ix) - r2("roi_maskonly", ix), grp, n_boot)
+        beats = bool(ci and ci[0] > 0)
+        out["roi_vs_mask"] = {"r2_minus_mask": out["r2"]["roi"] - out["r2"]["roi_maskonly"], "ci95": ci, "beats": beats}
+        if beats:
+            elig.append("roi")
+    out["candidates"] = elig
+    if not elig:
+        out["selected"] = "contact" if "contact" in variants else next(iter(variants))
+        return out
+    h = heldout_select(lambda v, gs: r2(v, rows_of(gs)), elig, grp)
+    out["heldout"] = h
+    out["selected"] = h["selected"]
+    return out
 
 
 def _control_moved(res: dict) -> bool:
@@ -2406,7 +2614,7 @@ def readout_validity(values, theta, law_slope: float, n_boot: int = 1000) -> dic
 
 
 def _pair_arms(get, rd, *, law, lc, clip_of, pairs, theta, theta_c, states, labels, val, floor_ix, ref, pc,
-               n_boot: int = 1000, th_slope: float = 1.0, control_moved: bool = False) -> dict:
+               n_boot: int = 1000, th_slope: float = 1.0, control_moved: bool = False, abv=None, noise=None) -> dict:
     """Swap test (subspace interchange; scored against the law's required readout change, or, for a law predicting
     no change, as invariance with the theta-readout check) and the collision patch (full-ROI swap; scored on B's
     decoded post velocity; its pass rule :func:`patch_verdict` -> ``pairs.patch.verdict``), each with its random-
@@ -2424,12 +2632,16 @@ def _pair_arms(get, rd, *, law, lc, clip_of, pairs, theta, theta_c, states, labe
             continue
         for var in (arm, f"{arm}_random", f"{arm}_passive"):
             obs, req, nt, mv, dth, dvB, vA, vD, cx, kg, kd, vB = [], [], [], [], [], [], [], [], [], [], [], []
+            pts, base_ab, sc_of = [], {}, []
             for s, p, j in rows:
                 i = clip_of[s]
                 pre, (base, zb) = rd["pre"](i), get(s, "base", None)
                 post, z = get(s, var, p)
                 if post is None:
                     break
+                if arm == "swap" and abv is not None:
+                    base_ab[s] = abv(i, base)
+                    pts.append(abv(i, post)); sc_of.append(s)
                 if arm == "swap":
                     obs.append(val(i, post) - val(i, base))
                     req.append(pair_required(lc, theta, theta_c, i, j))
@@ -2446,8 +2658,21 @@ def _pair_arms(get, rd, *, law, lc, clip_of, pairs, theta, theta_c, states, labe
                 if arm == "swap" and ref is not None:
                     out[var] = invariance_scores(obs, mv, dth, *ref, float(pc["min_moved"]), float(pc["max_invariance"]),
                                                  th_slope, control_moved and var == "swap")
+                elif arm == "swap" and abv is not None:       # the fitted ratio; per-clip log(b / a) as diagnostic
+                    out[var] = ratio_interchange_scores(base_ab, pts, req, sc_of, noise or (1.0, 1.0), n_boot)
+                    pc_ = interchange_scores(obs, req, None, groups=sc_of, n_boot=n_boot)
+                    out[var]["per_clip"] = {k_: pc_.get(k_) for k_ in ("n_pairs", "iia", "iia_ci95", "fraction_achieved",
+                                                                       "error_ratio", "p_sign_flip")}
+                    if nt_fn:            # target change: the swapped point's Deming distance from the base line
+                        nt_ = np.asarray(nt, float)
+                        t_ = float(out[var].get("abs_change", np.nan))
+                        n_ = float(np.nanmedian(np.abs(nt_)) / sd_nt) if np.isfinite(nt_).any() else float("nan")
+                        out[var]["selectivity"] = {"target_change_sd": t_, "nontarget_change_sd": n_,
+                                                   "ratio": t_ / n_ if np.isfinite(n_) and n_ > 0 else float("nan"),
+                                                   "target_unit": "Deming distance from the unswapped ratio line"}
                 elif arm == "swap":
-                    out[var] = interchange_scores(obs, req, nt if nt_fn else None, sd_t, sd_nt)
+                    out[var] = interchange_scores(obs, req, nt if nt_fn else None, sd_t, sd_nt, [s for s, _, _ in rows],
+                                                  n_boot)
                 else:
                     out[var] = patch_scores(dvB, vA, vD, cx, kg, nt if nt_fn else None,
                                             float(np.nanstd([np.asarray(fl[j][1]["v"], float)[1][:2] @ np.asarray(states[j][2]["n"], float)[:2]
@@ -2481,6 +2706,26 @@ def _score_generated(R, *, law, lc, scenes, clip_of, plans, pairs, theta, theta_
     if lc["predict"] not in ("saturation", "step"):
         fx = sorted({clip_of[s] for s in scenes})
         res["readout_validity"] = readout_validity([real(scene[j], j) for j in fx], theta[fx], law_value(lc), n_boot)
+    rab_fn = RATIO_READOUTS.get(lc["readout"], (None, None))[1]
+    noise = None
+    if rab_fn:           # the fitted ratio of the tracked (a, b) points; per-clip log(b / a) as diagnostic
+        nan2 = (float("nan"), float("nan"))
+        rab = lambda r: rab_fn(r) if r else nan2
+        realab = lambda s, j: rab(R[s].get(f"real|{recs[j]['clip'].replace('/', '__')}"))
+        fx = sorted({clip_of[s] for s in scenes})
+        noise = ratio_noise([realab(scene[j], j) for j in fx], [RATIO_READOUTS[lc["readout"]][0](*states[j]) for j in fx])
+        ab = {c: [[rab(R[s].get(f"{'base' if d == 0 else c}|{d:g}")) for d in deltas] for s in scenes] for c in conds}
+
+        def inpab(s, d):
+            j = _nearest(clip_of[s], d, theta, scene, _input_cands(clip_of[s], s, scene, clip_of, lc), tol)
+            return nan2 if j is None else realab(scene[j], j)
+        ab["input"] = [[inpab(s, d) for d in deltas] for s in scenes]
+        per_clip = {"steering": {c: {k_: res[c][k_] for k_ in ("slope", "slope_ci95", "n_scenes")} for c in res
+                                 if isinstance(res[c], dict) and "slope" in res[c] and "n_scenes" in res[c]},
+                    "readout_validity": res.get("readout_validity")}
+        res = ratio_slope_scores(ab, deltas, scenes, law_value(lc), float(lc.get("tol", 0.25)), n_boot, noise)
+        res["readout_validity"] = ratio_validity([realab(scene[j], j) for j in fx], theta[fx], law_value(lc), n_boot, noise)
+        res["per_clip"] = per_clip
     th_slope = float("nan")
     if null_prediction(lc) and site_theta is not None:
         th_slope = ols_slope(theta_c, [site_theta(j, None) for j in range(len(theta_c))])
@@ -2505,8 +2750,15 @@ def _score_generated(R, *, law, lc, scenes, clip_of, plans, pairs, theta, theta_
                                                  th_slope if site_theta is not None else 1.0,
                                                  _control_moved(res) and c == "swap")
                             for c in ("swap", "swap_random")}
+        elif rab_fn:
+            res["pairs"] = {}
+            for c in ("swap", "swap_random"):
+                res["pairs"][c] = ratio_interchange_scores({s: rab(R[s].get("base|0")) for s in scenes},
+                                                           [rab(R[s].get(f"{c}|{p:g}")) for s, p, _ in sw], req,
+                                                           [s for s, _, _ in sw], noise, n_boot)
         else:
-            res["pairs"] = {c: interchange_scores(ch(c), req) for c in ("swap", "swap_random")}
+            res["pairs"] = {c: interchange_scores(ch(c), req, groups=[s for s, _, _ in sw], n_boot=n_boot)
+                            for c in ("swap", "swap_random")}
     pa = [(s, p, j) for s, P in pairs.items() for c, p, j in P if c == "patch"]
     vB = lambda r: (np.asarray(r["velocity_post"], float)[1][:2] if r.get("measurable") and "velocity_post" in r
                     else np.full(2, np.nan))
@@ -2575,14 +2827,14 @@ def loc_config(cfg, diffusion: bool = False) -> dict:
 
 
 def _swap_passes(pairs, null: bool) -> bool:
-    """The variant's swap test passes: zero-change laws its invariance verdict; otherwise IIA above the random
-    direction's, beating doing nothing (sign-flip p <= 0.05) with an error ratio < 1."""
+    """The variant's swap test passes: zero-change laws its invariance verdict; otherwise the IIA's group-bootstrap
+    CI lies ABOVE the random direction's CI (lower bound > its upper bound; point estimates never decide), beating
+    doing nothing (sign-flip p <= 0.05) with an error ratio < 1."""
     sw, rd = (pairs or {}).get("swap") or {}, (pairs or {}).get("swap_random") or {}
     if null:
         return bool(sw.get("law_like"))
-    iia, ri = float(sw.get("iia", np.nan)), float(rd.get("iia", np.nan))
-    return bool(np.isfinite(iia) and iia > (ri if np.isfinite(ri) else 0.0) and sw.get("p_sign_flip", 1.0) <= 0.05
-                and sw.get("error_ratio", np.inf) < 1.0)
+    ci, rci = sw.get("iia_ci95"), rd.get("iia_ci95")
+    return bool(ci and rci and ci[0] > rci[1] and sw.get("p_sign_flip", 1.0) <= 0.05 and sw.get("error_ratio", np.inf) < 1.0)
 
 
 KINK_PASS = ("kink beyond baselines", "representational kink beyond baselines")
@@ -2609,6 +2861,8 @@ def localize_gate(res: dict, law: str, null: bool, use, l2_path) -> dict:
     law-like), its swap test (:func:`_swap_passes`), or an L2 / L2-rep kink "beyond baselines" (read from the model's
     l2.json when present). ``use``: which of steering / swap / l2_kink count."""
     variants = res.get("variants") or {}
+    if res.get("primary_variant") in variants:      # a held-out-selected primary readout: only it counts
+        variants = {res["primary_variant"]: variants[res["primary_variant"]]}
     st = {n: bool((v.get("verdict") or {}).get("law_like")) for n, v in variants.items()}
     sw = {n: _swap_passes(v.get("pairs"), null) for n, v in variants.items()}
     kv = l2_kink_verdicts(l2_path, law)
@@ -4031,6 +4285,12 @@ def table(res: dict) -> str:
         rows += [f"DiT per-SNR curves at block L{inj['block']}: fitted {[snr_name(d) for d in inj['fitted_snr_db']]} of cached "
                  f"{[snr_name(d) for d in inj['cached_snr_db']]}; per sampling step the nearest cached SNR's curve "
                  f"(law run): {[r['curve'] for r in sch] or 'not recorded'}", ""]
+    sel = res.get("readout_selection")
+    if sel:
+        mo = sel.get("mask_only_validity") or {}
+        rows += [f"Readout pool (held-out selection on the readout point's R² {sel.get('r2')}; candidates "
+                 f"{sel.get('candidates')}; roi vs its mask-only floor {sel.get('roi_vs_mask')}): PRIMARY = "
+                 f"{res.get('primary_variant')}; mask-only validity slope {f(mo.get('slope'), '+.3f')}{c(mo.get('ci95'))}", ""]
     for v, d in res["variants"].items():
         if "boundary" in d:
             rows += [f"### {v} (law: the tip indicator steps at theta + dtheta = {d['boundary']:g})", "",
@@ -4062,9 +4322,19 @@ def table(res: dict) -> str:
         rows += [f"Verdict: {d.get('verdict')}", ""]
         rv = d.get("readout_validity")
         if rv:
-            rows += [f"Readout validity (real clips, readout on the true theta across scenes): slope "
+            rows += [f"Readout validity (real clips, readout on the true theta across scenes"
+                     f"{'; ' + rv['method'] if rv.get('method') else ''}): slope "
                      f"{f(rv.get('slope'), '+.3f')}{c(rv.get('ci95'))} (law {rv['law_slope']:+g}; n {rv['n']}/{rv['n_clips']}), "
-                     f"covers the law: {rv.get('covers_law')}", ""]
+                     f"covers the law: {rv.get('covers_law')}" + (f", excludes 0: {rv.get('excludes_0')}, VALID: "
+                                                                  f"{rv.get('valid')}" if "valid" in rv else ""), ""]
+        pcd = d.get("per_clip")
+        if pcd:
+            pv = pcd.get("readout_validity") or {}
+            rows += [f"Per-clip log(b / a) diagnostic (clips with a decoded a or b <= 0 discarded): usable real clips "
+                     f"{pcd.get('usable_real_clips', '-')}/{pcd.get('n_real_clips', '-')}, validity slope "
+                     f"{f(pv.get('slope'), '+.3f')}{c(pv.get('ci95'))}; steering " + ", ".join(
+                         f"{cn} {f(e['slope'], '+.3f')}{c(e['slope_ci95'])} ({e['n_scenes']} scenes)"
+                         for cn, e in (pcd.get("steering") or {}).items()), ""]
         te = d.get("theta_readout")
         if te:
             rows += [f"Push effect on the model's theta readout (fraction of the real-video change; real slope "

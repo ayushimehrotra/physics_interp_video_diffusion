@@ -716,116 +716,227 @@
  "variants": {
   "frame": {
    "law": {
-    "slope": -0.038875683194988554,
+    "slope": -0.0047781406571286295,
     "slope_ci95": [
-     -0.20875652115680332,
-     0.13526594527685926
+     -0.01138833733964117,
+     -0.00031007145848375203
     ],
-    "n_scenes": 6,
+    "n_scenes": 64,
+    "n_points": 320,
     "per_scene": {
-     "q5": -0.19905980795360875,
-     "q25": -0.14364632868743743,
-     "q50": -0.038875683194988554,
-     "q75": 0.011004816020892792,
-     "q95": 0.19338319778930996
+     "q5": -0.046305929292043926,
+     "q25": -0.02106633115899493,
+     "q50": -0.007167408415738577,
+     "q75": 0.002156788577781637,
+     "q95": 0.024135341815169076
     },
-    "wrong_way": 0.6666666666666666,
+    "wrong_way": 0.71875,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta",
     "minus_random_dir": {
-     "median": -0.062022085625014066,
+     "median": -0.011129333575289157,
      "ci95": [
-      -0.3458817357555614,
-      0.3499202691158175
+      -0.02288043212147382,
+      -0.003188587607588826
      ]
     },
     "minus_input": {
-     "median": 0.6368929670004346,
+     "median": -1.3706586691667138,
      "ci95": [
-      0.6368929670004346,
-      0.6368929670004346
+      -3.4452231539362637,
+      -0.169241212168413
      ]
     }
    },
    "random_dir": {
-    "slope": 0.023146402430025515,
+    "slope": 0.006351192918160527,
     "slope_ci95": [
-     -0.21465432383895824,
-     0.1371252145987581
+     0.0024088390417804063,
+     0.01219753646387521
     ],
-    "n_scenes": 6,
+    "n_scenes": 64,
+    "n_points": 320,
     "per_scene": {
-     "q5": -0.3178453422684828,
-     "q25": -0.0044215175623185,
-     "q50": 0.023146402430025515,
-     "q75": 0.08556828780023905,
-     "q95": 0.12810317236834845
+     "q5": -0.009768853732574813,
+     "q25": 0.000590418864947991,
+     "q50": 0.005053033837038614,
+     "q75": 0.016514278837103585,
+     "q95": 0.04749812056601856
     },
-    "wrong_way": 0.3333333333333333
+    "wrong_way": 0.203125,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
    },
    "input": {
-    "slope": 0.10063993415274125,
+    "slope": 1.3658805285095852,
     "slope_ci95": [
-     -0.6385851175702321,
-     0.34687368615541037
+     0.1659222221751076,
+     3.435052538610797
     ],
-    "n_scenes": 48,
+    "n_scenes": 64,
+    "n_points": 297,
     "per_scene": {
-     "q5": -2.207370002343914,
-     "q25": -0.8068626353444592,
-     "q50": 0.10063993415274125,
-     "q75": 0.7173756148568206,
-     "q95": 2.6246776630808757
+     "q5": -5.99999999999912,
+     "q25": -1.7645943125740855,
+     "q50": 1.2747612123591143,
+     "q75": 5.4466328856354105,
+     "q95": 5.999999999999997
     },
-    "wrong_way": 0.4583333333333333
+    "wrong_way": 0.3125,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
    },
    "law_value": 1.0,
    "verdict": {
     "matches_law": false,
-    "differs_from_controls": false,
+    "differs_from_controls": true,
     "tol": 0.25,
     "law_like": false,
     "null_prediction": false,
-    "steering_over_input": -0.38628486318350447
+    "steering_over_input": -0.003498212733395078
+   },
+   "noise": {
+    "s_a2": 471.1960654468236,
+    "s_b2": 9.393677632239928
    },
    "readout_validity": {
-    "law_slope": 1.0,
-    "n": 33,
-    "n_clips": 64,
-    "slope": -0.06330112563292388,
+    "slope": 2.1478439911006415,
     "ci95": [
-     -0.2761399801493137,
-     0.14348997648026324
+     -5.999999999999999,
+     4.463010204005706
     ],
-    "intercept": -0.6504986272773008,
-    "r": -0.06839934161790244,
-    "covers_law": false
+    "law_slope": 1.0,
+    "n": 64,
+    "n_clips": 64,
+    "covers_law": true,
+    "excludes_0": false,
+    "valid": false,
+    "method": "Deming fit log(b / a) = c + beta theta over the real clips",
+    "noise": [
+     471.1960654468236,
+     9.393677632239928
+    ],
+    "point_calibration": {
+     "a": {
+      "c": 0.20304381755911263,
+      "d": -0.031783031119207446
+     },
+     "b": {
+      "c": 0.011971214345108186,
+      "d": 0.05091084798685815
+     }
+    }
+   },
+   "per_clip": {
+    "steering": {
+     "law": {
+      "slope": -0.038875683194988554,
+      "slope_ci95": [
+       -0.20875652115680332,
+       0.13526594527685926
+      ],
+      "n_scenes": 6
+     },
+     "random_dir": {
+      "slope": 0.023146402430025515,
+      "slope_ci95": [
+       -0.21465432383895824,
+       0.1371252145987581
+      ],
+      "n_scenes": 6
+     },
+     "input": {
+      "slope": 0.10063993415274125,
+      "slope_ci95": [
+       -0.6385851175702321,
+       0.34687368615541037
+      ],
+      "n_scenes": 48
+     }
+    },
+    "readout_validity": {
+     "law_slope": 1.0,
+     "n": 33,
+     "n_clips": 64,
+     "slope": -0.06330112563292388,
+     "ci95": [
+      -0.2761399801493137,
+      0.14348997648026324
+     ],
+     "intercept": -0.6504986272773008,
+     "r": -0.06839934161790244,
+     "covers_law": false
+    },
+    "usable_real_clips": 33,
+    "n_real_clips": 64,
+    "what": "per-clip log(b / a): a clip with a decoded a or b <= 0 is discarded"
    },
    "pairs": {
     "swap": {
-     "n_pairs": 24,
-     "iia": 0.2916666666666667,
-     "fraction_achieved": 0.011818068768843878,
-     "error_ratio": 1.6371828987417976,
-     "p_sign_flip": 0.09869013098690131,
-     "beats_do_nothing": 0.3333333333333333,
-     "abs_change": 0.05628412151712425,
+     "n_pairs": 256,
+     "iia": 0.171875,
+     "iia_ci95": [
+      0.1171875,
+      0.234375
+     ],
+     "fraction_achieved": -0.005582301610762963,
+     "fraction_achieved_ci95": [
+      -0.01277763918128831,
+      -0.0002803638137958882
+     ],
+     "error_ratio": 18.96542559402584,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.171875,
+     "abs_change": 0.03988181386651659,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 24,
+      "iia": 0.2916666666666667,
+      "iia_ci95": [
+       0.0,
+       0.625
+      ],
+      "fraction_achieved": 0.011818068768843878,
+      "error_ratio": 1.6371828987417976,
+      "p_sign_flip": 0.09869013098690131
+     },
      "selectivity": {
-      "target_change_sd": 0.047187420836955304,
+      "target_change_sd": 0.03988181386651659,
       "nontarget_change_sd": 0.021440157488606823,
-      "ratio": 2.2008896558726505
+      "ratio": 1.8601455650551801,
+      "target_unit": "Deming distance from the unswapped ratio line"
      }
     },
     "swap_random": {
-     "n_pairs": 23,
-     "iia": 0.043478260869565216,
-     "fraction_achieved": -0.013006441413976541,
-     "error_ratio": 1.0076797491904963,
-     "p_sign_flip": 0.0024997500249975004,
-     "beats_do_nothing": 0.30434782608695654,
-     "abs_change": 0.011224778785288159,
+     "n_pairs": 256,
+     "iia": 0.15625,
+     "iia_ci95": [
+      0.10537109375,
+      0.2149414062499999
+     ],
+     "fraction_achieved": 0.0016138181448919916,
+     "fraction_achieved_ci95": [
+      -0.0018354214904402547,
+      0.004871495794526142
+     ],
+     "error_ratio": 43.01816023538508,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.15625,
+     "abs_change": 0.018013660407993265,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 23,
+      "iia": 0.043478260869565216,
+      "iia_ci95": [
+       0.0,
+       0.13333333333333333
+      ],
+      "fraction_achieved": -0.013006441413976541,
+      "error_ratio": 1.0076797491904963,
+      "p_sign_flip": 0.0024997500249975004
+     },
      "selectivity": {
-      "target_change_sd": 0.009410617880603689,
+      "target_change_sd": 0.018013660407993265,
       "nontarget_change_sd": 0.01905494016430028,
-      "ratio": 0.49386761645332394
+      "ratio": 0.945353816525865,
+      "target_unit": "Deming distance from the unswapped ratio line"
      }
     },
     "patch": {
@@ -922,116 +1033,227 @@
   },
   "frame_mm": {
    "law": {
-    "slope": -0.037557169503055904,
+    "slope": 0.02567781103900143,
     "slope_ci95": [
-     -0.051788883135452005,
-     -0.015227041595207047
+     -0.06274360392883127,
+     0.08588088906211507
     ],
-    "n_scenes": 33,
+    "n_scenes": 64,
+    "n_points": 320,
     "per_scene": {
-     "q5": -0.32279810948420773,
-     "q25": -0.059154281554451064,
-     "q50": -0.037557169503055904,
-     "q75": 0.018400873362370923,
-     "q95": 0.21344044260951062
+     "q5": -0.5271254175795645,
+     "q25": -0.04945600946533325,
+     "q50": 0.011278097351888668,
+     "q75": 0.12515760642827273,
+     "q95": 0.6306444238068956
     },
-    "wrong_way": 0.6666666666666666,
+    "wrong_way": 0.390625,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta",
     "minus_random_dir": {
-     "median": -0.044511699645839724,
+     "median": 0.09415072496491236,
      "ci95": [
-      -0.06615791821982286,
-      -0.02393531388676209
+      -0.074215235665881,
+      0.22496520576146956
      ]
     },
     "minus_input": {
-     "median": -0.24074520484847717,
+     "median": -1.3402027174705837,
      "ci95": [
-      -0.6535430476773483,
-      0.7604930365422765
+      -3.382305973113924,
+      -0.16317409810461148
      ]
     }
    },
    "random_dir": {
-    "slope": 0.012240881789993243,
+    "slope": -0.06847291392591094,
     "slope_ci95": [
-     -0.0011764007403912494,
-     0.03223495887127195
+     -0.1426659746483239,
+     0.01558828273663078
     ],
-    "n_scenes": 33,
+    "n_scenes": 64,
+    "n_points": 320,
     "per_scene": {
-     "q5": -0.18029724358490673,
-     "q25": -0.007420952692973475,
-     "q50": 0.012240881789993243,
-     "q75": 0.041196200298535095,
-     "q95": 0.24829813810253976
+     "q5": -1.8631639056369496,
+     "q25": -0.06670706097471577,
+     "q50": -0.017402034876814774,
+     "q75": 0.014988738663826513,
+     "q95": 0.1952601814336771
     },
-    "wrong_way": 0.3333333333333333
+    "wrong_way": 0.6875,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
    },
    "input": {
-    "slope": 0.10063993415274125,
+    "slope": 1.3658805285095852,
     "slope_ci95": [
-     -0.6385851175702321,
-     0.34687368615541037
+     0.1659222221751076,
+     3.435052538610797
     ],
-    "n_scenes": 48,
+    "n_scenes": 64,
+    "n_points": 297,
     "per_scene": {
-     "q5": -2.207370002343914,
-     "q25": -0.8068626353444592,
-     "q50": 0.10063993415274125,
-     "q75": 0.7173756148568206,
-     "q95": 2.6246776630808757
+     "q5": -5.99999999999912,
+     "q25": -1.7645943125740855,
+     "q50": 1.2747612123591143,
+     "q75": 5.4466328856354105,
+     "q95": 5.999999999999997
     },
-    "wrong_way": 0.4583333333333333
+    "wrong_way": 0.3125,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
    },
    "law_value": 1.0,
    "verdict": {
     "matches_law": false,
-    "differs_from_controls": true,
+    "differs_from_controls": false,
     "tol": 0.25,
     "law_like": false,
     "null_prediction": false,
-    "steering_over_input": -0.37318356593969326
+    "steering_over_input": 0.01879945610398328
+   },
+   "noise": {
+    "s_a2": 471.1960654468236,
+    "s_b2": 9.393677632239928
    },
    "readout_validity": {
-    "law_slope": 1.0,
-    "n": 33,
-    "n_clips": 64,
-    "slope": -0.06330112563292388,
+    "slope": 2.1478439911006415,
     "ci95": [
-     -0.2761399801493137,
-     0.14348997648026324
+     -5.999999999999999,
+     4.463010204005706
     ],
-    "intercept": -0.6504986272773008,
-    "r": -0.06839934161790244,
-    "covers_law": false
+    "law_slope": 1.0,
+    "n": 64,
+    "n_clips": 64,
+    "covers_law": true,
+    "excludes_0": false,
+    "valid": false,
+    "method": "Deming fit log(b / a) = c + beta theta over the real clips",
+    "noise": [
+     471.1960654468236,
+     9.393677632239928
+    ],
+    "point_calibration": {
+     "a": {
+      "c": 0.20304381755911263,
+      "d": -0.031783031119207446
+     },
+     "b": {
+      "c": 0.011971214345108186,
+      "d": 0.05091084798685815
+     }
+    }
+   },
+   "per_clip": {
+    "steering": {
+     "law": {
+      "slope": -0.037557169503055904,
+      "slope_ci95": [
+       -0.051788883135452005,
+       -0.015227041595207047
+      ],
+      "n_scenes": 33
+     },
+     "random_dir": {
+      "slope": 0.012240881789993243,
+      "slope_ci95": [
+       -0.0011764007403912494,
+       0.03223495887127195
+      ],
+      "n_scenes": 33
+     },
+     "input": {
+      "slope": 0.10063993415274125,
+      "slope_ci95": [
+       -0.6385851175702321,
+       0.34687368615541037
+      ],
+      "n_scenes": 48
+     }
+    },
+    "readout_validity": {
+     "law_slope": 1.0,
+     "n": 33,
+     "n_clips": 64,
+     "slope": -0.06330112563292388,
+     "ci95": [
+      -0.2761399801493137,
+      0.14348997648026324
+     ],
+     "intercept": -0.6504986272773008,
+     "r": -0.06839934161790244,
+     "covers_law": false
+    },
+    "usable_real_clips": 33,
+    "n_real_clips": 64,
+    "what": "per-clip log(b / a): a clip with a decoded a or b <= 0 is discarded"
    },
    "pairs": {
     "swap": {
-     "n_pairs": 130,
-     "iia": 0.06923076923076923,
-     "fraction_achieved": -0.02252215006235013,
-     "error_ratio": 1.0073106435239243,
-     "p_sign_flip": 0.0122987701229877,
-     "beats_do_nothing": 0.3153846153846154,
-     "abs_change": 0.07865202133026797,
+     "n_pairs": 256,
+     "iia": 0.34375,
+     "iia_ci95": [
+      0.26953125,
+      0.421875
+     ],
+     "fraction_achieved": 0.019104225786008247,
+     "fraction_achieved_ci95": [
+      -0.12548331526178202,
+      0.08587775275467315
+     ],
+     "error_ratio": 2.4626534377303257,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.34375,
+     "abs_change": 0.08959130648388042,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 130,
+      "iia": 0.06923076923076923,
+      "iia_ci95": [
+       0.02238391376451078,
+       0.11764705882352941
+      ],
+      "fraction_achieved": -0.02252215006235013,
+      "error_ratio": 1.0073106435239243,
+      "p_sign_flip": 0.0122987701229877
+     },
      "selectivity": {
-      "target_change_sd": 0.06594019645592875,
+      "target_change_sd": 0.08959130648388042,
       "nontarget_change_sd": 0.01963344253969158,
-      "ratio": 3.3585651789095055
+      "ratio": 4.5631990570558285,
+      "target_unit": "Deming distance from the unswapped ratio line"
      }
     },
     "swap_random": {
-     "n_pairs": 131,
-     "iia": 0.0916030534351145,
-     "fraction_achieved": 0.0006152522729832879,
-     "error_ratio": 0.9966423539841706,
-     "p_sign_flip": 0.666933306669333,
-     "beats_do_nothing": 0.4732824427480916,
-     "abs_change": 0.031297478370697296,
+     "n_pairs": 256,
+     "iia": 0.26953125,
+     "iia_ci95": [
+      0.19921875,
+      0.34375
+     ],
+     "fraction_achieved": -0.026526041273602058,
+     "fraction_achieved_ci95": [
+      -0.12374207345847946,
+      0.06006414397603351
+     ],
+     "error_ratio": 2.763399817159524,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.26953125,
+     "abs_change": 0.08368695968148604,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 131,
+      "iia": 0.0916030534351145,
+      "iia_ci95": [
+       0.04408613445378152,
+       0.14519079464988197
+      ],
+      "fraction_achieved": 0.0006152522729832879,
+      "error_ratio": 0.9966423539841706,
+      "p_sign_flip": 0.666933306669333
+     },
      "selectivity": {
-      "target_change_sd": 0.026239146018549365,
+      "target_change_sd": 0.08368695968148604,
       "nontarget_change_sd": 0.016698001876350593,
-      "ratio": 1.57139436280169
+      "ratio": 5.0117948423524865,
+      "target_unit": "Deming distance from the unswapped ratio line"
      }
     },
     "patch": {
@@ -1125,8 +1347,697 @@
      }
     }
    }
+  },
+  "contact": {
+   "law": {
+    "slope": -0.007644973752219061,
+    "slope_ci95": [
+     -0.0167709017242891,
+     -0.0024292672382321715
+    ],
+    "n_scenes": 64,
+    "n_points": 320,
+    "per_scene": {
+     "q5": -0.13303307818726107,
+     "q25": -0.005906177198357452,
+     "q50": 0.0008197514314959131,
+     "q75": 0.014120637485297627,
+     "q95": 0.12716972919468342
+    },
+    "wrong_way": 0.484375,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta",
+    "minus_random_dir": {
+     "median": -0.010143123221703541,
+     "ci95": [
+      -0.02775369561572943,
+      0.0012860193418061292
+     ]
+    },
+    "minus_input": {
+     "median": 2.220009411380871,
+     "ci95": [
+      1.8113910763601937,
+      3.46516637884364
+     ]
+    }
+   },
+   "random_dir": {
+    "slope": 0.0024981494694844815,
+    "slope_ci95": [
+     -0.004031357531070819,
+     0.012702439252565562
+    ],
+    "n_scenes": 64,
+    "n_points": 320,
+    "per_scene": {
+     "q5": -0.036758844392063776,
+     "q25": -0.008016771758358326,
+     "q50": 0.0002647989515808917,
+     "q75": 0.006602815631922741,
+     "q95": 0.0716252095609195
+    },
+    "wrong_way": 0.5,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
+   },
+   "input": {
+    "slope": -2.2276543851330897,
+    "slope_ci95": [
+     -3.473363893851779,
+     -1.82358741227167
+    ],
+    "n_scenes": 64,
+    "n_points": 297,
+    "per_scene": {
+     "q5": -5.999999999999999,
+     "q25": -5.999999999999994,
+     "q50": -5.505790082310652,
+     "q75": 0.27018505074986,
+     "q95": 5.999999999999951
+    },
+    "wrong_way": 0.734375,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
+   },
+   "law_value": 1.0,
+   "verdict": {
+    "matches_law": false,
+    "differs_from_controls": false,
+    "tol": 0.25,
+    "law_like": false,
+    "null_prediction": false,
+    "steering_over_input": 0.003431849124909166
+   },
+   "noise": {
+    "s_a2": 1004.9901299875085,
+    "s_b2": 8.453451775825659
+   },
+   "readout_validity": {
+    "slope": -5.999999999999999,
+    "ci95": [
+     -5.999999999999999,
+     1.2333412696563888
+    ],
+    "law_slope": 1.0,
+    "n": 64,
+    "n_clips": 64,
+    "covers_law": true,
+    "excludes_0": false,
+    "valid": false,
+    "method": "Deming fit log(b / a) = c + beta theta over the real clips",
+    "noise": [
+     1004.9901299875085,
+     8.453451775825659
+    ],
+    "point_calibration": {
+     "a": {
+      "c": 0.18502259766915458,
+      "d": 0.02240418460124932
+     },
+     "b": {
+      "c": 0.006065921578786744,
+      "d": 0.05250786426777065
+     }
+    }
+   },
+   "per_clip": {
+    "steering": {
+     "law": {
+      "slope": -0.046566083611984554,
+      "slope_ci95": [
+       -0.07938058850659546,
+       -0.01987946689326829
+      ],
+      "n_scenes": 5
+     },
+     "random_dir": {
+      "slope": 0.02267424946788039,
+      "slope_ci95": [
+       0.010610684428552298,
+       0.04829147556399082
+      ],
+      "n_scenes": 5
+     },
+     "input": {
+      "slope": -0.042008937923318064,
+      "slope_ci95": [
+       -0.4356432199246636,
+       0.44996408254625236
+      ],
+      "n_scenes": 52
+     }
+    },
+    "readout_validity": {
+     "law_slope": 1.0,
+     "n": 34,
+     "n_clips": 64,
+     "slope": -0.10668838659436197,
+     "ci95": [
+      -0.4350906233744606,
+      0.1712238890610754
+     ],
+     "intercept": -0.5588847657822991,
+     "r": -0.10638533772302566,
+     "covers_law": false
+    },
+    "usable_real_clips": 34,
+    "n_real_clips": 64,
+    "what": "per-clip log(b / a): a clip with a decoded a or b <= 0 is discarded"
+   },
+   "pairs": {
+    "swap": {
+     "n_pairs": 256,
+     "iia": 0.36328125,
+     "iia_ci95": [
+      0.27734375,
+      0.44921875
+     ],
+     "fraction_achieved": -0.06701744037683652,
+     "fraction_achieved_ci95": [
+      -0.3199691085286178,
+      0.062114458516828605
+     ],
+     "error_ratio": 1.225040801309512,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.36328125,
+     "abs_change": 1.0765178504026147,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 20,
+      "iia": 0.25,
+      "iia_ci95": [
+       0.0,
+       0.6700000000000007
+      ],
+      "fraction_achieved": -0.02433007638412503,
+      "error_ratio": 1.1352313516350518,
+      "p_sign_flip": 0.0007999200079992001
+     },
+     "selectivity": {
+      "target_change_sd": 1.0765178504026147,
+      "nontarget_change_sd": 0.02248397505179939,
+      "ratio": 47.87933841424811,
+      "target_unit": "Deming distance from the unswapped ratio line"
+     }
+    },
+    "swap_random": {
+     "n_pairs": 256,
+     "iia": 0.35546875,
+     "iia_ci95": [
+      0.2734375,
+      0.4453125
+     ],
+     "fraction_achieved": -0.05850490083857216,
+     "fraction_achieved_ci95": [
+      -0.3104191917295442,
+      0.07050299864720644
+     ],
+     "error_ratio": 1.2203983998932797,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.35546875,
+     "abs_change": 1.0747968601715043,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 20,
+      "iia": 0.05,
+      "iia_ci95": [
+       0.0,
+       0.16666666666666666
+      ],
+      "fraction_achieved": 0.004372201161532668,
+      "error_ratio": 1.1617150842072943,
+      "p_sign_flip": 0.22817718228177183
+     },
+     "selectivity": {
+      "target_change_sd": 1.0747968601715043,
+      "nontarget_change_sd": 0.019697657843802157,
+      "ratio": 54.56470351421439,
+      "target_unit": "Deming distance from the unswapped ratio line"
+     }
+    },
+    "patch": {
+     "n_pairs": 246,
+     "error_ratio": 1.0175348740023482,
+     "p_sign_flip": 0.9256074392560744,
+     "iia": 0.008130081300813009,
+     "beats_do_nothing": 0.45934959349593496,
+     "transfer_along_n": -0.000773340976327735,
+     "closer_n": {
+      "mean": -0.5691497987560066,
+      "ci95": [
+       -0.6483890661836156,
+       -0.48771450341066097
+      ],
+      "p_sign_flip": 9.999000099990002e-05,
+      "what": "|obs.n - 0| - |obs.n - req.n| (> 0: closer to the momentum-required change)"
+     },
+     "slope_ratio": {
+      "slope_low_k": 0.00033198574875692823,
+      "slope_high_k": 0.0020792513550972305,
+      "observed": 6.263074131593544,
+      "observed_ci95": [
+       -15.493921255667882,
+       15.866548255498632
+      ],
+      "physics": 1.7648048676107466,
+      "leak": 1.0
+     },
+     "selectivity": {
+      "target_change_sd": 0.07767860664195636,
+      "nontarget_change_sd": 0.07029143767087888,
+      "ratio": 1.1050934397680974
+     },
+     "verdict": "fail",
+     "criteria": {
+      "closer_to_required": false,
+      "slope_ratio_excludes_leak": false,
+      "slope_ratio_matches_physics": true,
+      "beats_controls": true
+     },
+     "controls": {
+      "patch_random": {
+       "mean": 0.0025990266809619612,
+       "ci95": [
+        0.0007958421677752727,
+        0.004412836554970701
+       ],
+       "beats": true
+      },
+      "patch_passive": "not run (pre-event site: no passive arm)"
+     },
+     "reasons": [
+      "closer_to_required",
+      "slope_ratio_excludes_leak"
+     ],
+     "max_p": 0.05
+    },
+    "patch_random": {
+     "n_pairs": 246,
+     "error_ratio": 0.9987733042949501,
+     "p_sign_flip": 0.8563143685631437,
+     "iia": 0.008130081300813009,
+     "beats_do_nothing": 0.516260162601626,
+     "transfer_along_n": 0.0005587639904012098,
+     "closer_n": {
+      "mean": -0.5717488254369687,
+      "ci95": [
+       -0.6502664116810003,
+       -0.4898402970061971
+      ],
+      "p_sign_flip": 9.999000099990002e-05,
+      "what": "|obs.n - 0| - |obs.n - req.n| (> 0: closer to the momentum-required change)"
+     },
+     "slope_ratio": {
+      "slope_low_k": 0.0003261323395176066,
+      "slope_high_k": 0.000984970263546638,
+      "observed": 3.02015514623156,
+      "observed_ci95": [
+       -35.67732888840117,
+       26.345857518941713
+      ],
+      "physics": 1.7648048676107466,
+      "leak": 1.0
+     },
+     "selectivity": {
+      "target_change_sd": 0.04608173726627226,
+      "nontarget_change_sd": 0.04913312130089109,
+      "ratio": 0.9378955793194541
+     }
+    }
+   }
+  },
+  "roi": {
+   "law": {
+    "slope": -0.0016520987069647375,
+    "slope_ci95": [
+     -0.003341528780228875,
+     0.0003505027107673721
+    ],
+    "n_scenes": 64,
+    "n_points": 320,
+    "per_scene": {
+     "q5": -0.015758248404634728,
+     "q25": -0.002293077837097752,
+     "q50": 0.0001424541089324415,
+     "q75": 0.0024880540703338086,
+     "q95": 0.027747102281801172
+    },
+    "wrong_way": 0.484375,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta",
+    "minus_random_dir": {
+     "median": -0.004646581475470288,
+     "ci95": [
+      -0.01073117118757351,
+      0.001532295436340783
+     ]
+    },
+    "minus_input": {
+     "median": -2.7196973589152798,
+     "ci95": [
+      -3.1116856951107605,
+      -1.9209322357357654
+     ]
+    }
+   },
+   "random_dir": {
+    "slope": 0.00299448276850555,
+    "slope_ci95": [
+     -0.001726858873635625,
+     0.007421416238874434
+    ],
+    "n_scenes": 64,
+    "n_points": 320,
+    "per_scene": {
+     "q5": -0.05847453092844492,
+     "q25": -0.008122704974146924,
+     "q50": -0.001407885494031587,
+     "q75": 0.007547561502657201,
+     "q95": 0.06206070951862606
+    },
+    "wrong_way": 0.578125,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
+   },
+   "input": {
+    "slope": 2.718045260208315,
+    "slope_ci95": [
+     1.918882070302085,
+     3.1089264575944253
+    ],
+    "n_scenes": 64,
+    "n_points": 297,
+    "per_scene": {
+     "q5": -5.999999998735042,
+     "q25": -0.7896460066605103,
+     "q50": 2.89599833619197,
+     "q75": 5.999999999999386,
+     "q95": 5.999999999999999
+    },
+    "wrong_way": 0.328125,
+    "method": "Deming fit log(b / a) = c_scene + beta dtheta"
+   },
+   "law_value": 1.0,
+   "verdict": {
+    "matches_law": false,
+    "differs_from_controls": false,
+    "tol": 0.25,
+    "law_like": false,
+    "null_prediction": false,
+    "steering_over_input": -0.0006078260473256867
+   },
+   "noise": {
+    "s_a2": 307.1944074169955,
+    "s_b2": 25.747380838502448
+   },
+   "readout_validity": {
+    "slope": 5.9999999999999885,
+    "ci95": [
+     -5.9999999999991305,
+     5.999999999999999
+    ],
+    "law_slope": 1.0,
+    "n": 64,
+    "n_clips": 64,
+    "covers_law": true,
+    "excludes_0": false,
+    "valid": false,
+    "method": "Deming fit log(b / a) = c + beta theta over the real clips",
+    "noise": [
+     307.1944074169955,
+     25.747380838502448
+    ],
+    "point_calibration": {
+     "a": {
+      "c": 0.7056322948529519,
+      "d": 0.05504647199263039
+     },
+     "b": {
+      "c": 0.7906423270791351,
+      "d": 0.20689440698898995
+     }
+    }
+   },
+   "per_clip": {
+    "steering": {
+     "law": {
+      "slope": -0.0009178751951449528,
+      "slope_ci95": [
+       -0.002139888158385613,
+       0.007471053576649942
+      ],
+      "n_scenes": 16
+     },
+     "random_dir": {
+      "slope": -0.002509835201219735,
+      "slope_ci95": [
+       -0.007198586225968446,
+       0.012899410741146972
+      ],
+      "n_scenes": 16
+     },
+     "input": {
+      "slope": -0.27850283533518355,
+      "slope_ci95": [
+       -0.4918223646109265,
+       0.24891164083958944
+      ],
+      "n_scenes": 59
+     }
+    },
+    "readout_validity": {
+     "law_slope": 1.0,
+     "n": 47,
+     "n_clips": 64,
+     "slope": 0.03299908888546029,
+     "ci95": [
+      -0.21297566692665204,
+      0.3104617868763864
+     ],
+     "intercept": 0.29184378408178263,
+     "r": 0.026562432121280306,
+     "covers_law": false
+    },
+    "usable_real_clips": 47,
+    "n_real_clips": 64,
+    "what": "per-clip log(b / a): a clip with a decoded a or b <= 0 is discarded"
+   },
+   "pairs": {
+    "swap": {
+     "n_pairs": 256,
+     "iia": 0.296875,
+     "iia_ci95": [
+      0.21875,
+      0.3829101562499999
+     ],
+     "fraction_achieved": -0.05132814657249606,
+     "fraction_achieved_ci95": [
+      -0.16553298589317259,
+      0.05221999319733002
+     ],
+     "error_ratio": 10.475016536444317,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.296875,
+     "abs_change": 1.2174412151079288,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 64,
+      "iia": 0.046875,
+      "iia_ci95": [
+       0.0,
+       0.11843671679197992
+      ],
+      "fraction_achieved": 5.9787657098895765e-05,
+      "error_ratio": 0.9712948607546237,
+      "p_sign_flip": 0.15998400159984003
+     },
+     "selectivity": {
+      "target_change_sd": 1.2174412151079288,
+      "nontarget_change_sd": 0.029515996818265697,
+      "ratio": 41.24682702074716,
+      "target_unit": "Deming distance from the unswapped ratio line"
+     }
+    },
+    "swap_random": {
+     "n_pairs": 256,
+     "iia": 0.31640625,
+     "iia_ci95": [
+      0.23818359375,
+      0.40234375
+     ],
+     "fraction_achieved": -0.053854319096997734,
+     "fraction_achieved_ci95": [
+      -0.1683392664451765,
+      0.04916650156686503
+     ],
+     "error_ratio": 10.53156047533911,
+     "p_sign_flip": 9.999000099990002e-05,
+     "beats_do_nothing": 0.31640625,
+     "abs_change": 1.2081973678889042,
+     "method": "Deming fit log(b / a) = c_scene + kappa required; IIA by Deming distance",
+     "per_clip": {
+      "n_pairs": 63,
+      "iia": 0.047619047619047616,
+      "iia_ci95": [
+       0.0,
+       0.10344827586206896
+      ],
+      "fraction_achieved": -0.0008707926397804769,
+      "error_ratio": 0.9920029865765849,
+      "p_sign_flip": 0.8641135886411359
+     },
+     "selectivity": {
+      "target_change_sd": 1.2081973678889042,
+      "nontarget_change_sd": 0.0581528130086567,
+      "ratio": 20.776249769878724,
+      "target_unit": "Deming distance from the unswapped ratio line"
+     }
+    },
+    "patch": {
+     "n_pairs": 246,
+     "error_ratio": 1.5087222190641227,
+     "p_sign_flip": 9.999000099990002e-05,
+     "iia": 0.26422764227642276,
+     "beats_do_nothing": 0.2926829268292683,
+     "transfer_along_n": -0.02262696814977179,
+     "closer_n": {
+      "mean": -0.36798987828982016,
+      "ci95": [
+       -0.46050488388692623,
+       -0.27683883671972637
+      ],
+      "p_sign_flip": 9.999000099990002e-05,
+      "what": "|obs.n - 0| - |obs.n - req.n| (> 0: closer to the momentum-required change)"
+     },
+     "slope_ratio": {
+      "slope_low_k": -0.08230212727333006,
+      "slope_high_k": -0.2962497481197146,
+      "observed": 3.5995393792903103,
+      "observed_ci95": [
+       -30.559381169147155,
+       30.355763371753167
+      ],
+      "physics": 1.7648048676107466,
+      "leak": 1.0
+     },
+     "selectivity": {
+      "target_change_sd": 0.21633163931229574,
+      "nontarget_change_sd": 0.20177168602743112,
+      "ratio": 1.0721605373455876
+     },
+     "verdict": "fail",
+     "criteria": {
+      "closer_to_required": false,
+      "slope_ratio_excludes_leak": false,
+      "slope_ratio_matches_physics": true,
+      "beats_controls": false
+     },
+     "controls": {
+      "patch_random": {
+       "mean": -0.03637411721841974,
+       "ci95": [
+        -0.09633530898529766,
+        0.023634944356704247
+       ],
+       "beats": false
+      },
+      "patch_passive": "not run (pre-event site: no passive arm)"
+     },
+     "reasons": [
+      "closer_to_required",
+      "slope_ratio_excludes_leak",
+      "beats_controls"
+     ],
+     "max_p": 0.05
+    },
+    "patch_random": {
+     "n_pairs": 246,
+     "error_ratio": 1.555630155357564,
+     "p_sign_flip": 9.999000099990002e-05,
+     "iia": 0.2764227642276423,
+     "beats_do_nothing": 0.3008130081300813,
+     "transfer_along_n": 0.04211683188139852,
+     "closer_n": {
+      "mean": -0.3316157610714004,
+      "ci95": [
+       -0.41529410324707877,
+       -0.24496026405632645
+      ],
+      "p_sign_flip": 9.999000099990002e-05,
+      "what": "|obs.n - 0| - |obs.n - req.n| (> 0: closer to the momentum-required change)"
+     },
+     "slope_ratio": {
+      "slope_low_k": 0.0735280186100165,
+      "slope_high_k": 0.039078298791159635,
+      "observed": 0.5314749333641927,
+      "observed_ci95": [
+       -10.9889229551369,
+       18.878890090512954
+      ],
+      "physics": 1.7648048676107466,
+      "leak": 1.0
+     },
+     "selectivity": {
+      "target_change_sd": 0.23897837513752207,
+      "nontarget_change_sd": 0.24668969733526708,
+      "ratio": 0.9687408015776807
+     }
+    }
+   }
   }
  },
+ "readout_selection": {
+  "score": "R\u00b2 of the readout point (a, b) on real clips (out-of-fold decodes vs label truth)",
+  "r2": {
+   "contact": -1.989105690693917,
+   "roi": -2.864229248948742,
+   "roi_maskonly": -13.500939374270263
+  },
+  "roi_vs_mask": {
+   "r2_minus_mask": 10.636710125321521,
+   "ci95": [
+    7.461372590721763,
+    15.559873379214961
+   ],
+   "beats": true
+  },
+  "candidates": [
+   "contact",
+   "roi"
+  ],
+  "heldout": {
+   "selected": "contact",
+   "selected_counts": {
+    "contact": 90,
+    "roi": 10
+   },
+   "score": -2.2759536418934623,
+   "score_sd": 0.7862676978994174,
+   "score_q025": -4.281263582353322,
+   "score_q975": -1.1951350720506773,
+   "n_variants": 2,
+   "n_groups": 64,
+   "n_select_groups": 32,
+   "n_eval_groups": 32,
+   "n_splits": 50
+  },
+  "selected": "contact",
+  "mask_only_validity": {
+   "slope": 4.230741677739451,
+   "ci95": [
+    -1.8091301433394813,
+    5.999999999999999
+   ],
+   "law_slope": 1.0,
+   "n": 64,
+   "n_clips": 64,
+   "covers_law": true,
+   "excludes_0": false,
+   "valid": false,
+   "method": "Deming fit log(b / a) = c + beta theta over the real clips",
+   "noise": [
+    20.04018090963236,
+    17.06854678832611
+   ]
+  }
+ },
+ "primary_variant": "contact",
  "localization": {
   "gate": {
    "tests": {
@@ -1145,12 +2056,10 @@
    "l2_json_found": true,
    "l2_verdicts": [],
    "steering_by_variant": {
-    "frame": false,
-    "frame_mm": false
+    "contact": false
    },
    "swap_by_variant": {
-    "frame": false,
-    "frame_mm": false
+    "contact": false
    },
    "reason": "no gate passed (steering, swap, l2_kink): steering law-like in no variant, swap test passes in no variant, L2 kink verdicts absent"
   },

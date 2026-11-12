@@ -171,6 +171,13 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
   theta from the activations at the swapped block / SNR (`site_theta`). Slope-0 steering and swap pass only if the push
   moved the model's theta readout (>= `min_effect` of its real-video change) or a control direction moved the outcome,
   else "inert push (uninformative)" (`null_verdict`). `readout_validity`: the readout on real clips vs the true theta.
+* **2026-11-12, momentum readout v2** (user): the per-clip log(b / a) (a clip discarded whenever a decoded a or b <= 0)
+  is replaced by a FITTED ratio: Deming (errors-in-variables) fit of b = r a, log r = c_scene + beta x, over the decoded
+  points (a, b) = (−Δv_A·n, Δv_B·n) after a leave-one-group-out inverse calibration of the point (`fit_log_ratio`,
+  `point_calibration`; per-clip version kept as `per_clip`). Readout pools frame / contact / roi (+ roi mask-only floor);
+  primary pool held-out-selected (`select_readout_pool`: contact, or roi when it beats its floor); steered forecasts
+  pooled with each clip's own weights (`<space>@<pool>.post`). Validity = real-video slope CI covers 1 AND excludes 0.
+  Localization gates compare CIs (swap IIA CI above the random control's; passive: paired CIs); only the primary counts.
 
 ## 4. Results (pre-v3 metrics, F1 only; to be re-run under v3)
 
@@ -186,13 +193,12 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
 * **Outputs.** CogVideoX-2b track A gate 0/20 (now `output_track: none`). Wan2.2-I2V-A14B track B: strict 0/22,
   loose 8/22, all 8 with violations.
 * **PC1 500-step test**: predictor not yet better than copy-last; `--check` on V-JEPA 2 fails.
-* **L4 momentum validation (v3 code, 2026-11-12, `smoke/l4_momentum_validation/`)**: V-JEPA2-L runs end to end
-  (precondition LOSO R² 0.23 vs null −0.02, layer 8 roi_A). Steering slope −0.01 [−0.06, +0.01] (random +0.005), swap IIA
-  0.23 vs random 0.14 (fraction 0.00), patch fail (closer −0.39 [−0.48, −0.31]): V-JEPA2-L does not use its mass
-  direction. Instrument limit: the frame-pool R1 log deflection ratio is finite on only 25/64 real clips (slope 0.54
-  [0.16, 1.17]); the input-level reference 0.40 [−0.62, +0.99] (41 scenes). Needs a per-object instrument / more groups.
-  Untrained V-JEPA2-L: precondition passes (appearance; LOSO R² 0.16), readout validity −0.06 [−0.28, +0.14] (33/64),
-  steering / swap / patch fail: not passing, as required.
+* **L4 momentum validation (readout v2, 2026-11-12, `smoke/l4_momentum_validation/`)**: V-JEPA2-L, precondition LOSO
+  R² 0.23 vs null −0.02 (layer 8, roi_A). Primary pool roi (held-out 100/100; beats its mask-only floor, whose validity
+  4.2 [−1.8, 6] fails); readout validity 1.15 [0.78, 1.71], 64/64 clips (per-clip version: 59/64; contact 0.89 [−0.37,
+  3.08] and frame 0.14 [−0.53, 2.87] are not valid). Input-level yardstick 1.64 [1.32, 2.10]. Steering −0.015 [−0.030,
+  +0.006] (random −0.005), swap IIA 0.30 [0.23, 0.38] vs random 0.29 [0.20, 0.36] (fraction −0.01), patch fail: V-JEPA2-L
+  fails L4 momentum; localization not gated in. Untrained: primary contact, readout not valid, every arm fails.
 
 ## 5. Plan (in order; GPU work)
 

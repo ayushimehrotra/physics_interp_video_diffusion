@@ -233,7 +233,8 @@ def _l3(d, fam):
 
 def _l4(d, fam):
     vs = d.get("variants") or {}
-    k = next((k for k in ("frame", "frame_t", "generated") if k in vs), next(iter(vs), None))
+    k = d.get("primary_variant") if d.get("primary_variant") in vs else \
+        next((k for k in ("frame", "frame_t", "generated") if k in vs), next(iter(vs), None))
     if k is None:
         return {}
     v = vs[k]

@@ -129,9 +129,14 @@ def test_momentum_routine_end_to_end_encoder(tmp_path, monkeypatch):
     rng = np.random.default_rng(0)
     D, n_g = 8, 24
     M = rng.normal(size=(4, D))
+    rng2 = np.random.default_rng(1)
+    Mc, Mo = rng2.normal(size=(4, D)), rng2.normal(size=(2, D))
     recs, labels, A, real_pre, real_post = [], [], [], [], []
     vpre = np.array([[1.0, 0.0], [0.0, 0.0]])
     feat = lambda v: v.reshape(-1) @ M
+    # the contact pool (a different readout of both balls) and the object patches (each ball's own velocity)
+    pools = {"contact": lambda v: v.reshape(-1) @ Mc, "roi_A": lambda v: v[0] @ Mo, "roi_B": lambda v: v[1] @ Mo}
+    rp = {f"{q}.{ph}": [] for q in pools for ph in ("pre", "post")}
     qs = {}
     for gi in range(n_g):
         g = f"g{gi}"
@@ -146,10 +151,16 @@ def test_momentum_routine_end_to_end_encoder(tmp_path, monkeypatch):
             A.append([np.log(q) * np.eye(D)[0] + np.log(rr) * np.eye(D)[1] + 0.05 * rng.normal(size=D)])
             real_pre.append(feat(vpre) + 0.01 * rng.normal(size=D))
             real_post.append(feat(vq) + 0.01 * rng.normal(size=D))
+            for pn, fq in pools.items():
+                rp[f"{pn}.pre"].append(fq(vpre) + 0.01 * rng2.normal(size=D))     # own draws: the data
+                rp[f"{pn}.post"].append(fq(vq) + 0.01 * rng2.normal(size=D))      # sequence stays as before
     A = np.array(A)[:, :, None].repeat(2, 2).astype(np.float32)               # [n, P=1, L=2, D]
     monkeypatch.setattr(L4, "load_family", lambda c, d: (recs, labels, A, ["roi_A.pre"], ["3", "-1"]))
-    real = {"frame.pre": np.array(real_pre), "frame.post": np.array(real_post)}
+    real = {"frame.pre": np.array(real_pre), "frame.post": np.array(real_post), **{k_: np.array(v_) for k_, v_ in rp.items()}}
     monkeypatch.setattr(L4, "forecast_spaces", lambda *a, **k: {"final": (real, real)})
+    import physlaw.eval.l3_invariance as L3      # pooling weights: placement carrying nothing (the mask-only floor)
+    mw = {f"w.{q}.{ph}": rng2.random((len(recs), 64)) for q in ("roi_A", "roi_B", "contact") for ph in ("pre", "post")}
+    monkeypatch.setattr(L3, "_mask_weights", lambda *a, **k: mw)
     sites = []
     monkeypatch.setattr(L4, "site_activations", lambda m, d, r, l, positions, *a: sites.append(positions) or
                         {"layers": ["3"], "3": A[:, 0, 0].astype(np.float64)})
@@ -161,15 +172,21 @@ def test_momentum_routine_end_to_end_encoder(tmp_path, monkeypatch):
     deltas = cfg["laws"]["momentum"]["deltas"]
     calls = []
 
-    def fake_interventions(m, mcfg, data_dir, scenes, plans, layer, wdir, positions, force, real_clips, log):
-        """A law-like model: the forecast follows the mass ratio implied by the shift's component along log q."""
+    def fake_interventions(m, mcfg, data_dir, scenes, plans, layer, wdir, positions, force, real_clips, log,
+                           pool_w=None):
+        """A law-like model: the forecast follows the mass ratio implied by the shift's component along log q; its
+        contact / object-patch pools are stored as run_interventions does ("final@<pool>.post")."""
         calls.append(len(scenes))
+        assert set(pool_w[next(iter(scenes))]) == {"contact", "roi"}
         for sc in scenes:
             q = qs[sc]
-            rec = {"base|0|final": feat(_post(q))}
+            put = lambda c, d, vq: rec.update({f"{c}|{d:g}|final": feat(vq), f"{c}|{d:g}|final@contact.post": pools["contact"](vq),
+                                               f"{c}|{d:g}|final@roi.post": np.r_[pools["roi_A"](vq), pools["roi_B"](vq)]})
+            rec = {}
+            put("base", 0, _post(q))
             for c, dd in plans[sc].items():
                 for d, v in dd.items():
-                    rec[f"{c}|{d:g}|final"] = feat(_post(q * np.exp(float(v[0]))))
+                    put(c, d, _post(q * np.exp(float(v[0]))))
             np.savez(wdir / f"{sc}.npz", **rec)
     monkeypatch.setattr(L4, "run_interventions", fake_interventions)
     import physlaw.models.registry as reg
@@ -194,6 +211,20 @@ def test_momentum_routine_end_to_end_encoder(tmp_path, monkeypatch):
     res = L4.run(tmp_path / "cache", tmp_path / "f1", cfg, mcfg, tmp_path / "work", log=lambda *a: None)
     assert calls == [n_g]
     assert res["law"] == "momentum" and res["layer"] == "3" and res["mode"] == "across"
+    # fitted-ratio readout (no clip discarded) on every pool; the primary pool by the held-out rule (roi beats its
+    # mask-only floor here, so both are candidates)
+    sel = res["readout_selection"]
+    assert res["primary_variant"] in ("contact", "roi") and res["primary_variant"] == sel["selected"]
+    assert sel["roi_vs_mask"]["beats"] and set(sel["candidates"]) == {"contact", "roi"}
+    assert not sel["mask_only_validity"]["valid"]
+    for pool in ("contact", "roi", "frame"):
+        vp = res["variants"][pool]
+        assert vp["law"]["slope"] == pytest.approx(1.0, abs=0.15) and abs(vp["random_dir"]["slope"]) < 0.1
+        assert vp["readout_validity"]["valid"] and vp["readout_validity"]["n"] == n_g
+        assert vp["law"]["method"].startswith("Deming") and vp["per_clip"]["usable_real_clips"] <= n_g
+        sw_ = vp["pairs"]["swap"]
+        assert sw_["fraction_achieved"] == pytest.approx(1.0, abs=0.2) and sw_["iia"] > 0.8
+        assert sw_["iia_ci95"][0] > vp["pairs"]["swap_random"]["iia_ci95"][1] and "per_clip" in sw_
     v = res["variants"]["frame"]
     assert v["law"]["slope"] == pytest.approx(1.0, abs=0.15) and abs(v["random_dir"]["slope"]) < 0.1
     assert v["verdict"]["matches_law"] and sites == ["roi_A"] and res["positions"] == "roi_A"
@@ -321,6 +352,135 @@ def test_patch_scores_physics_vs_constant_leak():
     assert z["error_ratio"] == pytest.approx(1.0) and a["error_ratio"] < 0.6 and a["p_sign_flip"] < 0.01
     full = L4.patch_scores((k * du)[:, None] * n, vA, vD, ctx, k)
     assert full["error_ratio"] < 1e-6 and full["iia"] == 1.0 and full["transfer_along_n"] == pytest.approx(1.0)
+
+
+def test_fitted_ratio_readout_keeps_every_clip_and_is_unbiased():
+    """Momentum readout: the per-clip log(b / a) discards every clip with a decoded a or b <= 0 (and is biased by that
+    selection); OLS b ~ a through the origin is attenuated by the noise in a; the Deming fit of log r = c + beta theta
+    keeps every clip and recovers beta = 1 (the validity rule: CI covers 1 AND excludes 0). A mass-blind readout
+    (b / a constant) is not valid; steering slopes and swap fractions come from the same fit."""
+    rng = np.random.default_rng(0)
+    n, s_ = 160, 0.35
+    th = rng.uniform(-1.5, 1.5, n)
+    a_t = rng.uniform(0.2, 1.2, n)
+    b_t = np.exp(th) * a_t
+    a, b = a_t + s_ * rng.normal(size=n), b_t + s_ * rng.normal(size=n)
+    pc = np.array([L4.log_deflection_ratio(np.zeros((2, 2)), np.array([[-x, 0.0], [y, 0.0]]), {"n": [1.0, 0.0]})
+                   for x, y in zip(a, b)])
+    assert np.isnan(pc).sum() > 10                                   # the per-clip version discards clips
+    noise = L4.ratio_noise(np.c_[a, b], np.c_[a_t, b_t])
+    assert noise[0] == pytest.approx(s_ ** 2, rel=0.3) and noise[1] == pytest.approx(s_ ** 2, rel=0.3)
+    v = L4.ratio_validity(np.c_[a, b], th, 1.0, n_boot=200, noise=noise)
+    assert v["n"] == n and v["valid"] and v["slope"] == pytest.approx(1.0, abs=0.15)
+    # one ratio (2): OLS b ~ a through the origin is attenuated by the noise in a; Deming is not
+    a1 = rng.uniform(0.2, 1.2, 2000)
+    xa, xb = a1 + s_ * rng.normal(size=2000), 2.0 * a1 + s_ * rng.normal(size=2000)
+    assert (xa @ xb) / (xa @ xa) < 1.8
+    assert np.exp(L4.fit_log_ratio(xa, xb, None, None, noise)["c"][0]) == pytest.approx(2.0, rel=0.05)
+    blind = L4.ratio_validity(np.c_[a, a_t * 1.0 + s_ * rng.normal(size=n)], th, 1.0, n_boot=200, noise=noise)
+    assert not blind["valid"] and not blind["excludes_0"]
+    # steering: per scene 5 points (a, b) at dtheta; law ratio moves by e^dtheta, the random direction not at all
+    G, d = 40, np.array([-1.0, -0.5, 0.0, 0.5, 1.0])
+    q0 = rng.uniform(-1, 1, G)
+    pts = lambda beta: np.stack([(A_ := rng.uniform(0.2, 1.2, (G, 5))) + s_ * rng.normal(size=(G, 5)),
+                                 np.exp(q0[:, None] + beta * d) * A_ + s_ * rng.normal(size=(G, 5))], -1)
+    sc = L4.ratio_slope_scores({"law": pts(1.0), "random_dir": pts(0.0)}, d, list(range(G)), 1.0, n_boot=100,
+                               noise=noise)
+    assert sc["law"]["slope"] == pytest.approx(1.0, abs=0.2) and sc["law"]["n_points"] == G * 5
+    assert sc["random_dir"]["slope_ci95"][0] < 0 < sc["random_dir"]["slope_ci95"][1]
+    assert sc["verdict"]["law_like"] and sc["law"]["minus_random_dir"]["ci95"][0] > 0
+    # swap: the swapped point follows the donor's ratio (kappa ~ 1) or stays (kappa ~ 0)
+    base = {g: (A0 := rng.uniform(0.4, 1.2), np.exp(q0[g]) * A0) for g in range(G)}
+    grp = np.repeat(np.arange(G), 3)
+    req = rng.choice([-1.0, 1.0], len(grp)) * rng.uniform(0.5, 1.5, len(grp))
+    A1 = rng.uniform(0.4, 1.2, len(grp))
+    follow = np.c_[A1, np.exp(q0[grp] + req) * A1] + 0.05 * rng.normal(size=(len(grp), 2))
+    stay = np.c_[A1, np.exp(q0[grp]) * A1] + 0.05 * rng.normal(size=(len(grp), 2))
+    sw = L4.ratio_interchange_scores(base, follow, req, grp, (0.0025, 0.0025), n_boot=100)
+    st = L4.ratio_interchange_scores(base, stay, req, grp, (0.0025, 0.0025), n_boot=100)
+    assert sw["fraction_achieved"] == pytest.approx(1.0, abs=0.15) and sw["iia"] > 0.9 and sw["error_ratio"] < 0.3
+    assert abs(st["fraction_achieved"]) < 0.15 and st["iia"] < 0.1 and sw["iia_ci95"][0] > st["iia_ci95"][1]
+
+
+def test_point_calibration_removes_readout_point_shrinkage():
+    """Decoded (a, b) shrunk towards a common value (decoded on true slope 0.7, as V-JEPA 2-L's ROI readout on F1)
+    attenuates the fitted-ratio slope; the leave-one-group-out inverse calibration of the point restores it."""
+    rng = np.random.default_rng(1)
+    n, grp = 192, np.repeat(np.arange(64), 3)
+    th = np.repeat(rng.uniform(-1.5, 1.5, 64), 3)
+    a_t = rng.uniform(0.3, 1.2, n)
+    T = np.c_[a_t, np.exp(th) * a_t]
+    D = 0.3 + 0.7 * T + 0.08 * rng.normal(size=(n, 2))
+    raw = L4.ratio_validity(D, th, 1.0, n_boot=200, noise=L4.ratio_noise(D, T))
+    cal, fit = L4.point_calibration(D, T, grp)
+    C = np.array([cal(i, D[i]) for i in range(n)])
+    good = L4.ratio_validity(C, th, 1.0, n_boot=200, noise=L4.ratio_noise(C, T))
+    assert fit["a"]["d"] == pytest.approx(0.7, abs=0.05) and not raw["covers_law"]
+    assert good["valid"] and good["slope"] == pytest.approx(1.0, abs=0.15)
+
+
+def test_readout_pool_selection_and_mask_floor():
+    """Primary momentum readout pool: held-out selection over contact and the object patches, the patches only when
+    they beat their mask-only floor; a patch readout whose placement alone carries the answer is not a candidate."""
+    rng = np.random.default_rng(0)
+    n, grp = 120, np.repeat(np.arange(40), 3)
+    states = []
+    for i in range(n):
+        q = float(np.exp(rng.uniform(-1, 1)))
+        vq = _post(q)
+        states.append(({"v": np.array([[1.0, 0.0], [0.0, 0.0]])}, {"v": vq}, {"n": [1.0, 0.0]}))
+    truth = lambda i: states[i][1]["v"]
+    mk = lambda sd: {"pre": lambda i: states[i][0], "floor": (lambda i, sd=sd: {"v": truth(i) + sd * rng.normal(size=(2, 2))})}
+    variants = {"contact": {}, "roi": {}}
+    good = L4.select_readout_pool({"contact": mk(0.3), "roi": mk(0.05)}, mk(0.5), states, grp, "log_deflection_ratio",
+                                  variants, n_boot=100)
+    assert good["roi_vs_mask"]["beats"] and set(good["candidates"]) == {"contact", "roi"} and good["selected"] == "roi"
+    leak = L4.select_readout_pool({"contact": mk(0.3), "roi": mk(0.05)}, mk(0.05), states, grp, "log_deflection_ratio",
+                                  variants, n_boot=100)
+    assert not leak["roi_vs_mask"]["beats"] and leak["candidates"] == ["contact"] and leak["selected"] == "contact"
+
+
+def test_steered_forecast_pooled_with_the_clips_own_contact_and_patch_weights():
+    """run_interventions stores every forecast also pooled with the clip's own pool weights (as forecast_spaces pools
+    the unsteered forecast): weights of the forecast's token-frames (after the kt context frames), post frames only,
+    normalised; object patches concatenated."""
+    rng = np.random.default_rng(0)
+    n_tf, kt, gh, gw, D = 6, 2, 3, 3, 5
+    F = rng.normal(size=(n_tf - kt, gh, gw, D)).astype(np.float32)
+    post = np.array([False, False, False, True, True, True])
+    wA, wB, wc = (rng.random(n_tf * gh * gw) for _ in range(3))
+    out = L4._pool_forecast({-1: F}, {"contact": ([wc], post), "roi": ([wA, wB], post)}, kt)
+
+    def manual(w):
+        W = w.reshape(n_tf, gh, gw)[kt:] * post[kt:, None, None]
+        return (W.reshape(-1) / W.sum()) @ F.reshape(-1, D)
+    assert np.allclose(out["final@contact.post"], manual(wc), atol=1e-5)
+    assert np.allclose(out["final@roi.post"], np.r_[manual(wA), manual(wB)], atol=1e-5)
+    assert np.allclose(out["final"], F.reshape(-1, D).mean(0)) and out["final|t"].shape == (n_tf - kt, D)
+
+
+def test_localize_gate_compares_confidence_intervals_not_points():
+    """The swap gate needs the IIA CI above the random control's CI; a higher point estimate with overlapping CIs
+    (V-JEPA 2-L momentum: 0.19 vs 0.11) does not gate localization in."""
+    sw = {"iia": 0.19, "iia_ci95": [0.10, 0.28], "p_sign_flip": 0.003, "error_ratio": 0.98}
+    rd = {"iia": 0.11, "iia_ci95": [0.05, 0.18]}
+    assert not L4._swap_passes({"swap": sw, "swap_random": rd}, False)
+    assert L4._swap_passes({"swap": {**sw, "iia_ci95": [0.2, 0.4]}, "swap_random": rd}, False)
+    assert not L4._swap_passes({"swap": {"iia": 0.9, "p_sign_flip": 0.0, "error_ratio": 0.1}, "swap_random": rd}, False)
+    res = {"variants": {"frame": {"verdict": {"law_like": True}}, "contact": {"verdict": {"law_like": False}}},
+           "primary_variant": "contact"}
+    g = L4.localize_gate(res, "momentum", False, ["steering", "swap"], "/nonexistent/l2.json")
+    assert not g["gated_in"]                      # only the held-out-selected primary readout counts
+    # saturation / step: exceeding passive propagation needs a paired CI, not a larger point rise
+    a, c = _sat_curves()
+    c = {k: np.array(v, float) for k, v in c.items()}
+    noisy = c["law"].copy()
+    noisy[:, -2:] += np.random.default_rng(3).normal(0, 0.5, (len(noisy), 2))     # passive: same rise on average
+    for pas in (c["law"].copy(), noisy):
+        c["passive"] = pas
+        s = L4.saturation_scores(c, a, list(range(10)), n_boot=200)
+        ci = s["law"]["rise_minus_passive"]["ci95"]
+        assert s["verdict"]["exceeds_passive"] == bool(ci and ci[0] > 0) and not s["verdict"]["exceeds_passive"]
 
 
 def test_patch_verdict_pass_only_for_physics_beating_controls():
@@ -1110,8 +1270,9 @@ def test_localize_gate_reads_steering_swap_and_the_l2_kink(tmp_path):
     assert not L4.localize_gate(fail, "momentum", False, ["steering", "swap", "l2_kink"], l2)["gated_in"]   # not its kink
     assert not L4.localize_gate(fail, "energy", False, ["steering", "swap"], l2)["gated_in"]      # gate list honoured
     ok = {"variants": {"frame": {"verdict": {"law_like": False},
-                                 "pairs": {"swap": {"iia": 0.9, "p_sign_flip": 0.001, "error_ratio": 0.2},
-                                           "swap_random": {"iia": 0.1}}}}}
+                                 "pairs": {"swap": {"iia": 0.9, "iia_ci95": [0.8, 0.95], "p_sign_flip": 0.001,
+                                                    "error_ratio": 0.2},
+                                           "swap_random": {"iia": 0.1, "iia_ci95": [0.02, 0.2]}}}}}
     assert L4.localize_gate(ok, "momentum", False, ["swap"], l2)["passed"] == ["swap"]
     inv = {"variants": {"frame": {"pairs": {"swap": {"law_like": True}}}}}
     assert L4.localize_gate(inv, "friction", True, ["swap"], l2)["gated_in"]
