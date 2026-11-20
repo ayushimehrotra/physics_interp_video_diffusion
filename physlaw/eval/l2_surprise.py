@@ -54,10 +54,19 @@ import numpy as np
 from physlaw.probes.select import holm
 
 
-def _index(path: Path) -> dict[str, dict]:
+def _index(path: Path, drop_continuation: bool = False) -> dict[str, dict]:
+    """clip -> record. ``drop_continuation``: remove the distances that condition on the real context (DiT
+    ``clean_*``, VideoMAE ``fut_*``; physlaw/models/track_a.py), from the surprise and its per_frame block."""
+    from physlaw.models.track_a import is_continuation_surprise
     recs = {}
     for line in open(path):
         r = json.loads(line)
+        if drop_continuation:
+            r["surprise"] = {k: v for k, v in (r.get("surprise") or {}).items() if not is_continuation_surprise(k)}
+            for blk in ("surprise", "weight"):
+                if blk in (r.get("per_frame") or {}):
+                    r["per_frame"][blk] = {k: v for k, v in r["per_frame"][blk].items()
+                                           if not is_continuation_surprise(k)}
         recs[r["clip"]] = r
     return recs
 
@@ -252,10 +261,14 @@ def energy_creating_share(lab, groups: list[str], viols: list[str]) -> dict:
     return out
 
 
-def run(sources: dict[str, Path], data_dir: Path, cfg, log=print) -> dict:
+def run(sources: dict[str, Path], data_dir: Path, cfg, log=print, drop_continuation: bool = False) -> dict:
     """sources: name -> _index.jsonl-style file whose records carry {"clip", "group", "twin", "surprise"} (+ optional
-    ``per_frame``; the model's records also "file", its stage-4 .npz relative to the index's directory)."""
-    idx = {name: _index(p) for name, p in sources.items()}
+    ``per_frame``; the model's records also "file", its stage-4 .npz relative to the index's directory).
+    ``drop_continuation``: the model is not a continuation model; its context-conditioned distances (cached before
+    2026-11-20) are ignored."""
+    idx = {name: _index(p, drop_continuation and name != "pixel_baselines") for name, p in sources.items()}
+    if drop_continuation:
+        log("[L2] not a continuation model: context-conditioned distances (clean_*, fut_*) ignored")
     labels_cache: dict[str, dict] = {}
 
     def lab(clip):

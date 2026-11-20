@@ -78,6 +78,16 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
   enter from off-screen and get a `legal_e04` control twin; F6 pairs use a visibly heavier metal cube; F10 tube
   κ = (1 + i²)/2 per group.
 * Smoke models: V-JEPA 2, CogVideoX, Cosmos-Predict2.5 (user, 2026-11-11).
+* **2026-11-20, continuation only on continuation models** (user; SPEC rule 3). Model configs carry
+  `continuation: true` only for V-JEPA 2 (L, g), the untrained control and PC1 (inherited from `vjepa2_vitl.yaml`).
+  For every other model, stage 04 caches encode + whole-clip surprise only (no forecast, no `--pred-real`, no DiT
+  `clean_*` / VideoMAE `fut_*`); stage 06 exits on L1 / L4 and L2 ignores `clean_*` / `fut_*` in older caches; L3
+  skips its forecast tests; stage 07 runs track A only for native / variant modes (`--allow-hack` removed;
+  `wan22_ti2v_5b_physrvg` is now `output_track: none`, so PhysRVG has no track A pair partner); stage 11 drops L1 /
+  L4 / track A scores and context-conditioned L2 distances of non-continuation models. PhysRVG's native v2v context
+  is used for track A only: stage 4 would hold every pre-contact latent clean, not its trained 2. PC2 (TI2V LoRA,
+  frame 0 pinned) gets L0 / L2 / L2b only. Removed: CogVideoX's held-frame / guided samplers and the
+  `minimal_prompt_cogvideox.py`, `naturalness_cogvideox.py`, `queues/cog_outputs.sh` scripts (in git history).
 * **2026-11-11, v3 metrics** (SPEC §5.0; supersedes every earlier metric):
   * **Nine laws, scale-free statistics.** Every statistic is a ratio of one kinematic quantity measured twice in the
     same clip by the same instrument, so it is unchanged by a length scale, a time scale and (with documented
@@ -185,12 +195,15 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
   VideoMAE-v2 0.79–0.95, above mask floors; one-twin refit V-JEPA 2 0.81–0.95, untrained −0.02.
 * **L1 S_mom** (frame vs ROI pool, legal twins, `smoke/l1_frame_roi/`): frame pooling cannot score momentum (probe on
   real legal video ≈ mass-blind); with ROI, every trained model's forecast breaks momentum worse than the mass-blind
-  rule (V-JEPA2-L −1.00, CogVideoX-2b −0.58, VideoMAEv2-g −1.00).
+  rule (V-JEPA2-L −1.00; CogVideoX-2b −0.58 and VideoMAEv2-g −1.00 are void: not continuation models).
 * **L2.** V-JEPA 2: momentum violations more surprising (raw win 0.66 / 0.70 for e1 / e015, Holm-significant);
-  CogVideoX-2b one borderline effect; VideoMAE-v2 and untrained nothing. Ideal-observer audit: e015 should be the
+  CogVideoX-2b's one borderline effect (e015) was on `clean_mse_all`, a continuation distance. Re-run 2026-11-20 on
+  the whole-clip `noisy_*` distances only (v3 L2, `smoke/l2_whole_clip/`): 2b e015 noisy_mse_obj 0.66 [0.53, 0.77],
+  Holm p 0.16; 1.5-5B-I2V 0.75 [0.64, 0.84], Holm p 3e-5, but below the constant-velocity pixel baseline (0.88;
+  model − const_vel −0.13 [−0.27, 0.00]) for both; e1 contrasts nothing; VideoMAE-v2 and untrained nothing. Ideal-observer audit: e015 should be the
   primary momentum contrast; mass-blindness does not pass L2.
 * **L2b.** Momentum violations barely decodable (AUC 0.55–0.58).
-* **Outputs.** CogVideoX-2b track A gate 0/20 (now `output_track: none`). Wan2.2-I2V-A14B track B: strict 0/22,
+* **Outputs.** CogVideoX-2b track A gate 0/20 (void: latent replacement on a T2V model; never run again). Wan2.2-I2V-A14B track B: strict 0/22,
   loose 8/22, all 8 with violations.
 * **PC1 500-step test**: predictor not yet better than copy-last; `--check` on V-JEPA 2 fails.
 * **L4 momentum validation (readout v2, 2026-11-12, `smoke/l4_momentum_validation/`)**: V-JEPA2-L, precondition LOSO
@@ -204,10 +217,11 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
 
 1. **Render every family at master quality** (`KUBRIC_USE_GPU=1`, 832×480, 48 fps): F2, F3, F4, F6, F7, F8, F9, F10,
    F11, F12, 10 groups each for the smoke pass (more later), one family per GPU; `02_validate_data.py` on each.
-2. **Stage 4 `--force`** on every model × family to rebuild caches with per-frame pools (`pooled_frame_t`; diffusion
-   `fc_pooled_frame_t`) and the contact pool; `--pred-real` for encoders with a predictor / decoder. Re-cache F1 too.
+2. **Stage 4 `--force`** on every model × family to rebuild caches with per-frame pools (`pooled_frame_t`) and the
+   contact pool; `--pred-real` for the continuation models (V-JEPA 2, untrained, PC1). Non-continuation models get no
+   forecast (stage 4 skips it). Re-cache F1 too.
 3. **Stage 05 `--force`** (pixel baselines for L2) on every family.
 4. **L0 → L1 → L2 / L2-rep → L2b → L3 → L4** per model (smoke models first: V-JEPA2-L, untrained, CogVideoX-2b,
-   Cosmos), then stages 07–09 (output tracks, readout validation on real clips first) and stage 11 (leaderboard).
+   Cosmos; L1 / L4 and L3's forecast tests only for continuation models), then stages 07–09 (output tracks, readout validation on real clips first) and stage 11 (leaderboard).
 5. **PC1 / PC2 training** on the re-rendered training set (`configs/data/pc1_train.yaml`, legal clips only), then PC1
    through L0–L2b; check the §5.0.5 pass criteria before claiming any large model fails.

@@ -15,8 +15,10 @@ from physlaw.models import track_a as T
 REPO = Path(__file__).resolve().parents[1]
 MODELS = REPO / "configs" / "models"
 
-ROSTER_A = {"cosmos_predict25_2b": "native", "physrvg": "native", "wan22_ti2v_5b_physrvg": "hack",
+ROSTER_A = {"cosmos_predict25_2b": "native", "physrvg": "native",
             "wan21_vace_1_3b": "variant", "wan21_vace_14b": "variant", "ltx_video_13b_distilled": "native"}
+# continuation only on continuation models (2026-11-20): the only configs whose internals may be continued
+CONTINUATION = {"vjepa2_vitl", "vjepa2_vitg", "untrained_vitl", "positive_control"}
 ROSTER_B = {"wan22_i2v_a14b", "wan21_i2v_14b", "cogvideox15_5b_i2v"}
 
 # sample label: contact (first post-contact master frame) at 120, 48 fps master, 6 s clip
@@ -46,7 +48,8 @@ def test_track_rosters():
     tracks = {s: T.track_fields(cfg(s)) for s in generator_stems()}
     assert {s: m for s, (t, m) in tracks.items() if t == "A"} == ROSTER_A
     assert {s for s, (t, _) in tracks.items() if t == "B"} == ROSTER_B
-    for s in ("cogvideox_2b", "cogvideox_5b", "videorepa_5b", "wan21_t2v_1_3b", "wan21_t2v_14b", "wan22_ti2v_5b"):
+    for s in ("cogvideox_2b", "cogvideox_5b", "videorepa_5b", "wan21_t2v_1_3b", "wan21_t2v_14b", "wan22_ti2v_5b",
+              "wan22_ti2v_5b_physrvg"):
         assert tracks[s][0] == "none"
     ev = load_config(REPO / "configs" / "eval" / "outputs.yaml")
     assert set(ev["track_a"]["models"]) == set(ROSTER_A) and set(ev["track_b"]["models"]) == ROSTER_B
@@ -58,7 +61,7 @@ def test_track_a_adapters_resolve():
     from physlaw.models import registry
     names = {s: registry.adapter_class(cfg(s)).__name__ for s in ROSTER_A}
     assert names == {"cosmos_predict25_2b": "CosmosPredictAdapter", "physrvg": "WanAdapter",
-                     "wan22_ti2v_5b_physrvg": "WanAdapter", "wan21_vace_1_3b": "WanVACEAdapter",
+                     "wan21_vace_1_3b": "WanVACEAdapter",
                      "wan21_vace_14b": "WanVACEAdapter", "ltx_video_13b_distilled": "LTXConditionAdapter"}
     assert registry.adapter_class(cfg("cogvideox15_5b_i2v"), role="track_b").__name__ == "CogVideoX15I2VPipelineAdapter"
     assert registry.adapter_class(cfg("cogvideox15_5b_i2v")).__name__ == "CogVideoX15I2VAdapter"   # stage 4 unchanged
@@ -230,15 +233,14 @@ def _stage07():
     return mod
 
 
-def test_stage07_refuses_track_a_without_hack():
+def test_stage07_track_a_only_for_continuation_models():
     s07 = _stage07()
     assert s07.check_track(cfg("physrvg"), "a") == (True, "native")
-    assert s07.check_track(cfg("wan22_ti2v_5b_physrvg"), "a") == (True, "hack")
     assert s07.check_track(cfg("wan21_vace_1_3b"), "a") == (True, "variant")
-    for s in ("cogvideox_2b", "wan21_t2v_1_3b", "wan22_i2v_a14b", "cogvideox15_5b_i2v"):
+    for s in ("cogvideox_2b", "wan21_t2v_1_3b", "wan22_i2v_a14b", "cogvideox15_5b_i2v", "wan22_ti2v_5b_physrvg"):
         ok, msg = s07.check_track(cfg(s), "a")
-        assert not ok and "--allow-hack" in msg
-        assert s07.check_track(cfg(s), "a", allow_hack=True) == (True, "hack")
+        assert not ok and "not a continuation model" in msg
+    assert "--allow-hack" not in (REPO / "scripts" / "07_generate_outputs.py").read_text()
     assert s07.check_track(cfg("cogvideox15_5b_i2v"), "b") == (True, "hack")
     assert s07.check_track(cfg("wan22_i2v_a14b"), "b") == (True, "n/a")
     assert not s07.check_track(cfg("physrvg"), "b")[0]
@@ -303,3 +305,25 @@ def test_ltx_adapter_runs_real_pipeline_tiny():
     x = np.random.default_rng(0).integers(0, 255, (17, 32, 32, 3), dtype=np.uint8)
     v = m.generate(x, 12, seed=0)                 # context = window frames 3..11
     assert v.shape == (17, 32, 32, 3) and np.array_equal(v[:3], x[:3])
+
+
+# ------------------------------------------------------------------ continuation only on continuation models
+
+def test_track_a_rejects_hack_mode():
+    with pytest.raises(ValueError, match="native or variant"):
+        T.track_fields({"name": "x", "output_track": "A", "track_a_mode": "hack"})
+
+
+def test_continuation_flag_per_model():
+    got = {p.stem for p in MODELS.glob("*.yaml") if T.continues(load_config(p))}
+    assert got == CONTINUATION
+    with pytest.raises(ValueError, match="not a continuation model"):
+        T.require_continuation(cfg("cogvideox_2b"), "L1")
+    T.require_continuation(cfg("vjepa2_vitl"), "L1")
+
+
+def test_continuation_surprise_names():
+    for k in ("clean_mse_all", "clean_mse_obj", "fut_mse_obj", "fut_wmse_all"):
+        assert T.is_continuation_surprise(k)
+    for k in ("noisy_mse_obj", "tube_mse_all", "mse_obj", "l1_obj", "clean_window", "clean_until_s"):
+        assert not T.is_continuation_surprise(k)

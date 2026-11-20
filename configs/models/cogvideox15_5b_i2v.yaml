@@ -3,7 +3,7 @@
 name: cogvideox1.5-5b-i2v
 kind: diffusion
 output_track: B           # scripts/07_generate_outputs.py; models/track_a.py
-track_a_mode: hack        # frame 0 + prompt via the official I2V pipeline (track_b_adapter); latent replacement A needs --allow-hack
+track_a_mode: hack        # frame 0 + prompt via the official I2V pipeline (track_b_adapter); no track A (not a continuation model)
 hf_id: zai-org/CogVideoX1.5-5B-I2V
 local_path: ${env:PHYSLAW_MODELS,/root/models}/CogVideoX1.5-5B-I2V
 revision: 46c90528707aebbe69066390b4fe7e7d24c9c2a4   # from the download's .cache/huggingface metadata

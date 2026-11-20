@@ -11,8 +11,9 @@ Rules carried over from CogVideoX-2b (docs/RESUME.md, milestone 7) and applied t
     was fed, as one vector per token (the token's latent patch, C x patch_t x patch x patch values), so stage 4 pools
     it exactly like the activations. ``latent_baseline()`` computes only these keys (no transformer pass).
   * surprise(): the model's own training loss on post-context latents over the encode SNR timesteps x
-    ``surprise.n_draws`` fixed noise draws (identical across twins); ``clean_*`` with clean context latents,
-    ``noisy_*`` with the whole clip noised. Regions: all post-context tokens and ``obj`` (the balls' ROI tokens).
+    ``surprise.n_draws`` fixed noise draws (identical across twins); ``clean_*`` with clean context latents (a
+    continuation: only for ``continuation: true`` configs, physlaw/models/track_a.py), ``noisy_*`` with the whole
+    clip noised. Regions: all post-context tokens and ``obj`` (the balls' ROI tokens).
 
 Latents are [1, F, C, h, w] (frames first) throughout; each family converts at its VAE and transformer boundary and
 supplies the schedule (``_t_for_db``, ``_add_noise``, ``_train_err``), the VAE (``_vae_encode``, ``_vae_decode``), the
@@ -33,6 +34,7 @@ from typing import Any
 import numpy as np
 
 from physlaw.models.base import ModelAdapter, fit_frames, frame_means, sample_frames, token_spec
+from physlaw.models.track_a import continues
 
 DEFAULT_PROMPT = ("A static camera looks straight down at a flat grey floor. Two balls roll across the floor, "
                   "collide with each other and bounce apart.")
@@ -468,7 +470,7 @@ class DiTAdapter(ModelAdapter):
             for db in self.snrs:
                 t = self.t_for_snr[db]
                 zt = self._add_noise(z0, eps, t)
-                for variant in ("clean", "noisy"):
+                for variant in (("clean", "noisy") if continues(self.cfg) else ("noisy",)):
                     zin = zt.clone()
                     if variant == "clean":
                         zin[:, :kl] = z0[:, :kl]

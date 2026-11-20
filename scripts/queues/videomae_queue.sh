@@ -9,5 +9,4 @@ $P scripts/04_cache_activations.py --model $M --data data/f1 > /root/envs/cache_
 $P scripts/05_surprise.py --model $M --data data/f1 > /root/envs/pixel_videomae.log 2>&1; echo "[vq] pixel baselines done $(date +%T)"
 $P scripts/06_eval.py --model $M --level configs/eval/l0_states.yaml --data data/f1 > /root/envs/l0_videomae.log 2>&1; echo "[vq] L0 done $(date +%T)"
 $P scripts/06_eval.py --model $M --level configs/eval/l2_surprise.yaml --data data/f1 > /root/envs/l2_videomae.log 2>&1; echo "[vq] L2 done $(date +%T)"
-OMP_NUM_THREADS=32 $P scripts/06_eval.py --model $M --level configs/eval/l1_forecast_laws.yaml --data data/f1 > /root/envs/l1_videomae.log 2>&1; echo "[vq] L1 done $(date +%T)"
 echo "[vq] ALL DONE"

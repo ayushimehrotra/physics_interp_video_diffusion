@@ -24,10 +24,11 @@ momentum: {kappa: 0.25, min_mass_ratio: 1.25, e_tol: 0.1}
 energy: {tol: 0.1}
 # Track A (§6.2): continue the real pre-event context with the adapter's generate().
 track_a:
-  # Roster (configs/models/<stem>.yaml; output_track A, track_a_mode in brackets): native multi-frame conditioning,
-  # the official VACE sibling of Wan2.1-T2V, and the flagged TI2V-5B clamp (PhysRVG's pair partner).
-  models: [cosmos_predict25_2b, physrvg, ltx_video_13b_distilled, wan21_vace_1_3b, wan21_vace_14b,
-           wan22_ti2v_5b_physrvg]   # native, native, native, variant, variant, hack
+  # Roster (configs/models/<stem>.yaml; output_track A, track_a_mode in brackets): native multi-frame conditioning
+  # and the official VACE sibling of Wan2.1-T2V. Continuation models only (2026-11-20, physlaw/models/track_a.py):
+  # the TI2V-5B clamp (PhysRVG's pair partner) was dropped, so PhysRVG has no track A partner.
+  models: [cosmos_predict25_2b, physrvg, ltx_video_13b_distilled, wan21_vace_1_3b, wan21_vace_14b]
+           # native, native, native, variant, variant
   seeds_per_clip: 4
   # feasibility gate: seed-0 generations of the first n_clips groups; below min_pass_rate measurable, no extra seeds
   gate: {n_clips: 20, min_pass_rate: 0.5}

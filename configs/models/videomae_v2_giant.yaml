@@ -4,6 +4,7 @@
 # OpenGVLab/VideoMAE2 file repo. Loaded with torch.load(weights_only=True). See physlaw/models/videomae2.py.
 name: videomaev2-giant
 kind: encoder
+continuation: false     # pre-trained with random tube masks, never future masks: no forecast / L1 / L4
 arch: videomae2_pretrain
 hf_id: OpenGVLab/VideoMAE2
 revision: 706cc172d65ebd4dedbee3f9c0183a93df9fa125

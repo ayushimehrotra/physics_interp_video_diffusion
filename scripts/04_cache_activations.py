@@ -30,6 +30,11 @@ Diffusion models (kind: diffusion): no _forecast.npz; instead each twin's .npz c
                       twins cached before per-segment forecasts (no fc_segment: they got one shared forecast)
                       or before fc_pooled_frame_t (the forecast is sampled again).
 
+Continuation only on continuation models (physlaw/models/track_a.py, 2026-11-20): forecasts (_forecast*.npz,
+fc_pooled, gen_seed0.mp4), --pred-real and context-conditioned surprise (DiT clean_*, VideoMAE fut_*) are computed
+only for configs with ``continuation: true`` (V-JEPA 2, its untrained control, PC1). Every other model caches
+encode() + whole-clip surprise (as --no-forecast) and --pred-real exits.
+
 Pooled rather than full-token activations: 13 layers x 8192 tokens x 1024 x 2 B = 218 MB
 per clip would be ~70 GB for 320 clips. Pools are ROI_A/ROI_B/ROI_pair/frame x pre/post/all
 (physlaw/tokens). Full tokens for chosen layers: --save-tokens LAYER ... (for L4 later).
@@ -72,6 +77,7 @@ from physlaw.eval.l1_forecast_laws import (check_shared_forecast, clip_segment, 
 from physlaw.eval.l2_surprise import clean_until_s  # noqa: E402
 from physlaw.models.dit import clip_prompt  # noqa: E402
 from physlaw.models.registry import load_adapter  # noqa: E402
+from physlaw.models.track_a import continues  # noqa: E402
 from physlaw.tokens.pool import pool_weights  # noqa: E402
 from physlaw.tokens.project import (group_object_region, project_masks, roi_object_ids,  # noqa: E402
                                     token_frame_phase)
@@ -193,6 +199,12 @@ def main():
     out = Path(a.out) if a.out else REPO / "cache" / cfg.name / data.name
     out.mkdir(parents=True, exist_ok=True)
     print(f"[04] model={cfg.name} clips={len(clips)} groups={len(groups)} out={out} hash={config_hash(cfg)}", flush=True)
+    cont = continues(cfg)
+    if a.pred_real and not cont:
+        sys.exit(f"[04] {cfg.name}: P-pred-real continues the real context; not a continuation model "
+                 "(physlaw/models/track_a.py)")
+    if not cont:
+        print(f"[04] {cfg.name}: not a continuation model: encode() + whole-clip surprise only (no forecast)", flush=True)
     m = load_adapter(cfg, need="internals")
     if a.pred_real and not (hasattr(m, "pred_real") and m.predicts):
         sys.exit(f"[04] {cfg.name}: P-pred-real is not defined for this adapter (spec §5.2: encoders only)")
@@ -234,9 +246,9 @@ def main():
                 have = np.load(f_npz).files if diffusion else ()
                 fc_missing = (("fc_pooled" not in have or "fc_pooled_frame_t" not in have
                                or (seg is not None and "fc_segment" not in have)) if diffusion
-                              else m.predicts and seg is not None and not forecast_path(out, gid, seg).exists())
+                              else cont and m.predicts and seg is not None and not forecast_path(out, gid, seg).exists())
                 todo = [part for part, need in (("latent", diffusion and "pooled_latent" not in have),
-                                                ("forecast", not (diffusion and a.no_forecast) and fc_missing))
+                                                ("forecast", cont and not (diffusion and a.no_forecast) and fc_missing))
                         if need]
                 if not todo:
                     continue
@@ -299,11 +311,11 @@ def main():
             side["pooled_frame_t"] = frame_pool_t([acts[l] for l in main])
             side["token_t_s"] = np.array(tok_t)
             extra = {f"tokens_layer{l}": acts[l].half().cpu().numpy() for l in a.save_tokens if l in acts}
-            if diffusion and not a.no_forecast:
+            if diffusion and cont and not a.no_forecast:
                 side.update(add_forecast(m, x, k, gid, seg, raw, out, Wt, names, phases, kt, fc_memo))
             np.savez(f_npz, pooled=pooled.half().cpu().numpy(), pools=np.array(names), layers=np.array(layers),
                      frames=np.array(fr), context_frames=k, phases=np.array(phases), **side, **extra)
-            if not diffusion and m.predicts:
+            if not diffusion and cont and m.predicts:
                 write_forecast(m, x, k, forecast_path(out, gid, seg), seg, raw, a.force, fc_users)
             rec = {"clip": f"{gid}/{twin}", "group": gid, "twin": twin, "split": c.pl["split"],
                    "family": c.pl["family"], "surprise": sur, "file": str(f_npz.relative_to(out)),

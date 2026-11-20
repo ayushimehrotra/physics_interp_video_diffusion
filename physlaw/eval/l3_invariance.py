@@ -71,6 +71,7 @@ import numpy as np
 
 from physlaw.eval.l0_states import _pool_name, event_inputs, load_index
 from physlaw.eval.l1_forecast_laws import clip_segment, forecast_path, forecast_segments
+from physlaw.models.track_a import continues
 from physlaw.probes.ridge import (DEFAULT_ALPHAS, apply_instrument, fit_select, grouped_kfold, instrument_folds,
                                   moment_match, r2_score)
 
@@ -511,7 +512,10 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
                 for name in dec}
         log("[L3 galilean] camera vs ball boost: " + "; ".join(
             f"{lv}: d_eps {v['epsilon']['diff']}" for lv, v in out["camera_vs_ball"].items()))
-    if cache_dir is not None and mcfg is not None:      # the law test: the model's forecast (audit H2)
+    if cache_dir is not None and mcfg is not None and not continues(mcfg):
+        out["forecast"] = {"skipped": "not a continuation model (physlaw/models/track_a.py)"}
+        log("[L3 galilean] forecast: skipped (not a continuation model)")
+    elif cache_dir is not None and mcfg is not None:    # the law test: the model's forecast (audit H2)
         kinds = list(gc.get("forecast_pools") or gc["pools"])
         from physlaw.eval.l0_states import _pool_name
         names = sorted({_pool_name(kd, o, ph) for kd in kinds for o in "AB" for ph in ("pre", "post")})
@@ -521,11 +525,12 @@ def galilean(recs, labels, A, pools, layers, cfg, cache_dir=None, data_dir=None,
         log("[L3 galilean] forecast (" + str(out["forecast"].get("selected_space")) + "): " + "; ".join(
             f"{lv}: {v}" for lv, v in out["forecast"].get("verdict", {}).items()))
     if cache_dir is not None and gc.get("l2_contrasts"):
-        out["l2_by_level"] = l2_by_level(cache_dir, data_dir, recs, level, gc["l2_contrasts"], log)
+        out["l2_by_level"] = l2_by_level(cache_dir, data_dir, recs, level, gc["l2_contrasts"], log,
+                                         drop_continuation=mcfg is not None and not continues(mcfg))
     return out
 
 
-def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=print) -> dict:
+def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=print, drop_continuation=False) -> dict:
     """L2 win rates (model and pixel baselines) separately on each boost level's twins. ``contrasts``: an L2 family block
     ({calibration: [legal, legal], list: [{viol, legal, ...}]}) whose twin names may contain ``{level}``."""
     from physlaw.eval import l2_surprise
@@ -546,7 +551,7 @@ def l2_by_level(cache_dir: Path, data_dir: Path, recs, level, contrasts, log=pri
             cfg = {"contrasts": {fam: {"calibration": [fill(t) for t in contrasts["calibration"]],
                                        "list": [{**c, "viol": fill(c["viol"]), "legal": fill(c["legal"])}
                                                 for c in contrasts.get("list", [])]}}}
-            res = l2_surprise.run(sources, data_dir, cfg, log=lambda *a: None)
+            res = l2_surprise.run(sources, data_dir, cfg, log=lambda *a: None, drop_continuation=drop_continuation)
             out[str(lv)] = {"contrasts": {c: {src: {m: {k: v[k] for k in ("n", "win_rate", "win_rate_ci95") if k in v}
                                                     for m, v in d.items()} for src, d in by.items()}
                                           for c, by in res["contrasts"].items()}}
@@ -643,6 +648,9 @@ def score_vs_mask(r: dict, n_boot: int, seed: int = 0) -> dict:
 
 def mass_independence(cache_dir, data_dir, recs, labels, mcfg, cfg, family: str, log=print) -> dict:
     from physlaw.eval import laws
+    if not continues(mcfg):                      # the test reads the model's forecast
+        log("[L3 mass_independence] skipped (not a continuation model)")
+        return {"skipped": "not a continuation model (physlaw/models/track_a.py)"}
     mc = cfg["mass_independence"]
     fam = mc["families"][family]
     sel = [i for i, l in enumerate(labels) if fam.get("subfamily") is None or get(l, "physlaw.subfamily") == fam["subfamily"]]
@@ -818,6 +826,8 @@ def table(res: dict) -> str:
                     rows.append(f"| {lv} | {name} | {v.get('n_paired')} | {f(v.get('diff'), '+.3f')}{c(v.get('diff_ci95'))} | "
                                 f"{f(v.get('true_diff'), '+.3f')} |")
         fcg = g.get("forecast")
+        if fcg and fcg.get("skipped"):
+            rows += ["", f"Law test (forecast): skipped ({fcg['skipped']})."]
         if fcg and fcg.get("spaces"):
             rows += ["", f"**Law test (audit H2): the model's FORECAST of boosted vs unboosted collisions**, same instrument "
                      f"as its real-video floor; space {fcg['selected_space']} ({fcg['selection']}). d = mean over pairs; "

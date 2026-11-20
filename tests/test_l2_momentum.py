@@ -116,3 +116,21 @@ def test_ideal_observer_f1():
             assert io["win_rate"][k] == pytest.approx(v, abs=0.006), (viol, k)
         assert io["win_rate_unequal_mass"]["mass_blind"] == pytest.approx(0.41, abs=0.006)
         assert io["viol_slower"] == pytest.approx(slow, abs=0.006)
+
+
+def test_index_drops_continuation_distances(tmp_path):
+    """A non-continuation model's L2 ignores its context-conditioned distances (DiT clean_*, VideoMAE fut_*),
+    clip-level and per-frame; everything else, and every record, is kept."""
+    from physlaw.eval import l2_surprise
+    rec = {"clip": "g/t", "group": "g", "twin": "t",
+           "surprise": {"clean_mse_obj": 1.0, "noisy_mse_obj": 2.0, "fut_wmse_all": 3.0, "tube_mse_all": 4.0},
+           "per_frame": {"t_s": [0.1], "surprise": {"clean_mse_obj": [1.0], "noisy_mse_obj": [2.0]},
+                         "weight": {"clean_mse_obj": [1.0], "noisy_mse_obj": [1.0]}}}
+    f = tmp_path / "_index.jsonl"
+    f.write_text(json.dumps(rec) + "\n")
+    kept = l2_surprise._index(f)["g/t"]
+    assert set(kept["surprise"]) == set(rec["surprise"])
+    r = l2_surprise._index(f, drop_continuation=True)["g/t"]
+    assert r["surprise"] == {"noisy_mse_obj": 2.0, "tube_mse_all": 4.0}
+    assert set(r["per_frame"]["surprise"]) == set(r["per_frame"]["weight"]) == {"noisy_mse_obj"}
+    assert r["per_frame"]["t_s"] == [0.1]

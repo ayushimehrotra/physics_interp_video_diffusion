@@ -13,6 +13,15 @@ State, results and the run plan: `docs/RESUME.md` (the only status doc).
 Rules:
 1. Milestones marked **DONE** in Section 10 stay as they are. Re-run them only where Section 10 or `docs/RESUME.md` §5 says so.
 2. Where this spec and the built code disagree, keep the built behaviour and record the disagreement in `docs/RESUME.md`.
+3. **Continuation only on continuation models** (user, 2026-11-20; overrides every section below). Anything that
+   conditions a model on the REAL pre-event frames and reads what it does next runs only where that is the model's own
+   trained task: `forecast()`, P-pred-real, context-conditioned surprise (DiT clean-context loss, VideoMAE
+   future-masked reconstruction), L1, L3's forecast tests (Galilean law test, mass independence), L4, and output
+   track A. Internals: only configs with `continuation: true` (V-JEPA 2 L / g, its untrained control, PC1). Track A:
+   only `track_a_mode` native or variant (Cosmos-Predict2.5 Video2World, PhysRVG v2v, LTX-Video, Wan2.1-VACE). Every
+   text-to-video / image-to-video / TI2V model (CogVideoX, Wan, VideoREPA, PC2) and VideoMAE-v2 (random tube masks in
+   pre-training, never future masks) gets the full-clip levels only: L0, L2 on whole-clip distances, L2b, L3 transfer,
+   and track B where it is I2V. Enforced in code (`physlaw/models/track_a.py`, stages 04 / 06 / 07, stage 11).
 
 ---
 
@@ -226,8 +235,8 @@ Implementation rules (as built):
 - **Encoders: encode context frames alone.** Never use `transformers`' `VJEPA2Model.forward(context_mask=...)` for context, which encodes the whole clip and leaks the future.
 - **DiTs: context latents come from VAE-encoding the context frames alone** (the VAE's temporal GroupNorm otherwise leaks post-event frames).
 - **DiT encode():** noise to the timestep matching each SNR in {−20, −8, 0, +8} dB, one conditional pass.
-- **DiT surprise():** the model's own training loss on post-event latents over the SNR timesteps × 2 noise draws (identical across twins), with clean context and with noisy context.
-- **Two-pass caching for diffusion models:** `--no-forecast` caches encode + surprise; a later pass adds forecasts and generations without recomputing.
+- **DiT surprise():** the model's own training loss on post-event latents over the SNR timesteps × 2 noise draws (identical across twins), with the whole clip noised (`noisy_*`); the clean-context variant (`clean_*`) is a continuation and is computed only for continuation models (rule 3).
+- **Two-pass caching for diffusion models:** `--no-forecast` caches encode + surprise; a later pass adds forecasts and generations without recomputing. Only for continuation models (rule 3); every other DiT caches as `--no-forecast`.
 - Weights hash-verified; `HF_HUB_OFFLINE=1` for runs.
 
 ### 4.2 Models, grouped by the question each answers
@@ -260,7 +269,7 @@ Status: **DONE**, **RUNNING**, **ADD**. Priority as in Section 2.3.
 | Wan2.2-TI2V-5B | PhysRVG (weights: HappyP4nda/PhysRVG) | RL reward for rigid-body collisions | P0 |
 | CogVideoX-5B | VideoREPA-5B (released LoRA adapter, github.com/aHapBean/VideoREPA) | Aligns DiT token relations to VideoMAE-v2 | P0 |
 
-Run L0, L1, L2, L2b on both members of each pair with identical settings. VideoREPA's teacher (VideoMAE-v2) is at chance on L2 in this benchmark; report whether the student gains law sensitivity the teacher lacks. Output track A: PhysRVG is natively video-conditioned (its v2v pipeline holds the first 2 latent frames = 5 frames clean), so it runs track A on exactly that context (Group 4); its base runs the same 2-latent clamp, flagged `track_a_mode: hack`, as the pair comparison. The CogVideoX-5B / VideoREPA pair is text-to-video: no track A (latent replacement only with `--allow-hack`).
+Run L0, L2, L2b on both members of each pair with identical settings (no L1: neither member is a continuation model, rule 3). VideoREPA's teacher (VideoMAE-v2) is at chance on L2 in this benchmark; report whether the student gains law sensitivity the teacher lacks. Output track A: PhysRVG is natively video-conditioned (its v2v pipeline holds the first 2 latent frames = 5 frames clean), so it runs track A on exactly that context (Group 4); its base (Wan2.2-TI2V-5B, frame 0 only natively) is not a continuation model, so the pair has no track A comparison (rule 3). The CogVideoX-5B / VideoREPA pair is text-to-video: no track A.
 
 Follow-up (not in this spec's milestones): a VideoREPA variant aligned to V-JEPA 2 instead of VideoMAE-v2, using VideoREPA's public training code.
 
@@ -276,7 +285,7 @@ Track A needs a model that continues several REAL frames (velocities visible); a
 | Wan2.1-VACE-1.3B / 14B (`wan21_vace_1_3b`, `wan21_vace_14b`) | variant | every pre-contact window frame (40, masters 0–117), mask 0; rest grey, mask 1 | 16 | P0 / P1 | Official siblings of Wan2.1-T2V-1.3B / 14B (text only) |
 | LTX-Video 0.9.8 13B distilled (`ltx_video_13b_distilled`) | native | last 49 pre-contact frames (8k+1), masters 22–118 | 24 | P1 | Single pass at 480 × 832 (the card's multi-scale refinement skipped) |
 
-Not track A: CogVideoX-2b / 5b, VideoREPA-5B, Wan2.1-T2V-1.3B / 14B, Wan2.2-TI2V-5B (own settings) are `output_track: none` (latent replacement, gate 0/20 on CogVideoX-2b, only with `--allow-hack`).
+Not track A: CogVideoX-2b / 5b, VideoREPA-5B, Wan2.1-T2V-1.3B / 14B, Wan2.2-TI2V-5B (own settings) are `output_track: none` (latent replacement gave a 0/20 gate on CogVideoX-2b; never run, rule 3).
 
 #### Group 5. Output track B (self-consistency from frame 0)
 
@@ -518,16 +527,16 @@ CI > 0 beyond every baseline on F2 or F7 bounce, untrained K CI containing 0**.
 * **L1 Forecast law consistency** (`eval/l1_forecast_laws.py`): instrument P-pred-real (the model's own forecast-space
   outputs for masked real post-event frames; primary wherever the cache has it) or as_is (one probe on pre and post rows
   of the same layer); moment-matched forecasts are a diagnostic only; P-forecast (a probe trained on forecasts) is never
-  used. S_mom is primary for momentum; S_family (distance to the legal collision family) is secondary. DiTs: one space
-  per (SNR, layer), selected on held-out groups.
+  used. S_mom is primary for momentum; S_family (distance to the legal collision family) is secondary. Continuation
+  models only (rule 3); a continuation DiT would get one space per (SNR, layer), selected on held-out groups.
 * **L2 Violation sensitivity, zero-fit** (`eval/l2_surprise.py`): `surprise()` on the clean post-event window for every
   twin with identical context, masks and noise (the object region is one per group: the union of the group's twins'
   object masks over the clean window); contrasts, kinks and the motion controls of §5.0.4–5.0.5 (paired win
   rate, bootstrap CI, Wilcoxon, Cliff's delta; Holm within family).
 * **L2b Trained violation detection** (`eval/l2b_detection.py`): logistic probe on post-event activations (roi and
   frame pools), grouped CV, the kinematic baseline and the paired CI.
-* **L3 Invariance** (`eval/l3_invariance.py`) and **L4 Causal propagation** (`eval/l4_causal.py`): §5.0.4. For DiTs, L4
-  also generates after the intervention and tracks the result with the output readout.
+* **L3 Invariance** (`eval/l3_invariance.py`) and **L4 Causal propagation** (`eval/l4_causal.py`): §5.0.4. Continuation
+  models only (rule 3); a continuation DiT would also generate after the intervention and track the result.
 
 ---
 
@@ -541,7 +550,7 @@ in the clip).
 
 * **Track A, scene continuation**: generate from the real pre-event context and score with the same laws as L1. A
   feasibility gate first (20 clips; < 50% measurable → report the gate and skip extra seeds). Report `track_a_mode` with
-  every result; keep `hack` rows apart.
+  every result; only native / variant models run (rule 3).
 * **Track B, self-consistency from frame 0**: generate from frame 0 with the minimal prompt; score whether the generated
   event obeys each law given its own generated pre-event state, with mass-free tests (Δv antiparallel along n, ε ≤ 1);
   strict and loose gates.

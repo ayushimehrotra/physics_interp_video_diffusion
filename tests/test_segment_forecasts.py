@@ -84,12 +84,13 @@ class FakeModel:
         return {-1: F}
 
 
-def _run(tmp_path, monkeypatch, diffusion, extra=(), model=None):
+def _run(tmp_path, monkeypatch, diffusion, extra=(), model=None, continuation=True):
     S4 = _stage4()
     data = tmp_path / "data"
     clips = [data / g / t for g in GROUPS for t in GROUPS[g]]
     yml = tmp_path / "fake.yaml"
-    yml.write_text(f"name: fake\nkind: {'diffusion' if diffusion else 'encoder'}\n")
+    yml.write_text(f"name: fake\nkind: {'diffusion' if diffusion else 'encoder'}\n"
+                   f"continuation: {'true' if continuation else 'false'}\n")
     m = model or FakeModel(diffusion)
     roi = SimpleNamespace(roi=np.zeros((T // TUB, 2, 2), bool))
     monkeypatch.setattr(S4, "list_clips", lambda d: clips)
@@ -125,6 +126,18 @@ def test_encoder_one_forecast_file_per_segment(tmp_path, monkeypatch):
     m2 = FakeModel(False)
     _run(tmp_path, monkeypatch, diffusion=False, model=m2)
     assert m2.n_forecasts == 0
+
+
+@pytest.mark.parametrize("diffusion", [False, True])
+def test_no_forecast_for_a_non_continuation_model(tmp_path, monkeypatch, diffusion):
+    """Continuation only on continuation models (physlaw/models/track_a.py): without ``continuation: true`` stage 4
+    caches encode() + surprise and never calls forecast(); --pred-real exits."""
+    out, m = _run(tmp_path, monkeypatch, diffusion=diffusion, continuation=False)
+    assert m.n_forecasts == 0 and not list(out.rglob("_forecast*.npz")) and not list(out.rglob("gen_seed*.mp4"))
+    assert all("fc_pooled" not in np.load(f).files for f in out.rglob("*.npz"))
+    assert len((out / "_index.jsonl").read_text().splitlines()) == sum(len(t) for t in GROUPS.values())
+    with pytest.raises(SystemExit, match="not a continuation model"):
+        _run(tmp_path, monkeypatch, diffusion=diffusion, continuation=False, extra=["--pred-real"])
 
 
 def test_encoder_backfills_segment_forecasts_of_an_old_cache(tmp_path, monkeypatch):

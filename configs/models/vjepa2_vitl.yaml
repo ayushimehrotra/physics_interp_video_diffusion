@@ -1,6 +1,8 @@
 # V-JEPA 2 ViT-L encoder + predictor (spec P0).
 name: vjepa2-vitl
 kind: encoder
+continuation: true      # forecasts from a real context with its own predictor (physlaw/models/track_a.py);
+                        # inherited by vjepa2_vitg, untrained_vitl (matched control) and positive_control (PC1)
 hf_id: facebook/vjepa2-vitl-fpc64-256
 revision: b3c1679b7c34d3255ef3547f27c7b226aefab26f
 local_path: ${env:PHYSLAW_MODELS,/root/models}/vjepa2-vitl-fpc64-256   # plain-file copy of that snapshot (persistent)

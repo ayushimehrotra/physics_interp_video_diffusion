@@ -49,7 +49,11 @@ from pathlib import Path
 
 import numpy as np
 
-PRIMARY_DISTANCES = ("mse_obj", "clean_mse_obj", "fut_mse_obj", "l1_obj", "mse_all", "clean_mse_all", "fut_mse_all")
+# preferred L2 distance, first present wins; clean_* / fut_* condition on the real context and exist only for
+# continuation models (physlaw/models/track_a.py); noisy_* (DiT) / tube_* (VideoMAE) are the whole-clip distances
+PRIMARY_DISTANCES = ("mse_obj", "clean_mse_obj", "fut_mse_obj", "noisy_mse_obj", "tube_mse_obj", "l1_obj", "mse_all",
+                     "clean_mse_all", "fut_mse_all", "noisy_mse_all", "tube_mse_all")
+CONTINUATION_LEVELS = ("l1", "l4", "outA")   # read the model's continuation of the real context
 FAMILY_LAW = {"f1": "momentum", "f2": "energy", "f3": "momentum", "f4": "galilean", "f6": "friction", "f7": "gravity",
               "f8": "energy", "f9": "oscillation", "f10": "rolling", "f11": "statics", "f12": "angular_momentum"}
 # law -> (primary statistic, summary of the per-clip readouts): every ratio law's legal value is 1 except
@@ -321,15 +325,51 @@ def flag_uninformative(rows: list[dict]) -> None:
                         sc[k_]["uninformative"] = f"{what} not decodable from pre-event frames (l0)"
 
 
-def collect(results: Path) -> list[dict]:
+def non_continuation_models(models_dir: Path | None = None) -> dict[str, bool]:
+    """{name: has a native / variant output track A} for the configs in configs/models that are not continuation
+    models (physlaw/models/track_a.py): no internal L1 / L4 for any of them, track A outputs only for the True ones."""
+    from physlaw.config import load_config
+    from physlaw.models.track_a import continues
+    models_dir = models_dir or Path(__file__).resolve().parents[2] / "configs" / "models"
+    out = {}
+    for f in sorted(models_dir.glob("*.yaml")):
+        try:
+            c = load_config(f)
+        except Exception:                                # a config that does not load names no results here
+            continue
+        if not continues(c):
+            out[c["name"]] = c.get("output_track") == "A"
+    return out
+
+
+def _drop_continuation_distances(d):
+    """Remove every dict entry keyed by a context-conditioned surprise distance (clean_mse*, fut_mse*, fut_wmse*)."""
+    from physlaw.models.track_a import is_continuation_surprise
+    if isinstance(d, dict):
+        return {k: _drop_continuation_distances(v) for k, v in d.items() if not is_continuation_surprise(str(k))}
+    if isinstance(d, list):
+        return [_drop_continuation_distances(v) for v in d]
+    return d
+
+
+def collect(results: Path, models_dir: Path | None = None) -> list[dict]:
+    """Rows per (model, family). A model whose config is not a continuation model keeps no L1 / L4 / track A score
+    and no L2 score on a context-conditioned distance (results written before 2026-11-20); models without a config
+    in ``models_dir`` are read as they are."""
     rows = []
+    nc = non_continuation_models(models_dir)
     for fam_dir in sorted(p for p in results.glob("*/*") if p.is_dir() and p.parent.name != "figures"):
-        row = {"model": fam_dir.parent.name, "family": fam_dir.name, "scores": {}}
+        model = fam_dir.parent.name
+        row = {"model": model, "family": fam_dir.name, "scores": {}}
         for level, (fname, fn) in READERS.items():
             f = fam_dir / f"{fname}.json"
             if not f.exists():
                 continue
+            if model in nc and level in CONTINUATION_LEVELS and not (level == "outA" and nc[model]):
+                continue
             d = json.loads(f.read_text())
+            if model in nc:
+                d = _drop_continuation_distances(d)
             for law, e in fn(d, fam_dir.name).items():
                 if e is not None:
                     row["scores"][f"{level}.{law}"] = {**e, **({"stand_in": True} if d.get("stand_in") else {})}

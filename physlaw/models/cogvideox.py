@@ -160,66 +160,28 @@ class CogVideoXAdapter(DiTAdapter):
 
     # ------------------------------------------------------------------ sampling (forecast / generate)
 
-    def _guide_grad(self, lat, t, z0, kl):
-        """Reconstruction guidance (Ho et al. 2022, 'Video Diffusion Models', Sec. 3.1): gradient w.r.t. the
-        noisy latents of || x0_hat(context) - x0(context) ||^2, from one conditional pass WITH grad
-        (gradient checkpointing). Only the generated part of the gradient is used by the caller."""
-        torch = self.torch
-        z = lat.detach().clone().requires_grad_(True)
-        z_in, extra = self._condition(z)
-        with torch.enable_grad():
-            v = self.tr(hidden_states=self.sched.scale_model_input(z_in, t), encoder_hidden_states=self.prompt_embeds,
-                        timestep=torch.full((1,), t, device=z.device, dtype=torch.long), return_dict=False, **extra)[0]
-            a = self.alphas_cumprod[t].to(z.device).float()
-            x0 = a.sqrt() * z.float() - (1 - a).sqrt() * v.float()
-            loss = ((x0[:, :kl] - z0[:, :kl].float()) ** 2).sum()
-            g, = torch.autograd.grad(loss, z)
-        return g.float(), float(loss)
-
-    def _sample(self, x, context_end_frame: int, seed: int, capture: bool = True, mode: str = "replace",
-                guide_w: float = 0.0, hold_strength: float = 1.0, guide_tmin: int = 0):
+    def _sample(self, x, context_end_frame: int, seed: int, capture: bool = True):
         """Official DDIM/DPM sampling with the context latents replaced at every step. Returns (captured future
-        acts, latents). Training-free ways to make a T2V model continue its context (2026-11-05):
-          mode="replace" (default, stage 4): replacement only.
-          mode="guided": + reconstruction guidance on the generated part: x0_b <- x0_b - (guide_w * sqrt(a_t) / 2)
-                         * grad_{z_b} ||x0_hat_a - x0_a||^2 (Ho et al. 2022), applied through the v-prediction,
-                         only at timesteps t >= guide_tmin (late, low-noise steps amplify it into texture noise).
-          mode="hold":   start from the clip with every post-context frame a copy of the LAST context frame
-                         (no future information), noised to the step at which a fraction hold_strength of the
-                         schedule remains (SDEdit); replacement as usual."""
+        acts, latents). Continuing a context is not CogVideoX's trained task, so no stage runs this for a CogVideoX
+        config (continuation only on continuation models, physlaw/models/track_a.py); the guided / held-frame
+        variants tried on 2026-11-05 were removed on 2026-11-20 (docs/RESUME.md)."""
         torch = self.torch
         z0 = self._mixed(x, context_end_frame)
         kt = self.n_context_tokens(context_end_frame)
         kl = kt * self.lpt
         self.sched.set_timesteps(self.steps, device=z0.device)
         ts = [int(t) for t in self.sched.timesteps]
-        i0 = 0
-        if mode == "hold":
-            xh = x.clone()
-            xh[:, :, context_end_frame:] = x[:, :, context_end_frame - 1:context_end_frame]
-            with torch.no_grad():
-                zh = (self.vae.encode(xh).latent_dist.mode() * self.vae.config.scaling_factor).permute(0, 2, 1, 3, 4)
-            zh = self._pad(zh.contiguous()) if hasattr(self, "_pad") else zh.contiguous()
-            zh[:, :kl] = z0[:, :kl]
-            i0 = int(round((1 - hold_strength) * self.steps))
-        self.guide_log = []
-        if mode == "guided":
-            self.tr.enable_gradient_checkpointing()
         cap_step = {}
         for db in self.snrs:                                             # step nearest each encode SNR
             i = int(np.argmin([abs(t - self.t_for_snr[db]) for t in ts]))
             cap_step.setdefault(i, []).append(db)
         ctx_eps = self._noise(z0, self.noise_seed + 7)                   # fixed: identical across twins
         lat = self._noise(z0, 10_000 + seed) * self.sched.init_noise_sigma
-        if mode == "hold":
-            lat = self._add_noise(zh, self._noise(z0, 10_000 + seed), ts[i0])
         embeds = torch.cat([self.neg_embeds, self.prompt_embeds])
         acts = {}
         old_x0 = None
         gen = torch.Generator(device=z0.device).manual_seed(20_000 + seed)   # DPM step noise: same for twins
         for i, t in enumerate(ts):
-            if i < i0:
-                continue
             lat[:, :kl] = self._add_noise(z0[:, :kl], ctx_eps[:, :kl], t)
             inp = self.sched.scale_model_input(torch.cat([lat, lat]), t)
             keep = self.fc_layers if (capture and i in cap_step) else ()
@@ -229,14 +191,6 @@ class CogVideoXAdapter(DiTAdapter):
             if self.dynamic_cfg:     # exactly the pipeline's formula (it uses the timestep value)
                 g = 1 + self.guidance * ((1 - math.cos(math.pi * ((self.steps - t) / self.steps) ** 5.0)) / 2)
             v = v[:1] + g * (v[1:] - v[:1])
-            if mode == "guided" and guide_w > 0 and t >= guide_tmin:
-                grad, loss = self._guide_grad(lat, t, z0, kl)
-                a = float(self.alphas_cumprod[t])
-                # x0_b -= (w sqrt(a) / 2) grad_b  <=>  v_b += (w sqrt(a) / 2) grad_b / sqrt(1 - a)
-                dv = (guide_w * math.sqrt(a) / 2) * grad[:, kl:] / max(math.sqrt(1 - a), 1e-4)
-                self.guide_log.append({"step": i, "t": t, "ctx_loss": loss,
-                                       "dv_over_v": float(dv.norm() / v[:, kl:].norm().clamp_min(1e-8))})
-                v[:, kl:] = v[:, kl:] + dv.to(v.dtype)
             for l, h in hs.items():
                 for db in cap_step[i]:
                     acts[key(db, l)] = self._grid(h[1], z0.shape[1] // self.lpt)[kt:]   # conditional branch, future only
@@ -247,8 +201,6 @@ class CogVideoXAdapter(DiTAdapter):
             else:
                 lat = self.sched.step(v, t, lat, return_dict=False)[0].to(z0.dtype)
         lat[:, :kl] = z0[:, :kl]
-        if mode == "guided":
-            self.tr.disable_gradient_checkpointing()
         return acts, lat
 
 

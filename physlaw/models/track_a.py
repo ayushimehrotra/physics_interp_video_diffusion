@@ -8,9 +8,21 @@ Every generator config states (spec §4.2, scripts/07_generate_outputs.py):
                      variant - an official sibling checkpoint of a text-only model that conditions on frames
                                (Wan2.1-VACE for Wan2.1-T2V);
                      hack    - conditioning the model was not trained for (latent replacement, or Wan2.2-TI2V-5B
-                               held on PhysRVG's 2 context latents); runs only flagged, or with --allow-hack;
+                               held on PhysRVG's 2 context latents); never run (decision 2026-11-20, below);
                      n/a     - no track A path at all (the I2V track B models).
 A model conditioned on one frame cannot be track A.
+
+Continuation only on continuation models (user decision 2026-11-20). Anything that conditions a model on the REAL
+pre-event frames and reads what it does next is run only where that is the model's own trained task:
+  * output track A: ``output_track: A`` with ``track_a_mode`` native or variant (``hack`` is refused);
+  * internals (stage 4 forecast() / pred_real() / context-conditioned surprise; L1; L3's forecast tests; L4):
+    only models whose config says ``continuation: true`` (:func:`continues`; default false): V-JEPA 2 and its
+    untrained control (predictor from a context), PC1 (trained with future masking). Not continuation models:
+    text-to-video / image-to-video / TI2V DiTs (CogVideoX, Wan, VideoREPA, PC2), VideoMAE-v2 (pre-trained with
+    random tube masks, never future masks) and PhysRVG's stage-4 internals (stage 4 holds every pre-contact latent
+    clean, not its trained 2: its native continuation is track A only).
+Their full-clip analyses are unaffected: L0, L2b, L2 on the whole-clip distances (``noisy_*`` DiT, ``tube_*``
+VideoMAE) and track B for I2V models.
 
 ``track_a`` block (models whose context is not simply "every whole pre-contact latent frame"):
   ``context``  frames handed to the model, ending at the LAST pre-contact frame of the model's input window
@@ -42,9 +54,31 @@ def track_fields(cfg) -> tuple[str, str]:
     if t not in TRACKS or m not in MODES:
         raise ValueError(f"{cfg.get('name')}: output_track {t!r} / track_a_mode {m!r} must be one of {TRACKS} / "
                          f"{MODES} (configs/models/*.yaml)")
-    if t == "A" and m == "n/a":
-        raise ValueError(f"{cfg.get('name')}: track A needs a track_a_mode")
+    if t == "A" and m not in NATIVE_MODES:
+        raise ValueError(f"{cfg.get('name')}: track A needs a native or variant track_a_mode, not {m!r} "
+                         "(continuation only on continuation models)")
     return t, m
+
+
+NATIVE_MODES = ("native", "variant")
+# surprise distances that condition on the real context (DiT clean-context loss, VideoMAE future-masked recon)
+CONTINUATION_SURPRISE = ("clean_mse", "fut_mse", "fut_wmse")
+
+
+def continues(cfg) -> bool:
+    """True when the model's own trained task is continuing real context frames (config ``continuation: true``)."""
+    return cfg.get("continuation") is True
+
+
+def require_continuation(cfg, what: str) -> None:
+    """Raise unless :func:`continues`; ``what`` names the refused analysis."""
+    if not continues(cfg):
+        raise ValueError(f"{cfg.get('name')}: {what} continues the real pre-event context, and this is not a "
+                         "continuation model (config `continuation` is not true; physlaw/models/track_a.py)")
+
+
+def is_continuation_surprise(name: str) -> bool:
+    return name.startswith(CONTINUATION_SURPRISE)
 
 
 def is_generator(cfg) -> bool:

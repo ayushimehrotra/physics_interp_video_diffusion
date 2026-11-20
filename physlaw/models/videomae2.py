@@ -45,6 +45,7 @@ import numpy as np
 
 from physlaw.models.base import (PRED_LAYER, ModelAdapter, TokenGridSpec, add_frame_means, fit_frames, frame_means,
                                  sample_frames, spatial_mask_groups)
+from physlaw.models.track_a import continues
 
 FINAL = -1          # forecast space: decoder hidden (512-d)
 ENC_NORM = 40       # encoder final LayerNorm output (1408-d)
@@ -341,17 +342,20 @@ class VideoMAEv2Adapter(ModelAdapter):
         x = video if torch.is_tensor(video) else self.to_tensor(video)
         tgt, var = self.target_pixels(x, with_scale=True)
         n_ctx = (context_end_frame // self.token_grid.tubelet) * self._n_per()
-        _, pix, T_post = self._future(x, context_end_frame)
-        d2 = (pix.float() - tgt[n_ctx:]) ** 2
-        err, werr = d2.mean(-1), (d2 * var[n_ctx:]).mean(-1)          # normalised / raw-pixel MSE per token
-        res = {"fut_mse_all": float(err.mean()), "fut_wmse_all": float(werr.mean())}
+        T_post = (tgt.shape[0] - n_ctx) // self._n_per()
         fr = lambda a: a.reshape(T_post, -1)                            # flat post tokens -> [T_post, per frame]
-        add_frame_means(res, "fut_mse_all", fr(err))
-        add_frame_means(res, "fut_wmse_all", fr(werr))
+        res = {"per_frame": {"surprise": {}, "weight": {}}}
         obj = None
         if object_masks is not None:
             obj = torch.as_tensor(np.asarray(object_masks), device=x.device).bool().reshape(-1)
-            if obj.any():
+        if continues(self.cfg):     # future-masked reconstruction = continuation: never in VideoMAE's pre-training
+            _, pix, _ = self._future(x, context_end_frame)
+            d2 = (pix.float() - tgt[n_ctx:]) ** 2
+            err, werr = d2.mean(-1), (d2 * var[n_ctx:]).mean(-1)      # normalised / raw-pixel MSE per token
+            res.update({"fut_mse_all": float(err.mean()), "fut_wmse_all": float(werr.mean())})
+            add_frame_means(res, "fut_mse_all", fr(err))
+            add_frame_means(res, "fut_wmse_all", fr(werr))
+            if obj is not None and obj.any():
                 res["fut_mse_obj"] = float(err[obj].mean())
                 res["fut_wmse_obj"] = float(werr[obj].mean())
                 add_frame_means(res, "fut_mse_obj", fr(err), fr(obj))

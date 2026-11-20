@@ -26,7 +26,8 @@ def _wan_cfg(expand: bool, guidance=5.0):
                          "guidance_scale": guidance, "scheduler": "UniPCMultistepScheduler", "negative_prompt": ""},
             "token_grid": {"patch": 2, "vae_spatial": 8, "vae_temporal": 4},
             "layers": [0, 1], "forecast_layers": [1], "encode_snr_db": [-8, 0, 8], "surprise": {"n_draws": 2},
-            "noise_seed": 0, "prompt": "tiny"}
+            "noise_seed": 0, "prompt": "tiny",
+            "continuation": True}   # exercises the context-conditioned paths; real T2V / I2V configs are not
 
 
 def _fake_text(self, text):
@@ -128,6 +129,19 @@ def test_dit_encode_surprise_forecast_twins(make):
         assert len(f) == T - kt and (w > 0).all()
         assert (w * f).sum() / w.sum() == pytest.approx(v, rel=1e-5)
     assert pa["weight"]["clean_mse_obj"][0] == 2 * gw
+
+
+def test_dit_surprise_whole_clip_only_for_non_continuation_models():
+    """A T2V / I2V DiT config (``continuation`` not true, physlaw/models/track_a.py) gets only the whole-clip
+    noised surprise: the clean-context variant is a continuation and is not computed."""
+    m = tiny_wan(False)
+    m.cfg["continuation"] = False
+    xa, _ = (m.to_tensor(v) for v in twins())
+    s = m.surprise(xa, 5, None)
+    pf = s.pop("per_frame")
+    assert set(s) == set(pf["surprise"]) == {"noisy_mse_all"}
+    m.cfg["continuation"] = True
+    assert m.surprise(xa, 5, None)["noisy_mse_all"] == pytest.approx(s["noisy_mse_all"])   # same draws
 
 
 def test_latent_tokens_layout():

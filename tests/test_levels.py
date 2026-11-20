@@ -284,3 +284,27 @@ def test_l0_mass_pre_event_and_uninformative_flags(tmp_path):
     assert rows["m1"]["l1.friction_mass"]["claim"] is False
     md = (tmp_path / "leaderboard.md").read_text()
     assert "(uninformative)" in md and "✗claim" in md and "NOT decodable" in md
+
+
+def test_aggregate_drops_continuation_scores_of_non_continuation_models(tmp_path):
+    """Continuation only on continuation models (physlaw/models/track_a.py): a config with ``continuation`` not true
+    keeps no L1 / L4 / track A score and no L2 score on a context-conditioned distance (results from before
+    2026-11-20); V-JEPA 2 (continuation: true) keeps them; a model without a config is read as it is."""
+    _write_results(tmp_path)
+    l2 = json.loads((tmp_path / "m1" / "f1" / "l2.json").read_text())
+    rec = {"win_rate": 0.7, "win_rate_ci95": [0.6, 0.8], "vs_pixel": {"copy_last": {"baseline_win": 0.55}}}
+    l2["contrasts"]["mom_violate_e1 vs conserve_e1"]["m1"] = {"clean_mse_obj": rec,
+                                                             "noisy_mse_obj": {**rec, "win_rate": 0.5}}
+    (tmp_path / "m1" / "f1" / "l2.json").write_text(json.dumps(l2))
+    for name in ("cogvideox-2b", "vjepa2-vitl"):
+        (tmp_path / name / "f1").mkdir(parents=True)
+        for f in (tmp_path / "m1" / "f1").iterdir():
+            (tmp_path / name / "f1" / f.name).write_text(f.read_text())
+    rows = {r["model"]: r["scores"] for r in aggregate.run(tmp_path)["rows"]}
+    cog, vj, m1 = rows["cogvideox-2b"], rows["vjepa2-vitl"], rows["m1"]
+    assert not any(k.startswith(("l1.", "l4.", "outA.")) for k in cog)
+    assert cog["l2.momentum"]["score"] == 0.5 and "noisy_mse_obj" in cog["l2.momentum"]["metric"]
+    assert "l0.velocity" in cog and "l2b.momentum" in cog                       # full-clip levels kept
+    for s in (vj, m1):
+        assert "l1.momentum" in s and "l4.momentum" in s and "outA.momentum" in s
+        assert s["l2.momentum"]["score"] == 0.7 and "clean_mse_obj" in s["l2.momentum"]["metric"]

@@ -18,6 +18,8 @@ Inputs: cache/<model>/<family>/ from stage 4 (+ _pixel_baselines.jsonl from stag
 Order per model: L0 (builds _maskfeat_v2.npz, used by L1/L2b/L3/L4), L2, L2b, L1. --out writes elsewhere (test runs).
 L3 runs the analyses configured for the family (CPU). L4 loads the model (GPU): it reruns forecast() (and, for
 generators, generate()) under activation interventions, cached in --work, then scores them.
+Continuation only on continuation models (physlaw/models/track_a.py, 2026-11-20): L1 and L4 exit for configs without
+``continuation: true``; L3 skips its forecast tests for them; L2 ignores their context-conditioned distances.
 L0 also folds in the untrained control's result if results/<untrained>/<family>/l0.json exists
 (pass --untrained configs/models/untrained_vitl.yaml to name it).
 """
@@ -37,6 +39,7 @@ from pathlib import Path  # noqa: E402
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from physlaw.config import config_hash, load_config, resolve_path  # noqa: E402
+from physlaw.models.track_a import continues  # noqa: E402
 
 
 def main():
@@ -59,6 +62,9 @@ def main():
     out_dir = Path(a.out) if a.out else REPO / "results" / mcfg.name / data.name
     out_dir.mkdir(parents=True, exist_ok=True)
     level = cfg["level"]
+    if level in ("l1", "l4") and not continues(mcfg):
+        sys.exit(f"06_eval.py: {level.upper()} reads the model's continuation of the real context; {mcfg.name} is not a "
+                 "continuation model (config `continuation` is not true; physlaw/models/track_a.py)")
     t0 = time.time()
     meta = {"model": mcfg.name, "family": data.name, "level": level,
             "model_config_hash": config_hash(mcfg), "eval_config_hash": config_hash(cfg)}
@@ -82,7 +88,7 @@ def main():
             sources["pixel_baselines"] = pb
         else:
             print(f"[06] WARNING: no {pb}; run scripts/05_surprise.py first for the copy-last-frame baseline")
-        res = l2_surprise.run(sources, data, cfg)
+        res = l2_surprise.run(sources, data, cfg, drop_continuation=not continues(mcfg))
         res.update(meta)
         (out_dir / "l2.json").write_text(json.dumps(res, indent=1))
         md = l2_surprise.table(res)

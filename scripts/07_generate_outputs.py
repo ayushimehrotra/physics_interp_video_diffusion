@@ -9,9 +9,9 @@
         --model configs/models/wan22_i2v_a14b.yaml --data data/f1
 
 Tracks per model (physlaw/models/track_a.py): every generator config states ``output_track`` (A / B / none) and
-  ``track_a_mode`` (native / variant / hack / n/a). Track A runs only ``output_track: A`` models; the latent-
-  replacement hack of a ``none`` / B model (CogVideoX, Wan2.1-T2V, ...) runs only with --allow-hack (recorded as
-  track_a_mode "hack"). Every video gets a record in _gen.jsonl with the track, the mode and, for track A, the
+  ``track_a_mode`` (native / variant / hack / n/a). Track A runs only ``output_track: A`` models, whose mode is
+  native or variant: continuation only on continuation models (2026-11-20). There is no latent-replacement path for
+  the others (CogVideoX, Wan2.1-T2V, ...). Every video gets a record in _gen.jsonl with the track, the mode and, for track A, the
   master frames of the context the model was conditioned on.
 Track A, into cache/<model>/<family>/<group>/gen_seed<s>.mp4 (stage 4 already wrote seed 0 for DiTs):
   1. seed 0 for the first track_a.gate.n_clips groups, if missing (models without a stage-4 pass);
@@ -55,7 +55,7 @@ def record(out: Path, rec: dict):
         fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
-def track_a(mcfg, data, out, cfg, force, mode="native", allow_hack=False):
+def track_a(mcfg, data, out, cfg, force, mode="native"):
     from physlaw.data.io import load_clip
     geom = O.Geometry(mcfg)
     g = cfg["gate"]
@@ -97,7 +97,7 @@ def track_a(mcfg, data, out, cfg, force, mode="native", allow_hack=False):
         for s in todo:
             t1 = time.time()
             write_mp4(out / gid / f"gen_seed{s}.mp4", m.generate(x, k, seed=s), m.fps)
-            record(out, {"group": gid, "seed": s, "track": "A", "track_a_mode": mode, "allow_hack": allow_hack,
+            record(out, {"group": gid, "seed": s, "track": "A", "track_a_mode": mode,
                          "context_master_frames": ctx, "context_end": int(k), "fps": m.fps,
                          "seconds": round(time.time() - t1, 1), "model": mcfg.name, "revision": mcfg.get("revision")})
             done.add((gid, s))
@@ -143,19 +143,17 @@ def track_b(mcfg, data, out, seeds, n_groups, mode="n/a"):
         print(f"[07] {gid} seed{seed} {rec['seconds']}s", flush=True)
 
 
-def check_track(mcfg, track: str, allow_hack: bool = False) -> tuple[bool, str]:
+def check_track(mcfg, track: str) -> tuple[bool, str]:
     """(allowed, track_a_mode to record | refusal message) for running ``track`` ("a" / "b") on a model."""
     t, mode = T.track_fields(mcfg)
     if track == "b":
         if t != "B":
             return False, f"[07] {mcfg.name} is not a track B generator (output_track: {t})"
         return True, mode
-    if t == "A":
+    if t == "A":                                     # track_fields: mode is native or variant
         return True, mode
-    if not allow_hack:
-        return False, (f"[07] {mcfg.name} has output_track {t}: it cannot continue a real multi-frame context natively. "
-                       f"--allow-hack runs its latent-replacement path (recorded as track_a_mode 'hack').")
-    return True, "hack"
+    return False, (f"[07] {mcfg.name} has output_track {t}: it is not a continuation model, so it has no track A "
+                   "(continuation only on continuation models; physlaw/models/track_a.py)")
 
 
 def main():
@@ -168,19 +166,17 @@ def main():
     ap.add_argument("--seeds", default=None, help="track B: comma list or lo-hi (default: track_b.seeds)")
     ap.add_argument("--n", type=int, default=None, help="track B: first n groups (default: track_b.n_groups)")
     ap.add_argument("--force", action="store_true", help="track A: generate every seed even if the gate fails")
-    ap.add_argument("--allow-hack", action="store_true",
-                    help="track A for an output_track none / B model (latent replacement; recorded as mode 'hack')")
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
     mcfg, ecfg = load_config(a.model), load_config(a.eval, a.set)
     data = resolve_path(a.data)
-    a_ok, mode = check_track(mcfg, a.track, a.allow_hack)
+    a_ok, mode = check_track(mcfg, a.track)
     if not a_ok:
         sys.exit(mode)
     if a.track == "a":
         out = Path(a.out) if a.out else REPO / "cache" / mcfg.name / data.name
         out.mkdir(parents=True, exist_ok=True)
-        track_a(mcfg, data, out, ecfg["track_a"], a.force, mode=mode, allow_hack=a.allow_hack)
+        track_a(mcfg, data, out, ecfg["track_a"], a.force, mode=mode)
     else:
         cfg = ecfg["track_b"]
         out = Path(a.out) if a.out else REPO / "cache" / mcfg.name / f"{data.name}_trackB"
