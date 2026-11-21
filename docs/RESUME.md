@@ -215,6 +215,10 @@ Order per model: L0 (builds `_maskfeat_v2.npz`), L2, L2b, L1, then L3 / L4. Smok
 
 ## 5. Plan (in order; GPU work)
 
+0. **All models, all families, all GPUs** (2026-11-21): `bash scripts/queues/run_all_models.sh --dry-run`, then
+   `--smoke 2`, then without flags (resumable; `scripts/queues/run_models.py`). Every model's pipeline was smoke-run
+   on F1 (`smoke/models/MATRIX.md`); Cosmos / PC1 / PC2 are skipped until their weights exist.
+
 1. **Render every family at master quality** (`KUBRIC_USE_GPU=1`, 832×480, 48 fps): F2, F3, F4, F6, F7, F8, F9, F10,
    F11, F12, 10 groups each for the smoke pass (more later), one family per GPU; `02_validate_data.py` on each.
 2. **Stage 4 `--force`** on every model × family to rebuild caches with per-frame pools (`pooled_frame_t`) and the
