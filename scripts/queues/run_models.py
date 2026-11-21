@@ -68,8 +68,8 @@ MIN_GPU_GB = {   # measured peak (smoke, F1) -> value; "est." = not smoke-run he
     "cogvideox_2b": 24, "cogvideox_5b": 30, "videorepa_5b": 30, "cogvideox15_5b_i2v": 52,     # -, est., 24.8, 43.9
     "wan21_t2v_1_3b": 24, "wan22_ti2v_5b": 42, "physrvg": 34, "wan22_ti2v_5b_physrvg": 34,    # 17.7, 35.5, 27.6, 23.1
     "pc2_wan22_ti2v_5b": 42, "wan21_vace_1_3b": 34,                                            # est., 27.3
-    "wan21_t2v_14b": 80, "wan21_vace_14b": 80, "wan21_i2v_14b": 80, "wan22_i2v_a14b": 80,      # 14B: see MATRIX.md
-    "ltx_video_13b_distilled": 80, "cosmos_predict25_2b": 48,
+    "wan22_i2v_a14b": 76, "wan21_i2v_14b": 52, "ltx_video_13b_distilled": 52,                   # 65.0, 43.4, 42.7
+    "wan21_t2v_14b": 80, "wan21_vace_14b": 56, "cosmos_predict25_2b": 48,                       # est. (internals), est., est.
 }
 # Largest first (GPU tasks are queued in this order); anything else after these.
 ORDER = ["wan22_i2v_a14b", "wan21_i2v_14b", "wan21_t2v_14b", "wan21_vace_14b", "ltx_video_13b_distilled",
