@@ -3,19 +3,21 @@
 #   bash scripts/00_setup_envs.sh
 # Venvs live in /root/envs. The Kubric source (pinned commit 61f2422) is copied to /root/src/kubric
 # before installing, so the install never writes egg-info into the source tree.
-# Overrides: KUBRIC_SRC (default /root/kubric), PHYSLAW_MODELS (default /root/models).
+# Overrides: KUBRIC_SRC (default /root/kubric), PHYSLAW_MODELS (default /root/models), ENVS (default /root/envs),
+# SKIP_KUBRIC=1 (no kubric venv: only needed to render data, not to run models on rendered data).
 set -euo pipefail
 export UV_CACHE_DIR=/root/.cache/uv
 export PATH="$HOME/.local/bin:$PATH"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-ENVS=/root/envs
+ENVS="${ENVS:-/root/envs}"
 KUBRIC_SRC="${KUBRIC_SRC:-/root/kubric}"
 mkdir -p "$ENVS" /root/src
 
 # uv + a uv-managed Python 3.12 (the system may only have 3.11).
-command -v uv >/dev/null || python3.11 -m pip install --user -q uv
+command -v uv >/dev/null || python3 -m pip install --user -q uv || curl -LsSf https://astral.sh/uv/install.sh | sh
 uv python install 3.12
 
+if [ -z "${SKIP_KUBRIC:-}" ]; then
 # Kubric venv (py3.11, bpy 4.3, numpy 1.26).
 if [ ! -x "$ENVS/kubric_venv/bin/python" ]; then
   rm -rf /root/src/kubric && cp -r "$KUBRIC_SRC" /root/src/kubric && rm -rf /root/src/kubric/.git /root/src/kubric/*.egg-info
@@ -29,6 +31,7 @@ if ! "$ENVS/kubric_venv/bin/python" -c "import kubric" 2>/dev/null; then
   uv pip install --python "$ENVS/kubric_venv/bin/python" pytest jsonschema pyyaml
 fi
 "$ENVS/kubric_venv/bin/python" -c "import bpy, kubric, pybullet; print('kubric venv OK, bpy', bpy.app.version_string)"
+fi
 
 # Model venv (torch 2.8 / cu128, diffusers, transformers) + this repo's extras.
 if [ ! -x "$ENVS/physics_venv/bin/python" ]; then
