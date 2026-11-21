@@ -144,6 +144,32 @@ def test_dit_surprise_whole_clip_only_for_non_continuation_models():
     assert m.surprise(xa, 5, None)["noisy_mse_all"] == pytest.approx(s["noisy_mse_all"])   # same draws
 
 
+def test_dit_native_context_surprise():
+    """``surprise.native_context`` (PhysRVG): native_* holds exactly the trained clean context; a subset of variants
+    reproduces the full call's values (same draws); it needs per-token timesteps and must end before the event."""
+    m = tiny_wan(True)
+    m.cfg["continuation"] = False
+    m.cfg["surprise"] = {**m.cfg.get("surprise", {}), "native_context": 1}
+    xa, _ = (m.to_tensor(v) for v in twins())
+    assert m.surprise_variants() == ("noisy", "native")
+    s = m.surprise(xa, 5, None)
+    pf = s.pop("per_frame")
+    assert set(s) == set(pf["surprise"]) == {"noisy_mse_all", "native_mse_all"}
+    assert np.isfinite(list(s.values())).all() and s["native_mse_all"] != s["noisy_mse_all"]
+    only = m.surprise(xa, 5, None, variants=("native",))
+    only.pop("per_frame")
+    assert set(only) == {"native_mse_all"} and only["native_mse_all"] == pytest.approx(s["native_mse_all"])
+    with pytest.raises(ValueError):
+        m.surprise(xa, 5, None, variants=("clean",))          # not a continuation config
+    m.cfg["surprise"]["native_context"] = 3                    # 9 frames, k=5: 2 pre-event latents
+    with pytest.raises(ValueError):
+        m.surprise(xa, 5, None)
+    t2v = tiny_wan(False)
+    t2v.cfg["surprise"] = {"native_context": 1}
+    with pytest.raises(ValueError):
+        t2v.surprise_variants()
+
+
 def test_latent_tokens_layout():
     m = tiny_wan()
     z = torch.randn(1, 3, 16, 4, 6)                      # F, C, h, w

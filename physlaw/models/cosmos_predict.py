@@ -51,10 +51,23 @@ class CosmosPredictAdapter(Adapter):
     def load(cls, cfg, device: str = "cuda") -> "CosmosPredictAdapter":
         import torch
         d = _diffusers(cfg.get("min_diffusers", "0.39.0"))
+        # cosmos-guardrail 0.3.2's Qwen3Guard (an nn.Module wrapper) has no .device, so CosmosSafetyChecker.device and
+        # hence the pipeline's _execution_device raise (masked as "no attribute '_execution_device'"). Report the wrapped
+        # model's device; the guardrail itself still runs unchanged (2026-11-21).
+        try:
+            from cosmos_guardrail import cosmos_guardrail as _cg
+            if not hasattr(_cg.Qwen3Guard, "device"):
+                _cg.Qwen3Guard.device = property(lambda s: s.model.device)
+        except ImportError:
+            pass
         src, kw = source(cfg)
         pipe = d.Cosmos2_5_PredictBasePipeline.from_pretrained(src, torch_dtype=getattr(torch, cfg.get("dtype", "bfloat16")),
                                                                device_map=device, **kw)
         pipe.set_progress_bar_config(disable=True)
+        # The pipeline takes its execution device from its first component in sorted order, the safety checker, which
+        # device_map leaves on the CPU (it is not a diffusers/transformers model): put it with the rest.
+        if getattr(pipe, "safety_checker", None) is not None:
+            pipe.safety_checker.to(device)
         return cls(cfg, pipe, device)
 
     def set_prompt(self, text: str):

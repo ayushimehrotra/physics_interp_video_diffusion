@@ -33,7 +33,10 @@ Diffusion models (kind: diffusion): no _forecast.npz; instead each twin's .npz c
 Continuation only on continuation models (physlaw/models/track_a.py, 2026-11-20): forecasts (_forecast*.npz,
 fc_pooled, gen_seed0.mp4), --pred-real and context-conditioned surprise (DiT clean_*, VideoMAE fut_*) are computed
 only for configs with ``continuation: true`` (V-JEPA 2, its untrained control, PC1). Every other model caches
-encode() + whole-clip surprise (as --no-forecast) and --pred-real exits.
+encode() + whole-clip surprise (as --no-forecast) and --pred-real exits. A DiT config with
+``surprise.native_context`` (PhysRVG and its pair partner) also gets the native-context surprise native_* (the
+model's own trained clean context; physlaw/models/dit.py). --add-surprise adds the surprise variants an existing
+cache lacks (only the surprise() passes; merged index records are appended, last write wins).
 
 Pooled rather than full-token activations: 13 layers x 8192 tokens x 1024 x 2 B = 218 MB
 per clip would be ~70 GB for 320 clips. Pools are ROI_A/ROI_B/ROI_pair/frame x pre/post/all
@@ -187,6 +190,9 @@ def main():
                     help="diffusion: skip the sampled forecast (encode + surprise only); a later run adds it")
     ap.add_argument("--pred-real", action="store_true",
                     help="encoders: only add <twin>.pred_real.npz (P-pred-real probe features) next to each clip")
+    ap.add_argument("--add-surprise", action="store_true",
+                    help="diffusion: add the surprise variants an existing clip's index record lacks (e.g. native_*), "
+                         "nothing else; appends merged records (last write wins)")
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
 
@@ -233,6 +239,14 @@ def main():
         if not diffusion and forecast_path(out, g).exists():
             print(f"[04] {g}: ignoring stale {forecast_path(out, g).name} (one forecast for several pre_segments); "
                   "writing _forecast_<pre_segment>.npz", flush=True)
+    old_rec = {}
+    if a.add_surprise:
+        if not (diffusion and hasattr(m, "surprise_variants")):
+            sys.exit(f"[04] {cfg.name}: --add-surprise is for diffusion adapters")
+        if (out / "_index.jsonl").exists():
+            for line in open(out / "_index.jsonl"):
+                r = json.loads(line)
+                old_rec[r["clip"]] = r                   # last write wins
     with open(out / "_index.jsonl", "a") as index:
         for path in clips:
             gid, twin = path.parent.name, path.name
@@ -242,6 +256,36 @@ def main():
             if a.pred_real and f_pr.exists() and not a.force:
                 continue
             todo = None                                  # existing file: the parts to add (pass 2 / latent baseline)
+            if a.add_surprise:
+                rec0 = old_rec.get(f"{gid}/{twin}")
+                if rec0 is None or not f_npz.exists():
+                    continue
+                missing = [v for v in m.surprise_variants() if f"{v}_mse_all" not in (rec0.get("surprise") or {})]
+                if not missing:
+                    continue
+                c = load_clip(path)
+                if hasattr(m, "set_prompt"):
+                    m.set_prompt(clip_prompt(cfg, c.labels))
+                fr = m.input_frames(c.labels)
+                k = m.context_frames(c.labels)
+                x = m.to_tensor(c.frames[fr])
+                phases = token_frame_phase(fr, m.token_grid, c.pl["first_post_contact_frame"])
+                kt = m.n_context_tokens(k)
+                master_fps = float(c.labels["scene_constants"]["frame_rate"])
+                reg = obj_region(gid, fr, master_fps)
+                roi_post = np.broadcast_to(reg, (len(phases) - kt, *reg.shape)).copy()
+                sur = m.surprise(x, k, roi_post, variants=missing)
+                per_frame = surprise_per_frame(sur, token_times(fr, m.token_grid, master_fps)[kt:])
+                rec = dict(rec0, surprise={**rec0["surprise"], **sur}, config_hash=config_hash(cfg))
+                if per_frame and rec0.get("per_frame"):
+                    pf0 = rec0["per_frame"]
+                    rec["per_frame"] = {"t_s": pf0["t_s"], "surprise": {**pf0["surprise"], **per_frame["surprise"]},
+                                        "weight": {**pf0["weight"], **per_frame["weight"]}}
+                index.write(json.dumps(rec) + "\n"); index.flush()
+                done += 1
+                if done % 20 == 0:
+                    print(f"[04] add-surprise {done}/{len(clips)}  {(time.time() - t0) / done:.2f} s/clip", flush=True)
+                continue
             if f_npz.exists() and not a.force and not a.pred_real:
                 have = np.load(f_npz).files if diffusion else ()
                 fc_missing = (("fc_pooled" not in have or "fc_pooled_frame_t" not in have

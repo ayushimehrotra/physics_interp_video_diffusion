@@ -13,7 +13,11 @@ Rules carried over from CogVideoX-2b (docs/RESUME.md, milestone 7) and applied t
   * surprise(): the model's own training loss on post-context latents over the encode SNR timesteps x
     ``surprise.n_draws`` fixed noise draws (identical across twins); ``clean_*`` with clean context latents (a
     continuation: only for ``continuation: true`` configs, physlaw/models/track_a.py), ``noisy_*`` with the whole
-    clip noised. Regions: all post-context tokens and ``obj`` (the balls' ROI tokens).
+    clip noised, ``native_*`` with only the model's own trained clean context held clean at timestep 0
+    (``surprise.native_context`` latent frames: PhysRVG's v2v 2, i.e. 5 frames; added 2026-11-21, after the whole-clip
+    null, because whole-clip noising is outside PhysRVG's training regime; its pair partner carries the same setting
+    for the matched comparison). Regions: all post-context tokens and ``obj`` (the balls' ROI tokens); every variant
+    scores the same post-event tokens.
 
 Latents are [1, F, C, h, w] (frames first) throughout; each family converts at its VAE and transformer boundary and
 supplies the schedule (``_t_for_db``, ``_add_noise``, ``_train_err``), the VAE (``_vae_encode``, ``_vae_decode``), the
@@ -455,12 +459,35 @@ class DiTAdapter(ModelAdapter):
             out[latent_key(db)] = self._latent_tokens(zt)
         return out
 
-    def surprise(self, video, context_end_frame: int, object_masks=None) -> dict[str, float]:
+    def native_context(self) -> int:
+        """Latent frames of the model's own trained clean context (``surprise.native_context``; PhysRVG's v2v: 2), or
+        0. Only for models whose transformer takes a timestep per token (``expand_timesteps``), so those latents are
+        fed clean at timestep 0 exactly as in training."""
+        n = int((self.cfg.get("surprise") or {}).get("native_context") or 0)
+        if n and not getattr(self, "expand", False):
+            raise ValueError(f"{self.cfg.get('name')}: surprise.native_context needs per-token timesteps")
+        return n
+
+    def surprise_variants(self) -> tuple[str, ...]:
+        """``noisy`` (whole clip noised) always; ``clean`` (every pre-event latent clean) only for continuation
+        configs; ``native`` (the model's trained clean context, :meth:`native_context`) where configured."""
+        return (("clean",) if continues(self.cfg) else ()) + ("noisy",) + (("native",) if self.native_context() else ())
+
+    def surprise(self, video, context_end_frame: int, object_masks=None, variants=None) -> dict[str, float]:
+        """``variants``: a subset of :meth:`surprise_variants` (default all; stage 4 --add-surprise computes only
+        the missing ones). Every variant scores the same post-event tokens with the same noise draws."""
         torch = self.torch
         x = self._x(video)
         z0 = self._mixed(x, context_end_frame)
         kt = self.n_context_tokens(context_end_frame)
         kl = kt * self.lpt
+        nl = self.native_context()
+        if nl > kl:
+            raise ValueError(f"native context {nl} latent frames reaches past the event ({kl} pre-event latents)")
+        variants = self.surprise_variants() if variants is None else tuple(variants)
+        if not set(variants) <= set(self.surprise_variants()):
+            raise ValueError(f"surprise variants {variants} not allowed for {self.cfg.get('name')}: "
+                             f"{self.surprise_variants()}")
         obj = None
         if object_masks is not None:
             obj = torch.as_tensor(np.asarray(object_masks), device=z0.device).bool()
@@ -470,11 +497,12 @@ class DiTAdapter(ModelAdapter):
             for db in self.snrs:
                 t = self.t_for_snr[db]
                 zt = self._add_noise(z0, eps, t)
-                for variant in (("clean", "noisy") if continues(self.cfg) else ("noisy",)):
+                for variant in variants:
+                    n_clean = {"clean": kl, "native": nl}.get(variant, 0)
                     zin = zt.clone()
-                    if variant == "clean":
-                        zin[:, :kl] = z0[:, :kl]
-                    v, _ = self._pass(zin, t, self.prompt_embeds, clean=kl if variant == "clean" else 0)
+                    if n_clean:
+                        zin[:, :n_clean] = z0[:, :n_clean]
+                    v, _ = self._pass(zin, t, self.prompt_embeds, clean=n_clean)
                     e = self._token_err(self._train_err(zin, v, z0, eps, t))[kt:]
                     acc.setdefault(f"{variant}_mse_all", []).append(float(e.mean()))
                     pf.setdefault(f"{variant}_mse_all", []).append(frame_means(e))

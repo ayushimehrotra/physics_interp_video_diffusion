@@ -5,8 +5,11 @@
 # WanTransformer3DModel; the LoRA is merged into the weights here (PEFT runs it unmerged: same function).
 # OFFICIAL inference settings (inference.py + fastvideo/models/wan_v2v/pipeline_wan_v2v.py, repo HEAD 2026-11-10):
 # 480 x 832, 49 frames, 16 steps, no CFG (do_cfg=False), the base's UniPC (flow_shift 5.0), prompt "The video shows
-# rigid body motion.", the first 2 latent frames (5 frames) held clean at timestep 0. Deviation: its clips play at
-# 15 fps; 15 does not divide the 48 fps master, so 16 fps (every 3rd master frame) is used.
+# rigid body motion.", the first 2 latent frames (5 frames) held clean at timestep 0. Frame rate: PhysRVG is trained and
+# conditioned on clips read at their native rate, 30 fps (paper arXiv 2601.11087 Table 4 "input video FPS 30";
+# latent_rl_datasets.py reads every frame, halving only 60 fps sources); inference.py's fps=15 is only the playback
+# rate of the saved mp4. 30 does not divide the 48 fps master: 24 fps (every 2nd master frame) is the nearest exact
+# rate (2026-11-21; was 16 fps, read from the export fps, nearly 2x the trained per-frame motion).
 # Pair partner with IDENTICAL settings (spec §4.2 group 3): wan22_ti2v_5b_physrvg.yaml (base weights).
 defaults: wan22_ti2v_5b.yaml
 name: physrvg
@@ -27,18 +30,21 @@ official:
   height: 480
   width: 832
   num_frames: 49
-  fps: 16
+  fps: 24                 # trained at 30 fps (header); 24 = nearest exact divisor of the 48 fps master
   num_inference_steps: 16
   guidance_scale: null    # do_cfg=False: one conditional pass per step
   negative_prompt: ""
 input:
-  center_on_contact: true             # 3.0 s around contact (stage 4: ~6 context latent frames, ~6 after)
+  center_on_contact: true             # 2.0 s around contact at 24 fps (stage 4: ~6 context latent frames, ~6 after)
 # Output track A (physlaw/models/wan.py WanAdapter.generate): exactly the trained v2v context, the first 2 latent
 # frames = 5 frames (pipeline_wan_v2v.py condition_mask[:, :, :2] = 0), ending at the last pre-contact frame of the
-# window; PhysRVG then samples its own 49 frames from there (44 new). At 16 fps (not the paper's 15: 15 does not
-# divide the 48 fps master); stage 4 (internals) keeps every whole pre-contact latent clean as before.
+# window; PhysRVG then samples its own 49 frames from there (44 new). At 24 fps (see above); stage 4 (internals) keeps every whole pre-contact latent clean as before.
 track_a:
   context: 5
   align: 4
   min_context: 5
 prompt: "The video shows rigid body motion."
+# native_context (2026-11-21, physlaw/models/dit.py): an extra surprise variant native_* with exactly the trained v2v
+# context (first 2 latent frames = 5 frames) clean at timestep 0, the rest noised: PhysRVG's training regime. Added
+# after the whole-clip (noisy_*) L2 null; reported beside it, not instead. The pair partner inherits it.
+surprise: {n_draws: 2, native_context: 2}

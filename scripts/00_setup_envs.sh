@@ -43,8 +43,13 @@ if [ -n "${PHYSLAW_COSMOS:-}" ] && [ ! -x "$ENVS/cosmos_venv/bin/python" ]; then
   uv venv -q --python 3.12 "$ENVS/cosmos_venv"
   uv pip install --python "$ENVS/cosmos_venv/bin/python" --index-strategy unsafe-best-match \
       --extra-index-url https://download.pytorch.org/whl/cu128 torch==2.10.0 torchvision transformers==4.57.1 \
-      diffusers==0.39.0 "cosmos-guardrail @ git+https://github.com/codeJRV/cosmos-guardrail" accelerate \
+      diffusers==0.39.0 accelerate \
       imageio==2.37.0 imageio-ffmpeg==0.6.0 pyyaml==6.0.2 pillow scipy opencv-python-headless pytest
+  # cosmos-guardrail 0.3.2 declares transformers>=5, which conflicts with NVIDIA's 4.57.1 pin: install it without
+  # deps, then its runtime deps (it runs fine on 4.57.1).
+  uv pip install --python "$ENVS/cosmos_venv/bin/python" --no-deps cosmos-guardrail==0.3.2
+  uv pip install --python "$ENVS/cosmos_venv/bin/python" attrs better-profanity nltk "peft<0.18" protobuf \
+      retinaface-py scikit-image sentencepiece
   "$ENVS/cosmos_venv/bin/python" -c "import diffusers; from diffusers import Cosmos2_5_PredictBasePipeline; print('cosmos venv OK, diffusers', diffusers.__version__)"
 fi
 # Model weights: plain files under ${PHYSLAW_MODELS:-/root/models} (one root for all models).
