@@ -22,7 +22,10 @@ if [ ! -x "$ENVS/kubric_venv/bin/python" ]; then
   grep -v '^-e git+' "$HERE/envs/kubric_requirements_locked.txt" > "$ENVS/kubric_reqs.txt"
   uv venv -q --python /usr/bin/python3.11 "$ENVS/kubric_venv"
   uv pip install --python "$ENVS/kubric_venv/bin/python" -r "$ENVS/kubric_reqs.txt"
-  uv pip install --python "$ENVS/kubric_venv/bin/python" --no-deps /root/src/kubric
+fi
+if ! "$ENVS/kubric_venv/bin/python" -c "import kubric" 2>/dev/null; then
+  # kubric's version is a build-time timestamp: the build fails when the second ticks between metadata and wheel
+  for i in 1 2 3; do uv pip install --python "$ENVS/kubric_venv/bin/python" --no-deps /root/src/kubric && break; done
   uv pip install --python "$ENVS/kubric_venv/bin/python" pytest jsonschema pyyaml
 fi
 "$ENVS/kubric_venv/bin/python" -c "import bpy, kubric, pybullet; print('kubric venv OK, bpy', bpy.app.version_string)"

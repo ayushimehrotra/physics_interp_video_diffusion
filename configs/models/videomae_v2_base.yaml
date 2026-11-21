@@ -2,6 +2,8 @@
 # revision d27568eb41ccb2d41bb191fc2e3fe5aad74942d4, patch 14.
 name: videomaev2-base
 kind: encoder
+predicts: false        # encoder-only weights (no decoder): no surprise, so no stage 05 / L2 (scripts/queues/run_models.py;
+                       # the adapter decides from the weights, physlaw/models/videomae2.py)
 hf_id: OpenGVLab/VideoMAEv2-Base
 revision: 78c337a418cc4adaf7f1ff6c7ba343418393966b
 local_path: ${env:PHYSLAW_MODELS,/root/models}/VideoMAEv2-Base   # plain-file copy of that snapshot
